@@ -65,3 +65,28 @@ Player A: launch kingdomino.seanmailander.com, start new game
 Player B: launch kingdomino.seanmailander.com, join existing game
 
 serve static SPA, `/api/bootstrap/currentGame` for current game bootstrapping - Player A: submit an offering to bootstrapper - Player B: take the offer, submit an answer - Player A: process answer, we now have a data channel
+
+# TODO
+
+## NOW
+
+1. Build a deck, canonical representation of each card
+2. display the deck in debug mode
+3. show the next four cards selected
+
+## NEXT
+
+1. user picks a card (share with other players)
+2. user places card
+3. restrictions on card placement
+4. calculation of eligible places
+5. 
+
+## NIRVANA
+
+1. handle errors
+2. handle disconnects (30 sec start from scratch)
+3. instructions on whats next
+4. arbitrary starting (doesnt matter who goes first)
+5. lobby of games (server)
+6. lobby of games (client)
