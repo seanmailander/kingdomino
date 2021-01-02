@@ -1,10 +1,10 @@
-import './App.css';
-import Bootstrapper from './bootstrapper';
+import "./App.css";
+import Game from "./Game";
 
 function App() {
   return (
     <div className="App">
-      <Bootstrapper />
+      <Game />
     </div>
   );
 }
