@@ -89,7 +89,6 @@ const bootstrapper = () => {
 
   return {
     peerConnection,
-    isInitiator: IS_INITIATOR,
   };
 };
 

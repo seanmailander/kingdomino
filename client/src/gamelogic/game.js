@@ -1,4 +1,5 @@
 import seedrandom from "seedrandom";
+import { EventIterator } from "event-iterator";
 
 import bootstrapper from "./bootstrapper";
 
@@ -50,25 +51,6 @@ const revealMyCommittment = async (peerConnection, secret) => {
   peerConnection.send(JSON.stringify(message));
 };
 
-const waitForTheirCommittment = async (peerConnection) =>
-  new Promise((resolve, reject) => {
-    peerConnection.on("data", (data) => {
-      const message = JSON.parse(data);
-      if (message.type === "COMMITTMENT") {
-        resolve(message.committment);
-      }
-    });
-  });
-const waitForTheirSecret = async (peerConnection) =>
-  new Promise((resolve, reject) => {
-    peerConnection.on("data", (data) => {
-      const message = JSON.parse(data);
-      if (message.type === "REVEAL") {
-        resolve(message.secret);
-      }
-    });
-  });
-
 const verify = async (secret, committment) => {
   const hashString = await hashIt(secret);
   return committment === hashString;
@@ -89,15 +71,19 @@ const combine = async (a, b) => {
 // - Both A and B verify committments
 // - Both A and B calculate shared random as G = H (Ra || Rb)
 
-const buildTrustedSeed = async (peerConnection) => {
+const buildTrustedSeed = async (
+  peerConnection,
+  committmentListener,
+  revealListener
+) => {
   const { secret: mySecret, committment: myCommittment } = await commit();
   await publishCommittment(peerConnection, myCommittment);
 
-  const theirCommittment = await waitForTheirCommittment(peerConnection);
+  const { committment: theirCommittment } = await committmentListener.next();
 
   await revealMyCommittment(peerConnection, mySecret);
 
-  const theirSecret = await waitForTheirSecret(peerConnection);
+  const { secret: theirSecret } = await revealListener.next();
 
   await verify(theirSecret, theirCommittment);
 
@@ -122,25 +108,54 @@ const getNextFourCards = (seed, remainingDeck = deck) => {
 // - each 4-draw, recommit and re-shuffle
 //   - important to re-randomize every turn, or future knowledge will help mis-behaving clients
 
+const subscribeToGameMessage = (emitter, messageType) =>
+  new EventIterator(({ push }) => {
+    const handleData = (data) => {
+      const message = JSON.parse(data);
+      if (message.type === messageType) {
+        push(message);
+      }
+    };
+    //TODO: handle close, error, done, etc
+    emitter.on("data", handleData);
+    return () => emitter.off("data", handleData);
+  });
+
 const newGame = (peerConnection) => {
   peerConnection.on("error", (err) => console.error("GAME:ERROR", err));
 
+  const committmentListener = subscribeToGameMessage(
+    peerConnection,
+    "COMMITTMENT"
+  );
+  const committmentIterator = committmentListener[Symbol.asyncIterator]();
+  const revealListener = subscribeToGameMessage(peerConnection, "REVEAL");
+  const revealIterator = revealListener[Symbol.asyncIterator]();
+
+  peerConnection.on("data", (data) => {
+    // console.debug("GAME:DATA:", data);
+    console.debug("GAME:DATA", JSON.parse(data));
+  });
+
   peerConnection.on("connect", async () => {
     console.debug("GAME:CONNECTED to game peer");
-    // p.send("whatever" + Math.random());
-    const trustedSeed = await buildTrustedSeed(peerConnection);
+    const trustedSeed = await buildTrustedSeed(
+      peerConnection,
+      committmentIterator,
+      revealIterator
+    );
     console.debug("GAME:SEEDED", trustedSeed);
-    const trustedSeed2 = await buildTrustedSeed(peerConnection);
+
+    const trustedSeed2 = await buildTrustedSeed(
+      peerConnection,
+      committmentIterator,
+      revealIterator
+    );
     console.debug("GAME:SEEDED_AGAIN", trustedSeed2);
 
     const { next, remaining } = getNextFourCards(trustedSeed);
     console.debug({ next, remaining });
     console.debug(getNextFourCards(trustedSeed2, remaining));
-  });
-
-  peerConnection.on("data", (data) => {
-    // console.debug("GAME:DATA:", data);
-    console.debug(JSON.parse(data));
   });
 
   return {

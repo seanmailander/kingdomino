@@ -19,6 +19,7 @@ app.get("/api/bootstrap/currentGame", (req, res) => {
 app.post("/api/bootstrap/startGame", (req, res) => {
   currentGame.offer = req.body;
   currentGame.answer = undefined;
+  // TODO: timeout after 30seconds, force client to re-attempt
   res.json({});
 });
 app.post("/api/bootstrap/joinGame", (req, res) => {
