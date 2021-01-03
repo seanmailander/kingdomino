@@ -11,26 +11,21 @@ const subscribeToGameMessages = (emitter) =>
   new EventIterator(
     ({ push }) => {
       const handleData = (data) => {
-        console.debug("saw data for handler", JSON.parse(data));
         push(JSON.parse(data));
       };
-      // JANKY manual first-message presumed to be ate by initator
-      push({ type: "INITALIZED" });
       //TODO: handle close, error, done, etc
       emitter.on("data", handleData);
       return () => emitter.off("data", handleData);
     },
-    { highWaterMark: 2 }
+    { highWaterMark: 5 }
   );
 
 const subscribeToGameMessage = (emitter) => {
-  console.debug("here it is");
   const subscription = subscribeToGameMessages(emitter);
   return async function* (messageType) {
-    console.debug("new subscriber: ", messageType);
     for await (const message of subscription) {
-      console.debug("PEER:RECEIVE", messageType, message.type);
       if (message.type === messageType) {
+        console.debug("PEER:RECEIVE", messageType);
         yield message;
       }
     }
@@ -38,12 +33,7 @@ const subscribeToGameMessage = (emitter) => {
 };
 const oneMessageAtATime = (peerFinder) => (messageType) => {
   const observable = subscribeToGameMessage(peerFinder)(messageType);
-  const iterator = observable[Symbol.asyncIterator]();
-  // force the first subscription, throw it away
-  // iterator.next().then((data) => {
-  //   console.debug("saw first result", messageType, data);
-  // });
-  return iterator;
+  return observable[Symbol.asyncIterator]();
 };
 
 const newPeerfinder = (isInitiator) => {
@@ -59,8 +49,6 @@ const newPeerfinder = (isInitiator) => {
   p.on("error", (err) => console.error("ERROR", err));
 
   p.on("signal", async (data) => {
-    console.debug("SIGNAL", data);
-
     if (data.type === "offer") {
       await postData("/api/bootstrap/startGame", data);
       p.emit(INITIATED_EVENT);
@@ -68,10 +56,6 @@ const newPeerfinder = (isInitiator) => {
     if (data.type === "answer") {
       await postData("/api/bootstrap/joinGame", data);
     }
-  });
-
-  p.on("connect", () => {
-    console.debug("CONNECTED to game peer");
   });
 
   return p;
@@ -131,8 +115,6 @@ const newPeerConnection = async () => {
   connectToOtherPlayers(peerFinder, waitForInitiation(peerFinder))();
 
   await waitForConnection(peerFinder);
-
-  console.debug("Connected to peer");
 
   const waitForGameMessage = oneMessageAtATime(peerFinder);
 

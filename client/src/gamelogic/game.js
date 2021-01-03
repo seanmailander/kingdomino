@@ -146,6 +146,7 @@ const newGame = () => {
     }
     console.debug("GAME:RESET new game");
     const { sendGameMessage, waitForGameMessage } = await waitForPeerConnection;
+    console.debug("GAME:CONNECTED to peer");
     game = initializeGame({ sendGameMessage, waitForGameMessage });
     state = "shuffling";
     trustedDeal();
