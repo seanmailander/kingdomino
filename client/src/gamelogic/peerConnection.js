@@ -3,7 +3,7 @@ import { EventIterator } from "event-iterator";
 
 // eslint-disable-next-line no-restricted-globals
 const IS_INITIATOR = location.hash === "#1";
-console.debug("Is initiator:", IS_INITIATOR);
+console.debug("PEER:INITIALIZE Is initiator:", IS_INITIATOR);
 
 const INITIATED_EVENT = "INITIATED";
 
@@ -36,7 +36,7 @@ const oneMessageAtATime = (peerFinder) => (messageType) => {
   return observable[Symbol.asyncIterator]();
 };
 
-const newPeerfinder = (isInitiator) => {
+const newPeerfinder = (isInitiator, onError) => {
   // TODO: is this an npm module?
   // eslint-disable-next-line no-undef
   const p = new SimplePeer({
@@ -47,6 +47,7 @@ const newPeerfinder = (isInitiator) => {
 
   // TODO: bubble up errors
   p.on("error", (err) => console.error("ERROR", err));
+  p.on("error", onError);
 
   p.on("signal", async (data) => {
     if (data.type === "offer") {
@@ -85,7 +86,7 @@ const connectToOtherPlayers = (p, asyncInitiation) => async () => {
     if (!offer) {
       // no offer or no record of that peer connection
       // so start a new game
-      console.debug("Starting a new game as initiator");
+      console.debug("PEER:CONNECT Starting a new game as initiator");
       setTimeout(connectToOtherPlayers(p), 1000);
       return;
     }
@@ -96,7 +97,7 @@ const connectToOtherPlayers = (p, asyncInitiation) => async () => {
       return;
     }
 
-    console.debug("Initiator is waiting for an answer");
+    console.debug("PEER:CONNECT Initiator is waiting for an answer");
     setTimeout(connectToOtherPlayers(p), 1000);
   } else {
     // Non-initiator needs to see an offer
@@ -104,14 +105,14 @@ const connectToOtherPlayers = (p, asyncInitiation) => async () => {
     if (offer) {
       p?.signal(offer);
     } else {
-      console.debug("Non-Initiator is waiting for an offer");
+      console.debug("PEER:CONNECT Non-Initiator is waiting for an offer");
       setTimeout(connectToOtherPlayers(p), 1000);
     }
   }
 };
 
-const newPeerConnection = async () => {
-  const peerFinder = newPeerfinder(IS_INITIATOR);
+const newPeerConnection = async ({ onError }) => {
+  const peerFinder = newPeerfinder(IS_INITIATOR, onError);
   connectToOtherPlayers(peerFinder, waitForInitiation(peerFinder))();
 
   await waitForConnection(peerFinder);

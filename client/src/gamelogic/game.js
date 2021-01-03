@@ -1,6 +1,12 @@
 import seedrandom from "seedrandom";
 
 import newPeerConnection from "./peerConnection";
+import {
+  RESET_CONNECTIONS,
+  INITIALIZE_GAME,
+  SHUFFLE_DECK,
+  CONNECTION_ERROR,
+} from "./stateMachine";
 
 const COMMITTMENT = "COMMITTMENT";
 const REVEAL = "REVEAL";
@@ -127,17 +133,17 @@ const initializeGame = ({ sendGameMessage, waitForGameMessage }) => {
   };
 };
 
-const newGame = () => {
+const newGame = (transition) => {
   let waitForPeerConnection;
   let game;
   let remainingDeck = undefined;
 
-  // TODO: make state tree
-  let state = "lobby";
-
   const resetConnections = () => {
+    transition(RESET_CONNECTIONS);
     console.debug("GAME:RESET new peer connections");
-    waitForPeerConnection = newPeerConnection();
+    waitForPeerConnection = newPeerConnection({
+      onError: () => transition(CONNECTION_ERROR),
+    });
   };
 
   const resetGame = async () => {
@@ -146,9 +152,10 @@ const newGame = () => {
     }
     console.debug("GAME:RESET new game");
     const { sendGameMessage, waitForGameMessage } = await waitForPeerConnection;
+    transition(INITIALIZE_GAME);
     console.debug("GAME:CONNECTED to peer");
     game = initializeGame({ sendGameMessage, waitForGameMessage });
-    state = "shuffling";
+    transition(SHUFFLE_DECK);
     trustedDeal();
   };
 
@@ -161,7 +168,6 @@ const newGame = () => {
   resetGame();
 
   return {
-    state,
     resetConnections,
     resetGame,
     trustedDeal,
