@@ -2,9 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useMachine } from "@xstate/react";
 
 import {
-  CONNECTION_ERROR,
+  CONNECTION_ERRORED,
+  CONNECTION_TIMEOUT,
   gameMachine,
-  RESET_CONNECTIONS,
 } from "./gamelogic/stateMachine";
 
 import newGame from "./gamelogic/game";
@@ -20,7 +20,7 @@ function Game() {
   const lobby = (
     <>
       Lobby
-      <button onClick={() => send("RESET_CONNECTIONS")}>
+      <button onClick={() => send(CONNECTION_TIMEOUT)}>
         Check for peers again
       </button>
     </>
@@ -33,22 +33,15 @@ function Game() {
     </>
   );
 
-  const gameState = (
-    <>
-      Game
-      {current?.peerName}
-
-    </>
-  );
+  const gameState = <>{`Game with ${current?.context?.peerName}`}</>;
 
   return (
     <>
       {current.matches("Lobby") && lobby}
       {current.matches("Error") && error}
       {(current.matches("Game") || current.matches("Round")) && gameState}
-      <button onClick={() => send(CONNECTION_ERROR)}>Fake error</button>
+      <button onClick={() => send(CONNECTION_ERRORED)}>Fake error</button>
       <pre>{JSON.stringify(current, null, 2)}</pre>
-      <pre>{JSON.stringify(game, null, 2)}</pre>
     </>
   );
 }

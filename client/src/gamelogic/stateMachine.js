@@ -5,11 +5,15 @@ import { Machine, interpret, assign } from "xstate";
 // - each 4-draw, recommit and re-shuffle
 //   - important to re-randomize every turn, or future knowledge will help mis-behaving clients
 
-export const CONNECTION_ERROR = { type: "CONNECTION_ERROR" };
-export const RESET_CONNECTIONS = "RESET_CONNECTIONS";
-export const INITIALIZE_GAME = "INITIALIZE_GAME";
-export const SHUFFLE_DECK = "SHUFFLE_DECK";
-export const END_GAME = "END_GAME";
+// Events that occur during the game
+export const CONNECTION_ERRORED = "CONNECTION_ERRORED";
+export const CONNECTION_RESET = "CONNECTION_RESET";
+export const CONNECTION_TIMEOUT = "CONNECTION_TIMEOUT";
+export const GAME_STARTED = "GAME_STARTED";
+export const DECK_SHUFFLED = "DECK_SHUFFLED";
+export const CARD_PICKED = "CARD_PICKED";
+export const CARD_PLACED = "CARD_PLACED";
+export const GAME_ENDED = "GAME_ENDED";
 
 export const gameMachine = Machine({
   id: "game",
@@ -18,20 +22,31 @@ export const gameMachine = Machine({
   states: {
     Initial: {
       on: {
-        RESET_CONNECTIONS: {
-          target: "Lobby",
-        },
-        CONNECTION_ERROR: "Error",
+        [CONNECTION_RESET]: "Lobby",
+        [CONNECTION_ERRORED]: "Error",
       },
     },
     Lobby: {
-      on: { INITIALIZE_GAME: { target: "Game" }, CONNECTION_ERROR: "Error" },
+      on: {
+        [CONNECTION_RESET]: "Lobby",
+        [GAME_STARTED]: {
+          target: "Game",
+          actions: assign({ peerName: (context, event) => event.value }),
+        },
+        [CONNECTION_ERRORED]: "Error",
+      },
     },
     Game: {
-      on: { SHUFFLE_DECK: { target: "Round" }, CONNECTION_ERROR: "Error" },
+      on: {
+        [DECK_SHUFFLED]: { target: "Round" },
+        [CONNECTION_ERRORED]: "Error",
+      },
     },
     Round: {
-      on: { END_GAME: { target: "GameOver" }, CONNECTION_ERROR: "Error" },
+      on: {
+        [GAME_ENDED]: { target: "GameOver" },
+        [CONNECTION_ERRORED]: "Error",
+      },
     },
     GameOver: { type: "final" },
     Error: { type: "final" },

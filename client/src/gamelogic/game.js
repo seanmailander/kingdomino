@@ -2,10 +2,13 @@ import seedrandom from "seedrandom";
 
 import newPeerConnection from "./peerConnection";
 import {
-  RESET_CONNECTIONS,
-  INITIALIZE_GAME,
-  SHUFFLE_DECK,
-  CONNECTION_ERROR,
+  GAME_STARTED,
+  CONNECTION_ERRORED,
+  DECK_SHUFFLED,
+  CARD_PICKED,
+  CARD_PLACED,
+  CONNECTION_RESET,
+  GAME_ENDED,
 } from "./stateMachine";
 
 const COMMITTMENT = "COMMITTMENT";
@@ -139,10 +142,10 @@ const newGame = (transition) => {
   let remainingDeck = undefined;
 
   const resetConnections = () => {
-    transition(RESET_CONNECTIONS);
+    transition(CONNECTION_RESET);
     console.debug("GAME:RESET new peer connections");
     waitForPeerConnection = newPeerConnection({
-      onError: () => transition(CONNECTION_ERROR),
+      onError: () => transition(CONNECTION_ERRORED),
     });
   };
 
@@ -152,10 +155,11 @@ const newGame = (transition) => {
     }
     console.debug("GAME:RESET new game");
     const { sendGameMessage, waitForGameMessage } = await waitForPeerConnection;
-    transition(INITIALIZE_GAME);
     console.debug("GAME:CONNECTED to peer");
     game = initializeGame({ sendGameMessage, waitForGameMessage });
-    transition(SHUFFLE_DECK);
+    // TODO: share player name
+    transition({ type: GAME_STARTED, value: "Bob" });
+    transition(DECK_SHUFFLED);
     trustedDeal();
   };
 
