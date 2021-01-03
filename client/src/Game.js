@@ -1,9 +1,27 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
-import GameLogic from "./gamelogic/game";
+import newGame from "./gamelogic/game";
 
 function Game() {
-  return <>{JSON.stringify(GameLogic.game, null, 2)}</>;
+  const [game, setGame] = useState();
+
+  useEffect(() => {
+    setGame(newGame());
+  }, []);
+
+  const lobby = (
+    <>
+      Lobby
+      <button>Re-check</button>
+    </>
+  );
+
+  return (
+    <>
+      {game?.state === "lobby" && lobby}
+      <pre>{JSON.stringify(game, null, 2)}</pre>
+    </>
+  );
 }
 
 export default Game;

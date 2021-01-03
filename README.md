@@ -70,6 +70,7 @@ serve static SPA, `/api/bootstrap/currentGame` for current game bootstrapping - 
 
 ## NOW
 
+1. debug mode, show in panel
 1. Build a deck, canonical representation of each card
 2. display the deck in debug mode
 3. show the next four cards selected
@@ -80,7 +81,7 @@ serve static SPA, `/api/bootstrap/currentGame` for current game bootstrapping - 
 2. user places card
 3. restrictions on card placement
 4. calculation of eligible places
-5. 
+5. visualization for cards (photo of real ones for now)
 
 ## NIRVANA
 
@@ -90,3 +91,4 @@ serve static SPA, `/api/bootstrap/currentGame` for current game bootstrapping - 
 4. arbitrary starting (doesnt matter who goes first)
 5. lobby of games (server)
 6. lobby of games (client)
+7. dynamic card graphics (blending)

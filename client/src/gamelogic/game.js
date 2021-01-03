@@ -1,7 +1,10 @@
 import seedrandom from "seedrandom";
-import { EventIterator } from "event-iterator";
 
-import bootstrapper from "./bootstrapper";
+import newPeerConnection from "./peerConnection";
+
+const COMMITTMENT = "COMMITTMENT";
+const REVEAL = "REVEAL";
+const MOVE = "MOVE";
 
 // Make a predictable pseudorandom number generator.
 // https://stackoverflow.com/a/12646864
@@ -35,22 +38,6 @@ const commit = async () => {
   };
 };
 
-const publishCommittment = async (peerConnection, committment) => {
-  const message = {
-    type: "COMMITTMENT",
-    committment,
-  };
-  peerConnection.send(JSON.stringify(message));
-};
-
-const revealMyCommittment = async (peerConnection, secret) => {
-  const message = {
-    type: "REVEAL",
-    secret,
-  };
-  peerConnection.send(JSON.stringify(message));
-};
-
 const verify = async (secret, committment) => {
   const hashString = await hashIt(secret);
   return committment === hashString;
@@ -71,19 +58,22 @@ const combine = async (a, b) => {
 // - Both A and B verify committments
 // - Both A and B calculate shared random as G = H (Ra || Rb)
 
-const buildTrustedSeed = async (
-  peerConnection,
-  committmentListener,
-  revealListener
-) => {
+const buildTrustedSeed = async (sendGameMessage, onCommit, onReveal) => {
   const { secret: mySecret, committment: myCommittment } = await commit();
-  await publishCommittment(peerConnection, myCommittment);
+  await sendGameMessage({
+    type: COMMITTMENT,
+    content: { committment: myCommittment },
+  });
 
-  const { committment: theirCommittment } = await committmentListener.next();
+  const {
+    value: { committment: theirCommittment },
+  } = await onCommit.next();
 
-  await revealMyCommittment(peerConnection, mySecret);
+  await sendGameMessage({ type: REVEAL, content: { secret: mySecret } });
 
-  const { secret: theirSecret } = await revealListener.next();
+  const {
+    value: { secret: theirSecret },
+  } = await onReveal.next();
 
   await verify(theirSecret, theirCommittment);
 
@@ -108,69 +98,73 @@ const getNextFourCards = (seed, remainingDeck = deck) => {
 // - each 4-draw, recommit and re-shuffle
 //   - important to re-randomize every turn, or future knowledge will help mis-behaving clients
 
-const subscribeToGameMessage = (emitter, messageType) =>
-  new EventIterator(({ push }) => {
-    const handleData = (data) => {
-      const message = JSON.parse(data);
-      if (message.type === messageType) {
-        push(message);
-      }
-    };
-    //TODO: handle close, error, done, etc
-    emitter.on("data", handleData);
-    return () => emitter.off("data", handleData);
-  });
+const initializeGame = ({ sendGameMessage, waitForGameMessage }) => {
+  const onMove = waitForGameMessage(MOVE);
+  const onCommit = waitForGameMessage(COMMITTMENT);
+  const onReveal = waitForGameMessage(REVEAL);
 
-const newGame = (peerConnection) => {
-  peerConnection.on("error", (err) => console.error("GAME:ERROR", err));
-
-  const committmentListener = subscribeToGameMessage(
-    peerConnection,
-    "COMMITTMENT"
-  );
-  const committmentIterator = committmentListener[Symbol.asyncIterator]();
-  const revealListener = subscribeToGameMessage(peerConnection, "REVEAL");
-  const revealIterator = revealListener[Symbol.asyncIterator]();
-
-  peerConnection.on("data", (data) => {
-    // console.debug("GAME:DATA:", data);
-    console.debug("GAME:DATA", JSON.parse(data));
-  });
-
-  peerConnection.on("connect", async () => {
-    console.debug("GAME:CONNECTED to game peer");
+  const trustedDeal = async (currentDeck) => {
     const trustedSeed = await buildTrustedSeed(
-      peerConnection,
-      committmentIterator,
-      revealIterator
+      sendGameMessage,
+      onCommit,
+      onReveal
     );
     console.debug("GAME:SEEDED", trustedSeed);
 
-    const trustedSeed2 = await buildTrustedSeed(
-      peerConnection,
-      committmentIterator,
-      revealIterator
-    );
-    console.debug("GAME:SEEDED_AGAIN", trustedSeed2);
+    const { next, remaining } = getNextFourCards(trustedSeed, currentDeck);
+    console.debug("GAME:DEAL", next);
+    return { next, remaining };
+  };
 
-    const { next, remaining } = getNextFourCards(trustedSeed);
-    console.debug({ next, remaining });
-    console.debug(getNextFourCards(trustedSeed2, remaining));
-  });
+  const makeMove = () => {
+    console.debug("GAME:MOVE");
+    sendGameMessage("MOVE", { move: "1,2,3,4" });
+  };
 
   return {
-    thing: "blah",
+    trustedDeal,
+    makeMove,
   };
 };
 
-const gameSingleton = () => {
-  const game = newGame(bootstrapper.peerConnection);
+const newGame = () => {
+  let waitForPeerConnection;
+  let game;
+  let remainingDeck = undefined;
+
+  // TODO: make state tree
+  let state = "lobby";
+
+  const resetConnections = () => {
+    console.debug("GAME:RESET new peer connections");
+    waitForPeerConnection = newPeerConnection();
+  };
+
+  const resetGame = async () => {
+    if (!waitForPeerConnection) {
+      resetConnections();
+    }
+    console.debug("GAME:RESET new game");
+    const { sendGameMessage, waitForGameMessage } = await waitForPeerConnection;
+    game = initializeGame({ sendGameMessage, waitForGameMessage });
+    state = "shuffling";
+    trustedDeal();
+  };
+
+  const trustedDeal = async () => {
+    const { next, remaining } = await game.trustedDeal(remainingDeck);
+    console.debug(next, remainingDeck, remaining);
+    return next;
+  };
+
+  resetGame();
 
   return {
-    game,
+    state,
+    resetConnections,
+    resetGame,
+    trustedDeal,
   };
 };
 
-const singleton = gameSingleton();
-
-export default singleton;
+export default newGame;
