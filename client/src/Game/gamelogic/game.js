@@ -1,19 +1,7 @@
 import seedrandom from "seedrandom";
 
 import newPeerConnection from "./peerConnection";
-import {
-  GAME_STARTED,
-  CONNECTION_ERRORED,
-  DECK_SHUFFLED,
-  CARD_PICKED,
-  CARD_PLACED,
-  CONNECTION_RESET,
-  GAME_ENDED,
-} from "./stateMachine";
 
-const COMMITTMENT = "COMMITTMENT";
-const REVEAL = "REVEAL";
-const MOVE = "MOVE";
 
 // Make a predictable pseudorandom number generator.
 // https://stackoverflow.com/a/12646864
@@ -107,61 +95,12 @@ const getNextFourCards = (seed, remainingDeck = deck) => {
 // - each 4-draw, recommit and re-shuffle
 //   - important to re-randomize every turn, or future knowledge will help mis-behaving clients
 
-const initializeGame = ({ sendGameMessage, waitForGameMessage }) => {
-  const onMove = waitForGameMessage(MOVE);
-  const onCommit = waitForGameMessage(COMMITTMENT);
-  const onReveal = waitForGameMessage(REVEAL);
-
-  const trustedDeal = async (currentDeck) => {
-    const trustedSeed = await buildTrustedSeed(
-      sendGameMessage,
-      onCommit,
-      onReveal
-    );
-    console.debug("GAME:SEEDED", trustedSeed);
-
-    const { next, remaining } = getNextFourCards(trustedSeed, currentDeck);
-    console.debug("GAME:DEAL", next);
-    return { next, remaining };
-  };
-
-  const makeMove = () => {
-    console.debug("GAME:MOVE");
-    sendGameMessage("MOVE", { move: "1,2,3,4" });
-  };
-
-  return {
-    trustedDeal,
-    makeMove,
-  };
-};
 
 const newGame = (transition) => {
   let waitForPeerConnection;
   let game;
   let remainingDeck = undefined;
 
-  const resetConnections = () => {
-    transition(CONNECTION_RESET);
-    console.debug("GAME:RESET new peer connections");
-    waitForPeerConnection = newPeerConnection({
-      onError: () => transition(CONNECTION_ERRORED),
-    });
-  };
-
-  const resetGame = async () => {
-    if (!waitForPeerConnection) {
-      resetConnections();
-    }
-    console.debug("GAME:RESET new game");
-    const { sendGameMessage, waitForGameMessage } = await waitForPeerConnection;
-    console.debug("GAME:CONNECTED to peer");
-    game = initializeGame({ sendGameMessage, waitForGameMessage });
-    // TODO: share player name
-    transition({ type: GAME_STARTED, value: "Bob" });
-    transition(DECK_SHUFFLED);
-    trustedDeal();
-  };
 
   const trustedDeal = async () => {
     const { next, remaining } = await game.trustedDeal(remainingDeck);
