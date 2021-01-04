@@ -1,22 +1,11 @@
 import { createSlice } from "@reduxjs/toolkit";
-
-// Events that occur during the game
-export const CONNECTION_ERRORED = "CONNECTION_ERRORED";
-export const CONNECTION_RESET = "CONNECTION_RESET";
-export const CONNECTION_TIMEOUT = "CONNECTION_TIMEOUT";
-
-export const PLAYER_JOINED = "PLAYER_JOINED";
-export const PLAYER_LEFT = "PLAYER_LEFT";
-export const GAME_STARTED = "GAME_STARTED";
-export const DECK_SHUFFLED = "DECK_SHUFFLED";
-export const CARD_PICKED = "CARD_PICKED";
-export const CARD_PLACED = "CARD_PLACED";
-export const GAME_ENDED = "GAME_ENDED";
+import { gameEnded, gameStarted, playerJoined } from "../Game/game.slice";
 
 // States that may occur
 export const Splash = "Splash";
 export const Lobby = "Lobby";
 export const Game = "Game";
+export const Scoring = "Scoring";
 
 export const appSlice = createSlice({
   name: "app",
@@ -24,14 +13,14 @@ export const appSlice = createSlice({
     room: Splash,
   },
   extraReducers: {
-    [PLAYER_JOINED]: (state, action) => {
+    [playerJoined]: (state, action) => {
       return { room: Lobby };
     },
-    [GAME_STARTED]: (state) => {
+    [gameStarted]: (state) => {
       return { room: Game };
     },
-    [GAME_ENDED]: (state) => {
-      return { room: Lobby };
+    [gameEnded]: (state) => {
+      return { room: Lobby }; // TODO: scoring / game over screen
     },
   },
 });

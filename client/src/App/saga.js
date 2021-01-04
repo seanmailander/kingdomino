@@ -1,15 +1,23 @@
-import { all, call, delay, put, takeEvery } from "redux-saga/effects";
+import { all, call, spawn } from "redux-saga/effects";
 
-export function* incrementAsync() {
-  yield delay(1000);
-  yield put({ type: "INCREMENT" });
-}
-
-export function* watchIncrementAsync() {
-  yield takeEvery("INCREMENT_ASYNC", incrementAsync);
-}
+import game from "../Game/game.saga";
 
 // single entry point to start all Sagas at once
 export default function* rootSaga() {
-  yield all([call(watchIncrementAsync)]);
+  const sagas = [game];
+
+  yield all(
+    sagas.map((saga) =>
+      spawn(function* () {
+        while (true) {
+          try {
+            yield call(saga);
+            break;
+          } catch (e) {
+            console.log(e);
+          }
+        }
+      })
+    )
+  );
 }

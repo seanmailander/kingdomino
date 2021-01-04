@@ -1,86 +1,27 @@
 import React, { useState, useEffect } from "react";
 
 import { useSelector, useDispatch } from "react-redux";
-import {
-  decrement,
-  increment,
-  incrementByAmount,
-  incrementAsync,
-} from "./game.slice.js";
+import { cardPicked } from "./game.slice";
 
 function Game() {
   const dispatch = useDispatch();
-  const [incrementAmount, setIncrementAmount] = useState("2");
 
   return (
     <div>
-      <div>
-        <button
-          aria-label="Increment value"
-          onClick={() => dispatch(increment())}
-        >
-          +
-        </button>
-        <button
-          aria-label="Decrement value"
-          onClick={() => dispatch(decrement())}
-        >
-          -
-        </button>
-      </div>
-      <div>
-        <input
-          aria-label="Set increment amount"
-          value={incrementAmount}
-          onChange={(e) => setIncrementAmount(e.target.value)}
-        />
-        <button
-          onClick={() =>
-            dispatch(incrementByAmount(Number(incrementAmount) || 0))
-          }
-        >
-          Add Amount
-        </button>
-        <button
-          onClick={() => dispatch(incrementAsync(Number(incrementAmount) || 0))}
-        >
-          Add Async
-        </button>
-      </div>
+      <button aria-label="Pick card 1" onClick={() => dispatch(cardPicked(0))}>
+        Pick card 1
+      </button>
+      <button aria-label="Pick card 2" onClick={() => dispatch(cardPicked(1))}>
+        Pick card 2
+      </button>
+      <button aria-label="Pick card 3" onClick={() => dispatch(cardPicked(2))}>
+        Pick card 3
+      </button>
+      <button aria-label="Pick card 4" onClick={() => dispatch(cardPicked(3))}>
+        Pick card 4
+      </button>
     </div>
   );
-
-  // useEffect(() => {
-  //   setGame(newGame(send));
-  // }, [send]);
-
-  // const lobby = (
-  //   <>
-  //     Lobby
-  //     <button onClick={() => send(CONNECTION_TIMEOUT)}>
-  //       Check for peers again
-  //     </button>
-  //   </>
-  // );
-  // const error = (
-  //   <>
-  //     Error
-  //     {current?.error}
-  //     <button onClick={() => window.location.reload()}>Reset game</button>
-  //   </>
-  // );
-
-  // const gameState = <>{`Game with ${current?.context?.peerName}`}</>;
-
-  // return (
-  //   <>
-  //     {current.matches("Lobby") && lobby}
-  //     {current.matches("Error") && error}
-  //     {(current.matches("Game") || current.matches("Round")) && gameState}
-  //     <button onClick={() => send(CONNECTION_ERRORED)}>Fake error</button>
-  //     <pre>{JSON.stringify(current, null, 2)}</pre>
-  //   </>
-  // );
 }
 
 export default Game;

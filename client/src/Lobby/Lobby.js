@@ -1,50 +1,34 @@
 import React from "react";
 
-import { useDispatch } from "react-redux";
-import { increment } from "../Game/game.slice.js";
+import { useSelector, useDispatch } from "react-redux";
+import { gameStarted } from "../Game/game.slice";
 
 function Lobby() {
+  const players = useSelector((state) => state.game.players);
   const dispatch = useDispatch();
 
-  return (
+  const hasEnoughPlayers = players.length >= 2;
+
+  const startGame = hasEnoughPlayers && (
     <>
-      <button aria-label="Start game" onClick={() => dispatch(increment())}>
+      Ready!
+      <button aria-label="Start game" onClick={() => dispatch(gameStarted())}>
         Start game
       </button>
     </>
   );
 
-  // useEffect(() => {
-  //   setGame(newGame(send));
-  // }, [send]);
+  const waitingForPlayers = !hasEnoughPlayers && <>Waiting for players</>;
 
-  // const lobby = (
-  //   <>
-  //     Lobby
-  //     <button onClick={() => send(CONNECTION_TIMEOUT)}>
-  //       Check for peers again
-  //     </button>
-  //   </>
-  // );
-  // const error = (
-  //   <>
-  //     Error
-  //     {current?.error}
-  //     <button onClick={() => window.location.reload()}>Reset game</button>
-  //   </>
-  // );
-
-  // const gameState = <>{`Game with ${current?.context?.peerName}`}</>;
-
-  // return (
-  //   <>
-  //     {current.matches("Lobby") && lobby}
-  //     {current.matches("Error") && error}
-  //     {(current.matches("Game") || current.matches("Round")) && gameState}
-  //     <button onClick={() => send(CONNECTION_ERRORED)}>Fake error</button>
-  //     <pre>{JSON.stringify(current, null, 2)}</pre>
-  //   </>
-  // );
+  return (
+    <>
+      <h1>Lobby</h1>
+      Players: {JSON.stringify(players)}
+      <br />
+      {waitingForPlayers}
+      {startGame}
+    </>
+  );
 }
 
 export default Lobby;
