@@ -130,17 +130,26 @@ const newPeerConnection = async ({ onError }) => {
   // TODO: add reset of some kind
   // or timeout?
 
-  const myIdentifier = await hashIt(JSON.stringify(peerFinder._pc.localDescription));
-  const theirIdentifier = await hashIt(JSON.stringify(peerFinder._pc.remoteDescription));
+  const myIdentifier = await hashIt(
+    JSON.stringify(peerFinder._pc.localDescription)
+  );
+  const theirIdentifier = await hashIt(
+    JSON.stringify(peerFinder._pc.remoteDescription)
+  );
   const peerIdentifiers = {
     me: myIdentifier,
     them: theirIdentifier,
   };
 
+  // TODO: support graceful closing from peer
+
+  const destroy = () => peerFinder.destroy();
+
   return {
     peerIdentifiers,
     sendGameMessage,
     waitForGameMessage,
+    destroy,
   };
 };
 

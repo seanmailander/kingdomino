@@ -1,7 +1,7 @@
 import React from "react";
 
 import { useSelector, useDispatch } from "react-redux";
-import { gameStarted } from "../Game/game.slice";
+import { connectionReset, gameStarted } from "../Game/game.slice";
 
 function Lobby() {
   const players = useSelector((state) => state.game.players);
@@ -14,6 +14,13 @@ function Lobby() {
       Ready!
       <button aria-label="Start game" onClick={() => dispatch(gameStarted())}>
         Start game
+      </button>
+      <br />
+      <button
+        aria-label="Leave game"
+        onClick={() => dispatch(connectionReset())}
+      >
+        Leave game
       </button>
     </>
   );

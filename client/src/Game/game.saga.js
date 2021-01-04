@@ -135,15 +135,19 @@ function* newGame(
 }
 
 function* newConnections() {
+  let disposeUnderlyingConnection;
   try {
     // TODO: replace this fake "self" player with a real entity
     yield put(playerJoined({ playerId: -1, isMe: true }));
     // TODO: make peerfinding a saga so we can control the bheavior for multiple peers
+    // TODO: make peerfinding a saga so we get close/error/timeout etc first-class
     const {
+      destroy,
       peerIdentifiers,
       sendGameMessage,
       waitForGameMessage,
     } = yield call(newPeerConnection, { onError: () => {} });
+    disposeUnderlyingConnection = destroy;
     // TODO: replace this fake "self" player with a real entity
     yield put(playerJoined({ playerId: peerIdentifiers.me, isMe: true }));
     // TODO: remove hte need for this janky fake player without a real identifier
@@ -177,6 +181,10 @@ function* newConnections() {
     }
   } catch (error) {
     yield put(connectionErrored(error.message));
+  } finally {
+    if (disposeUnderlyingConnection) {
+      disposeUnderlyingConnection();
+    }
   }
 }
 function* gameSaga() {
