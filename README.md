@@ -1,6 +1,27 @@
 # kingdomino
 
-Recreate the Kingdomino board game
+Recreate the [Kingdomino board game](https://en.wikipedia.org/wiki/Kingdomino) by Bruno Cathala
+
+With a twist!
+
+- game lobbies are for discovery of players only
+- play is entirely peer-to-peer
+- works on local networks without internet connectivity
+
+These (arbitrary) constraints force the use of technologies like:
+
+- [WebRTC](https://webrtc.org/)
+- [mDNS](https://en.wikipedia.org/wiki/Multicast_DNS)
+- [Committment scheme](https://en.wikipedia.org/wiki/Commitment_scheme)
+
+# Current state
+
+- Client app loads in the browser
+- Basic progression from lobby to game and back
+- Connectivity is bare-bones, but works
+- Deck is shuffled in a "fair" way
+
+# Research and thoughts
 
 ## Fair play between clients
 
@@ -52,7 +73,7 @@ https://github.com/JustGoscha/simple-datachannel/blob/master/static/index.html
 
 A well-known discovery mechanism
 
-1.  a central server for discovery platform-agnostic (kingdomino.seanmailander.com)
+1.  a central server for discovery platform-agnostic (kingdomino.somepublicdomain.com)
 2.  platform-provided discovery (Apple Game / Steam)
 3.  one bootstrapper on local wifi (mDNS via native app)
 4.  one bootstrapper on wan (NAT FQDN)
@@ -61,10 +82,15 @@ For now, go with 1. for simplicity (browser app)
 
 two (later, four) players can join game
 
-Player A: launch kingdomino.seanmailander.com, start new game
-Player B: launch kingdomino.seanmailander.com, join existing game
+- Player A: launch kingdomino.somepublicdomain.com, start new game
 
-serve static SPA, `/api/bootstrap/currentGame` for current game bootstrapping - Player A: submit an offering to bootstrapper - Player B: take the offer, submit an answer - Player A: process answer, we now have a data channel
+- Player B: launch kingdomino.somepublicdomain.com, join existing game
+
+serve static SPA, `/api/bootstrap/currentGame` for current game bootstrapping
+
+- Player A: submit an offering to bootstrapper
+- Player B: take the offer, submit an answer 
+- Player A: process answer, we now have a data channel
 
 # TODO
 
@@ -72,8 +98,8 @@ serve static SPA, `/api/bootstrap/currentGame` for current game bootstrapping - 
 
 1. debug mode, show in panel
 1. Build a deck, canonical representation of each card
-2. display the deck in debug mode
-3. show the next four cards selected
+1. display the deck in debug mode
+1. show the next four cards selected
 
 ## NEXT
 
