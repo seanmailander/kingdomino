@@ -5,9 +5,16 @@ import {
   gameStarted,
   orderChosen,
   playerJoined,
+  playerLeft,
 } from "./game.slice";
 
-import { commit, verify, combine, getNextFourCards } from "./gamelogic/utils";
+import {
+  commit,
+  verify,
+  combine,
+  getNextFourCards,
+  chooseOrderFromSeed,
+} from "./gamelogic/utils";
 
 import newPeerConnection from "./gamelogic/peerConnection";
 
@@ -64,29 +71,43 @@ async function trustedDeal(sendGameMessage, onCommit, onReveal, currentDeck) {
 
 function* newRound(sendGameMessage, onCommit, onReveal, onMove) {}
 
-function* newGame(sendGameMessage, onCommit, onReveal, onMove) {
+function* newGame(
+  peerIdentifiers,
+  sendGameMessage,
+  onCommit,
+  onReveal,
+  onMove
+) {
+  // Get a shared seed so its random who goes first
   const firstSeed = yield call(
     buildTrustedSeed,
     sendGameMessage,
     onCommit,
     onReveal
   );
-  yield put(orderChosen(firstSeed));
+
+  // Now use that seed to sort the peer identifiers
+  const choosenOrder = chooseOrderFromSeed(firstSeed, peerIdentifiers);
+  yield put(orderChosen(choosenOrder));
 }
 
 function* newConnections() {
   try {
     // TODO: replace this fake "self" player with a real entity
-    yield put(playerJoined({ playerId: 0, isMe: true }));
-
+    yield put(playerJoined({ playerId: -1, isMe: true }));
     // TODO: make peerfinding a saga so we can control the bheavior for multiple peers
     const {
+      peerIdentifiers,
       sendGameMessage,
       waitForGameMessage,
     } = yield call(newPeerConnection, { onError: () => {} });
+    // TODO: replace this fake "self" player with a real entity
+    yield put(playerJoined({ playerId: peerIdentifiers.me, isMe: true }));
+    // TODO: remove hte need for this janky fake player without a real identifier
+    // ie choose a session UUID and share that via a message
+    yield put(playerLeft({ playerId: -1 }));
     // TODO: replace the fake "other" player with a real entity
-    // TODO: get playerId from first secret or something
-    yield put(playerJoined({ playerId: 1, isMe: false }));
+    yield put(playerJoined({ playerId: peerIdentifiers.them, isMe: false }));
 
     //TODO: when the first player starts the game, send it to other players
     yield take(gameStarted);
@@ -94,7 +115,14 @@ function* newConnections() {
     const onMove = waitForGameMessage(MOVE);
     const onCommit = waitForGameMessage(COMMITTMENT);
     const onReveal = waitForGameMessage(REVEAL);
-    yield call(newGame, sendGameMessage, onCommit, onReveal, onMove);
+    yield call(
+      newGame,
+      peerIdentifiers,
+      sendGameMessage,
+      onCommit,
+      onReveal,
+      onMove
+    );
   } catch (error) {
     yield put(connectionErrored(error.message));
   }

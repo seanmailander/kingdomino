@@ -30,6 +30,10 @@ export const gameSlice = createSlice({
       const { playerId, isMe } = action.payload;
       state.players.push({ playerId, isMe });
     },
+    [playerLeft]: (state, action) => {
+      const { playerId } = action.payload;
+      state.players = state.players.filter((p) => p.playerId !== playerId);
+    },
     [gameStarted]: (state) => {
       state.events = [];
     },

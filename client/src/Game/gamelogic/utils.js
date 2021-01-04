@@ -14,7 +14,7 @@ const seededShuffle = (seed) => {
   };
 };
 
-const hashIt = async (input) => {
+export const hashIt = async (input) => {
   const encoder = new TextEncoder();
   const data = encoder.encode(input);
   const hash = await crypto.subtle.digest("SHA-1", data);
@@ -55,4 +55,16 @@ export const getNextFourCards = (seed, remainingDeck = deck) => {
     next: nextFour,
     remaining: nextRemaining,
   };
+};
+
+export const chooseOrderFromSeed = (seed, peerIdentifiers) => {
+  const { me, them } = peerIdentifiers;
+
+  const seededRandom = seedrandom(seed);
+  const invertOrder = seededRandom() < 0.5;
+
+  const straightSort = (a, b) => (a < b ? -1 : 1);
+  const invertedSort = (a, b) => (a > b ? -1 : 1);
+
+  return [me, them].sort(invertOrder ? invertedSort : straightSort);
 };

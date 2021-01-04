@@ -1,6 +1,8 @@
 import { getData, postData } from "./fetch";
 import { EventIterator } from "event-iterator";
 
+import { hashIt } from "./utils";
+
 // eslint-disable-next-line no-restricted-globals
 const IS_INITIATOR = location.hash === "#1";
 console.debug("PEER:INITIALIZE Is initiator:", IS_INITIATOR);
@@ -130,7 +132,17 @@ const newPeerConnection = async ({ onError }) => {
   // TODO: add reset of some kind
   // or timeout?
 
+  const myIdentifier = await hashIt(JSON.stringify(peerFinder._pc.localDescription));
+  const theirIdentifier = await hashIt(JSON.stringify(peerFinder._pc.remoteDescription));
+  const peerIdentifiers = {
+    me: myIdentifier,
+    them: theirIdentifier,
+  };
+
+  console.debug(peerIdentifiers);
+
   return {
+    peerIdentifiers,
     sendGameMessage,
     waitForGameMessage,
   };
