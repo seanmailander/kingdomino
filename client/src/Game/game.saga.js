@@ -148,20 +148,24 @@ function* newConnections() {
     // TODO: replace the fake "other" player with a real entity
     yield put(playerJoined({ playerId: peerIdentifiers.them, isMe: false }));
 
-    //TODO: when the first player starts the game, send it to other players
-    yield take(gameStarted);
-
     const onMove = waitForGameMessage(MOVE);
     const onCommit = waitForGameMessage(COMMITTMENT);
     const onReveal = waitForGameMessage(REVEAL);
-    yield call(
-      newGame,
-      peerIdentifiers,
-      sendGameMessage,
-      onCommit,
-      onReveal,
-      onMove
-    );
+
+    // Given a valid connection, let multiple games occur
+    while (true) {
+      //TODO: when the first player starts the game, send it to other players
+      yield take(gameStarted);
+
+      yield call(
+        newGame,
+        peerIdentifiers,
+        sendGameMessage,
+        onCommit,
+        onReveal,
+        onMove
+      );
+    }
   } catch (error) {
     yield put(connectionErrored(error.message));
   }
