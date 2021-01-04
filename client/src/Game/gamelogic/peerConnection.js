@@ -27,7 +27,6 @@ const subscribeToGameMessage = (emitter) => {
   return async function* (messageType) {
     for await (const message of subscription) {
       if (message.type === messageType) {
-        console.debug("PEER:RECEIVE", messageType);
         yield message;
       }
     }
@@ -122,7 +121,6 @@ const newPeerConnection = async ({ onError }) => {
   const waitForGameMessage = oneMessageAtATime(peerFinder);
 
   const sendGameMessage = ({ type, content }) => {
-    console.debug("PEER:SEND", type, content);
     const message = {
       type,
       ...content,
@@ -138,8 +136,6 @@ const newPeerConnection = async ({ onError }) => {
     me: myIdentifier,
     them: theirIdentifier,
   };
-
-  console.debug(peerIdentifiers);
 
   return {
     peerIdentifiers,
