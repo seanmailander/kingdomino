@@ -4,10 +4,13 @@ import { useSelector, useDispatch } from "react-redux";
 import { cardPicked } from "./game.slice";
 
 function Game() {
+  const players = useSelector((state) => state.game.players);
   const dispatch = useDispatch();
 
   return (
-    <div>
+    <>
+      <h1>Game</h1>
+      Player order: {JSON.stringify(players, null, 2)}
       <button aria-label="Pick card 1" onClick={() => dispatch(cardPicked(0))}>
         Pick card 1
       </button>
@@ -20,7 +23,7 @@ function Game() {
       <button aria-label="Pick card 4" onClick={() => dispatch(cardPicked(3))}>
         Pick card 4
       </button>
-    </div>
+    </>
   );
 }
 

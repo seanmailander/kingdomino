@@ -6,6 +6,8 @@ import {
   orderChosen,
   playerJoined,
   playerLeft,
+  gameEnded,
+  deckShuffled,
 } from "./game.slice";
 
 import {
@@ -60,24 +62,27 @@ async function trustedDeal(sendGameMessage, onCommit, onReveal, currentDeck) {
     onCommit,
     onReveal
   );
-  console.debug("GAME:SEEDED", trustedSeed);
 
   // - each 4-draw, recommit and re-shuffle
   //   - important to re-randomize every turn, or future knowledge will help mis-behaving clients
   const { next, remaining } = getNextFourCards(trustedSeed, currentDeck);
-  console.debug("GAME:DEAL", next);
   return { next, remaining };
 }
 
-function* newRound(sendGameMessage, onCommit, onReveal, onMove) {}
+function* newRound(sendGameMessage, onCommit, onReveal, onMove, currentDeck) {
+  const { next, remaining } = yield call(
+    trustedDeal,
+    sendGameMessage,
+    onCommit,
+    onReveal,
+    currentDeck
+  );
+  yield put(deckShuffled(next));
+  // TODO: wait for pick/place
+  return remaining;
+}
 
-function* newGame(
-  peerIdentifiers,
-  sendGameMessage,
-  onCommit,
-  onReveal,
-  onMove
-) {
+function* chooseOrder(peerIdentifiers, sendGameMessage, onCommit, onReveal) {
   // Get a shared seed so its random who goes first
   const firstSeed = yield call(
     buildTrustedSeed,
@@ -87,8 +92,42 @@ function* newGame(
   );
 
   // Now use that seed to sort the peer identifiers
+  // TODO: make this a saga
   const choosenOrder = chooseOrderFromSeed(firstSeed, peerIdentifiers);
   yield put(orderChosen(choosenOrder));
+}
+
+function* newGame(
+  peerIdentifiers,
+  sendGameMessage,
+  onCommit,
+  onReveal,
+  onMove
+) {
+  // Work out who goes first
+  yield call(chooseOrder, peerIdentifiers, sendGameMessage, onCommit, onReveal);
+
+  // First round!
+  let remainingDeck = yield call(
+    newRound,
+    sendGameMessage,
+    onCommit,
+    onReveal,
+    onMove
+  );
+  // Subsequent rounds
+  while (remainingDeck.length > 0) {
+    remainingDeck = yield call(
+      newRound,
+      sendGameMessage,
+      onCommit,
+      onReveal,
+      onMove,
+      remainingDeck
+    );
+  }
+
+  yield put(gameEnded());
 }
 
 function* newConnections() {
