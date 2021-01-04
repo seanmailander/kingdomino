@@ -1,4 +1,4 @@
-import { call, put, take, takeLatest } from "redux-saga/effects";
+import { all, race, call, put, take, takeLatest } from "redux-saga/effects";
 import {
   connectionReset,
   connectionErrored,
@@ -20,6 +20,7 @@ import {
 
 import newPeerConnection from "./gamelogic/peerConnection";
 
+const START = "START";
 const COMMITTMENT = "COMMITTMENT";
 const REVEAL = "REVEAL";
 const MOVE = "MOVE";
@@ -34,6 +35,9 @@ const MOVE = "MOVE";
 // - Both A and B verify committments
 // - Both A and B calculate shared random as G = H (Ra || Rb)
 
+const waitForGameStart = async (onStart) => {
+  await onStart.next();
+};
 async function buildTrustedSeed(sendGameMessage, onCommit, onReveal) {
   const { secret: mySecret, committment: myCommittment } = await commit();
   await sendGameMessage({
@@ -148,14 +152,19 @@ function* newConnections() {
     // TODO: replace the fake "other" player with a real entity
     yield put(playerJoined({ playerId: peerIdentifiers.them, isMe: false }));
 
+    const onStart = waitForGameMessage(START);
     const onMove = waitForGameMessage(MOVE);
     const onCommit = waitForGameMessage(COMMITTMENT);
     const onReveal = waitForGameMessage(REVEAL);
 
     // Given a valid connection, let multiple games occur
     while (true) {
-      //TODO: when the first player starts the game, send it to other players
-      yield take(gameStarted);
+      // When the first player starts the game, send it to other players
+      yield race({
+        me: take(gameStarted),
+        them: call(waitForGameStart, onStart),
+      });
+      yield call(sendGameMessage, { type: START });
 
       yield call(
         newGame,
