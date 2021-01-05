@@ -67,6 +67,11 @@ app.post("/api/letMeIn", (req, res) => {
 
 const server = app.listen(app.get("port"), () => {
   console.log(`Find the server at: http://localhost:${app.get("port")}/`);
+  console.log(
+    `See current peers at: http://localhost:${app.get(
+      "port"
+    )}/api/peers/default/peers`
+  );
 });
 
 const peerServer = ExpressPeerServer(server, {
