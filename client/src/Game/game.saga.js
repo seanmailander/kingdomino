@@ -36,33 +36,27 @@ const MOVE = "MOVE";
 // - Both A and B verify committments
 // - Both A and B calculate shared random as G = H (Ra || Rb)
 
-const waitForGameStart = async (onStart) => {
-  await onStart.next();
-};
-async function buildTrustedSeed(sendGameMessage, onCommit, onReveal) {
-  const { secret: mySecret, committment: myCommittment } = await commit();
-  await sendGameMessage({
+function* buildTrustedSeed(sendGameMessage, onCommit, onReveal) {
+  const { secret: mySecret, committment: myCommittment } = yield call(commit);
+  yield call(sendGameMessage, {
     type: COMMITTMENT,
     content: { committment: myCommittment },
   });
 
-  const {
-    value: { committment: theirCommittment },
-  } = await onCommit.next();
+  const { committment: theirCommittment } = yield take(onCommit);
 
-  await sendGameMessage({ type: REVEAL, content: { secret: mySecret } });
+  yield call(sendGameMessage, { type: REVEAL, content: { secret: mySecret } });
 
-  const {
-    value: { secret: theirSecret },
-  } = await onReveal.next();
+  const { secret: theirSecret } = yield take(onReveal);
 
-  await verify(theirSecret, theirCommittment);
+  yield call(verify, theirSecret, theirCommittment);
 
-  return await combine(mySecret, theirSecret);
+  return call(combine, mySecret, theirSecret);
 }
 
-async function trustedDeal(sendGameMessage, onCommit, onReveal, currentDeck) {
-  const trustedSeed = await buildTrustedSeed(
+function* trustedDeal(sendGameMessage, onCommit, onReveal, currentDeck) {
+  const trustedSeed = yield call(
+    buildTrustedSeed,
     sendGameMessage,
     onCommit,
     onReveal
@@ -138,9 +132,6 @@ function* newGame(
 function* newConnections() {
   let disposeUnderlyingConnection;
   try {
-    const playerId = uuidv4();
-    // TODO: replace this fake "self" player with a real entity
-    yield put(playerJoined({ playerId, isMe: true }));
     // TODO: make peerfinding a saga so we can control the bheavior for multiple peers
     // TODO: make peerfinding a saga so we get close/error/timeout etc first-class
     // const {
@@ -149,7 +140,7 @@ function* newConnections() {
     //   sendGameMessage,
     //   waitForGameMessage,
     // } = yield call(connectionSaga);
-    const result = yield call(connectionSaga, playerId);
+    const result = yield call(connectionSaga);
     const {
       destroy,
       peerIdentifiers,
@@ -159,35 +150,32 @@ function* newConnections() {
     disposeUnderlyingConnection = destroy;
     // TODO: replace this fake "self" player with a real entity
     yield put(playerJoined({ playerId: peerIdentifiers.me, isMe: true }));
-    // TODO: remove hte need for this janky fake player without a real identifier
-    // ie choose a session UUID and share that via a message
-    yield put(playerLeft({ playerId: -1 }));
     // TODO: replace the fake "other" player with a real entity
     yield put(playerJoined({ playerId: peerIdentifiers.them, isMe: false }));
 
-    const onStart = waitForGameMessage(START);
-    const onMove = waitForGameMessage(MOVE);
-    const onCommit = waitForGameMessage(COMMITTMENT);
-    const onReveal = waitForGameMessage(REVEAL);
+    const onStart = yield call(waitForGameMessage, START);
+    const onMove = yield call(waitForGameMessage, MOVE);
+    const onCommit = yield call(waitForGameMessage, COMMITTMENT);
+    const onReveal = yield call(waitForGameMessage, REVEAL);
 
     // Given a valid connection, let multiple games occur
-    while (true) {
-      // When the first player starts the game, send it to other players
-      yield race({
-        me: take(gameStarted),
-        them: call(waitForGameStart, onStart),
-      });
-      yield call(sendGameMessage, { type: START });
+    // while (true) {
+    // When the first player starts the game, send it to other players
+    yield race({
+      me: take(gameStarted),
+      them: take(onStart),
+    });
+    yield call(sendGameMessage, { type: START });
 
-      yield call(
-        newGame,
-        peerIdentifiers,
-        sendGameMessage,
-        onCommit,
-        onReveal,
-        onMove
-      );
-    }
+    yield call(
+      newGame,
+      peerIdentifiers,
+      sendGameMessage,
+      onCommit,
+      onReveal,
+      onMove
+    );
+    // }
   } catch (error) {
     yield put(connectionErrored(error.message));
   } finally {

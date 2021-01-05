@@ -5,45 +5,21 @@ import {
   put,
   take,
   takeLatest,
+  spawn,
   cancel,
   fork,
+  join,
 } from "redux-saga/effects";
-import { eventChannel } from "redux-saga";
+import { eventChannel, channel, buffers } from "redux-saga";
+
+import Peer from "peerjs";
 
 import { postData } from "./gamelogic/fetch";
 import { connectionConnected, connectionErrored } from "./game.slice";
 
-import {
-  getPeerIdentifiers,
-  newPeerConnection,
-} from "./gamelogic/peerConnection";
+const joinGameURI = "/api/letMeIn";
 
-const joinGameURI = "/api/bootstrap/letMeIn";
-
-function peerConnectionChannel(p) {
-  return eventChannel((emit) => {
-    // TODO: is this an npm module?
-
-    const signalHandler = (data) => emit(data);
-    const errorHandler = (err) => emit(new Error(err));
-
-    // TODO: bubble up errors
-    p.on("error", (err) => console.error("ERROR", err));
-    p.on("signal", signalHandler);
-    p.on("error", errorHandler);
-
-    // the subscriber must return an unsubscribe function
-    // this will be invoked when the saga calls `channel.close` method
-    const unsubscribe = () => {
-      p.off("signal", signalHandler);
-      p.off("error", errorHandler);
-    };
-
-    return unsubscribe;
-  });
-}
-
-function makeGameMessageChannel(p) {
+function makeGameMessageChannel(dataConnection) {
   return eventChannel((emit) => {
     // TODO: is this an npm module?
 
@@ -51,210 +27,141 @@ function makeGameMessageChannel(p) {
     const errorHandler = (err) => emit(new Error(err));
 
     // TODO: bubble up errors
-    p.on("error", (err) => console.error("ERROR", err));
-    p.on("data", dataHandler);
-    p.on("error", errorHandler);
+    dataConnection.on("error", (err) => console.error("ERROR", err));
+    dataConnection.on("data", dataHandler);
+    dataConnection.on("error", errorHandler);
 
     // the subscriber must return an unsubscribe function
     // this will be invoked when the saga calls `channel.close` method
     const unsubscribe = () => {
-      p.off("data", dataHandler);
-      p.off("error", errorHandler);
+      dataConnection.off("data", dataHandler);
+      dataConnection.off("error", errorHandler);
     };
 
     return unsubscribe;
-  });
+  }, buffers.expanding(10));
 }
 
-const waitForConnection = async (p) => {
+const awaitOnce = async (emitter, event) => {
   return new Promise((resolve, reject) => {
-    p.once("connect", resolve);
+    emitter.once(event, resolve);
   });
 };
+
+const waitForPeerId = async (peerConnection) =>
+  awaitOnce(peerConnection, "open");
+
+const waitForConnection = async (peerConnection) => {
+  const dataConnection = await awaitOnce(peerConnection, "connection");
+  await waitForOpen(dataConnection);
+  return dataConnection;
+};
+const waitForOpen = async (dataConnection) => awaitOnce(dataConnection, "open");
 
 function waitFor(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function* checkBackIn(timeout, playerId, p) {
-  yield call(waitFor, timeout);
-  const {
-    offer,
-    answer,
-    checkBackInMs,
-    waitForConnection,
-  } = yield call(postData, joinGameURI, { playerId });
-
-  yield call(
-    handleResponse,
-    offer,
-    answer,
-    checkBackInMs,
-    waitForConnection,
-    playerId,
-    p
-  );
+function* filterMessages(messageChannel, messageType, bubbler) {
+  while (true) {
+    const message = yield take(messageChannel);
+    if (message.type === messageType) {
+      console.debug("put message on bubbler for ", messageType, message);
+      yield put(bubbler, message);
+    }
+  }
 }
 
-function handleResponse(
-  offer,
-  answer,
-  checkBackInMs,
-  waitForConnection,
-  playerId,
-  p
-) {
-  // TODO: handle each of the scenarios
-  console.debug(
-    "saw response",
-    offer,
-    answer,
-    checkBackInMs,
-    waitForConnection
-  );
+function* handleConnection(peerConnection, dataConnection) {
+  yield put(connectionConnected());
 
-  if (offer) {
-    // Recieved an offer
-    console.debug("Got an offer, starting a new connection and acknowledging");
-    // Throw away my offer, start a new connection and acknowledge
-    p.signal(offer);
-    return;
+  // Build the interface for this game
+  function* waitForGameMessage(messageType) {
+    const bubbler = yield call(channel, buffers.expanding(10));
+    const messageChannel = yield call(makeGameMessageChannel, dataConnection);
+    yield spawn(filterMessages, messageChannel, messageType, bubbler);
+    return bubbler;
   }
 
-  if (answer) {
-    // Recieved an answer
-    console.debug("Got an answer, setting up connection");
-    // Acknowledge with initial connection
-    p.signal(answer);
-    return;
-  }
+  const sendGameMessage = ({ type, content }) => {
+    const message = {
+      type,
+      ...content,
+    };
+    dataConnection.send(message);
+  };
 
-  if (checkBackInMs) {
-    // Was told to wait a little and check back in
-    console.debug("Told to wait and try again");
-    // So do that
-    return checkBackIn(checkBackInMs, playerId, p);
-  }
+  console.debug(dataConnection);
+  const peerIdentifiers = {
+    me: peerConnection.id,
+    them: dataConnection.peer,
+  };
 
-  if (waitForConnection) {
-    // Was told wait a little for peer to reach out
-    // Sooooooo just wait?
-    console.debug("waiting for peer to acknowledge");
-    return;
-  }
+  // TODO: add reset of some kind
+  // or timeout?
 
-  console.debug("I DONT KNOW WHAT TO DO!");
-  return;
+  // TODO: support graceful closing from peer
+  const destroy = () => dataConnection.close();
+
+  return {
+    peerIdentifiers,
+    sendGameMessage,
+    waitForGameMessage,
+    destroy,
+  };
 }
 
-function* connectionSaga(playerId) {
-  const peerConnection = yield call(newPeerConnection, true);
-  const connected = fork(waitForConnection, peerConnection);
-  const connectionChannel = yield call(peerConnectionChannel, peerConnection);
+function* connectionSaga() {
+  const peerConnection = new Peer(undefined, {
+    host: "/",
+    path: "/api/peers",
+    port: 3001,
+    key: "default",
+  });
+  const playerId = yield call(waitForPeerId, peerConnection);
+  const connected = yield fork(waitForConnection, peerConnection);
 
   let waitingForConnect = false;
-  let connectTask;
 
   while (true) {
     try {
       if (waitingForConnect) {
-        yield connected;
-
-        console.debug("CONNECTED!");
-        yield put(connectionConnected());
-
-        // Build the interface for this game
-        const gameMessageChannel = yield call(
-          makeGameMessageChannel,
-          peerConnection
-        );
-
-        const waitForGameMessage = (messageType) => {
-          return () => {};
-        };
-
-        const sendGameMessage = ({ type, content }) => {
-          const message = {
-            type,
-            ...content,
-          };
-          peerConnection.send(JSON.stringify(message));
-        };
-
-        const peerIdentifiers = yield call(getPeerIdentifiers, peerConnection);
-        // TODO: add reset of some kind
-        // or timeout?
-
-        // TODO: support graceful closing from peer
-
-        const destroy = () => peerConnection.destroy();
-
-        return {
-          peerIdentifiers,
-          sendGameMessage,
-          waitForGameMessage,
-          destroy,
-        };
+        console.debug("waiting for dataCOnnection from peer", connected);
+        const dataConnection = yield join(connected);
+        return yield call(handleConnection, peerConnection, dataConnection);
       }
 
-      const signal = yield take(connectionChannel);
-      console.debug(signal);
-      const { type } = signal;
-
-      if (type === "offer") {
-        const message = {
-          playerId,
-          offer: signal,
-        };
-        console.debug("saw offer, sharing as ", message);
-        const { offer, answer, checkBackInMs, waitForConnection } = yield call(
-          postData,
-          joinGameURI,
-          message
-        );
-        yield fork(
-          handleResponse,
-          offer,
-          answer,
-          checkBackInMs,
-          waitForConnection,
-          playerId,
-          peerConnection
-        );
+      const {
+        otherPlayerId,
+        checkBackInMs,
+        waitForConnection,
+      } = yield call(postData, joinGameURI, { playerId });
+      if (otherPlayerId) {
+        const dataConnection = peerConnection.connect(otherPlayerId);
+        yield call(waitForOpen, dataConnection);
+        yield cancel(connected);
+        return yield call(handleConnection, peerConnection, dataConnection);
+      }
+      if (checkBackInMs) {
+        // Was told to wait a little and check back in
+        console.debug("Told to wait and try again");
+        // So do that
+        yield call(waitFor, checkBackInMs);
         continue;
       }
 
-      if (type === "answer") {
-        const message = {
-          playerId,
-          answer: signal,
-        };
-        console.debug("saw answer, sharing as ", message);
-        const { offer, answer, checkBackInMs, waitForConnection } = yield call(
-          postData,
-          joinGameURI,
-          message
-        );
-        yield call(
-          handleResponse,
-          offer,
-          answer,
-          checkBackInMs,
-          waitForConnection,
-          playerId,
-          peerConnection
-        );
+      if (waitForConnection) {
+        console.debug("Told the connection should be coming");
         waitingForConnect = true;
-        yield cancel(connectTask);
         continue;
       }
-      // yield fork(pong, socket);
     } catch (err) {
       console.error("channel error:", err);
       yield put(connectionErrored(err));
       // socketChannel is still open in catch block
       // if we want end the socketChannel, we need close it explicitly
       peerConnection.destroy();
+      return err;
     }
   }
 }

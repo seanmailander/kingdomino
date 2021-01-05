@@ -32,7 +32,7 @@ app.post("/api/letMeIn", (req, res) => {
     );
     // Just add them to the waiting list
     waitingPlayers[playerId] = {};
-    console.debug(`Player: ${playerId} joined as first in line`, offer);
+    console.debug(`Player: ${playerId} joined as first in line`);
     res.json({ checkBackInMs: 5000 });
     return;
   }
@@ -50,6 +50,11 @@ app.post("/api/letMeIn", (req, res) => {
   };
 
   if (waitingPlayers[otherPlayerId].waiting) {
+    console.debug(
+      "Both are connected, purging them from lobby",
+      playerId,
+      otherPlayerId
+    );
     delete waitingPlayers[playerId];
     delete waitingPlayers[otherPlayerId];
     return res.json({ waitForConnection: true });
