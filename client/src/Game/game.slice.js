@@ -2,6 +2,7 @@ import { createAction, createSlice } from "@reduxjs/toolkit";
 
 // Connection events
 export const connectionReset = createAction("connection/reset");
+export const connectionConnected = createAction("connection/connected");
 export const connectionErrored = createAction("connection/errored");
 export const connectionTimeout = createAction("connection/timeout");
 

@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { all, race, call, put, take, takeLatest } from "redux-saga/effects";
 import {
   connectionReset,
@@ -18,7 +19,7 @@ import {
   chooseOrderFromSeed,
 } from "./gamelogic/utils";
 
-import newPeerConnection from "./gamelogic/peerConnection";
+import connectionSaga from "./connection.saga";
 
 const START = "START";
 const COMMITTMENT = "COMMITTMENT";
@@ -137,16 +138,24 @@ function* newGame(
 function* newConnections() {
   let disposeUnderlyingConnection;
   try {
+    const playerId = uuidv4();
     // TODO: replace this fake "self" player with a real entity
-    yield put(playerJoined({ playerId: -1, isMe: true }));
+    yield put(playerJoined({ playerId, isMe: true }));
     // TODO: make peerfinding a saga so we can control the bheavior for multiple peers
     // TODO: make peerfinding a saga so we get close/error/timeout etc first-class
+    // const {
+    //   destroy,
+    //   peerIdentifiers,
+    //   sendGameMessage,
+    //   waitForGameMessage,
+    // } = yield call(connectionSaga);
+    const result = yield call(connectionSaga, playerId);
     const {
       destroy,
       peerIdentifiers,
       sendGameMessage,
       waitForGameMessage,
-    } = yield call(newPeerConnection, { onError: () => {} });
+    } = result;
     disposeUnderlyingConnection = destroy;
     // TODO: replace this fake "self" player with a real entity
     yield put(playerJoined({ playerId: peerIdentifiers.me, isMe: true }));

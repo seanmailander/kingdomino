@@ -89,7 +89,7 @@ two (later, four) players can join game
 serve static SPA, `/api/bootstrap/currentGame` for current game bootstrapping
 
 - Player A: submit an offering to bootstrapper
-- Player B: take the offer, submit an answer 
+- Player B: take the offer, submit an answer
 - Player A: process answer, we now have a data channel
 
 # TODO
