@@ -97,7 +97,6 @@ serve static SPA, `/api/bootstrap/currentGame` for current game bootstrapping
 ## NOW
 
 1. debug mode, show in panel
-1. Build a deck, canonical representation of each card
 1. display the deck in debug mode
 1. show the next four cards selected
 

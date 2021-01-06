@@ -1,5 +1,7 @@
 import {
   generateDeck,
+  generateCardMap,
+  getCard,
   getNextFourCards,
   water,
   wood,
@@ -7,6 +9,10 @@ import {
   mine,
   grain,
   grass,
+  noCrown,
+  oneCrown,
+  twoCrown,
+  threeCrown,
 } from "./utils";
 
 function bitCount(n) {
@@ -20,19 +26,19 @@ describe("Builds deck", () => {
     // Arrange
 
     // Act
-    const deck = generateDeck();
+    const cardMap = generateCardMap();
 
     // Assert
-    expect(deck.length).toBe(48);
+    expect(cardMap.length).toBe(48);
   });
   it("First deck entry is the right card", () => {
     // Arrange
 
     // Act
-    const deck = generateDeck();
+    const cardMap = generateCardMap();
 
     // Assert
-    expect(deck[0]).toStrictEqual({
+    expect(cardMap[0]).toStrictEqual({
       type: 8,
       tiles: [
         { tile: 8, value: 0 },
@@ -44,10 +50,10 @@ describe("Builds deck", () => {
     // Arrange
 
     // Act
-    const deck = generateDeck();
+    const cardMap = generateCardMap();
 
     // Assert
-    deck.forEach((c) => {
+    cardMap.forEach((c) => {
       expect(c.type).toBeNumber();
       expect(c.tiles).toBeArray();
       expect(c.tiles).toHaveLength(2);
@@ -57,6 +63,26 @@ describe("Builds deck", () => {
         expect(t.value).toBeNumber();
       });
     });
+  });
+  it("Gets a card from the deck", () => {
+    // Arrange
+
+    // Act
+    const card = getCard(45);
+
+    // Assert
+    expect(card.id).toBe(45);
+    expect(card.type).toBe(48);
+    expect(card.tiles).toEqual([
+      {
+        tile: marsh,
+        value: noCrown,
+      },
+      {
+        tile: mine,
+        value: twoCrown,
+      },
+    ]);
   });
   it("Total counts are correct", () => {
     // Arrange
@@ -80,26 +106,26 @@ describe("Builds deck", () => {
       );
 
     // Act
-    const deck = generateDeck();
+    const cardMap = generateCardMap();
 
     // Assert
-    expect(countTiles(deck, grain)).toEqual(26);
-    expect(countCrowns(deck, grain)).toEqual(5);
+    expect(countTiles(cardMap, grain)).toEqual(26);
+    expect(countCrowns(cardMap, grain)).toEqual(5);
 
-    expect(countTiles(deck, water)).toEqual(18);
-    expect(countCrowns(deck, water)).toEqual(6);
+    expect(countTiles(cardMap, water)).toEqual(18);
+    expect(countCrowns(cardMap, water)).toEqual(6);
 
-    expect(countTiles(deck, wood)).toEqual(22);
-    expect(countCrowns(deck, wood)).toEqual(6);
+    expect(countTiles(cardMap, wood)).toEqual(22);
+    expect(countCrowns(cardMap, wood)).toEqual(6);
 
-    expect(countTiles(deck, grass)).toEqual(14);
-    expect(countCrowns(deck, grass)).toEqual(6);
+    expect(countTiles(cardMap, grass)).toEqual(14);
+    expect(countCrowns(cardMap, grass)).toEqual(6);
 
-    expect(countTiles(deck, marsh)).toEqual(10);
-    expect(countCrowns(deck, marsh)).toEqual(6);
+    expect(countTiles(cardMap, marsh)).toEqual(10);
+    expect(countCrowns(cardMap, marsh)).toEqual(6);
 
-    expect(countTiles(deck, mine)).toEqual(6);
-    expect(countCrowns(deck, mine)).toEqual(10);
+    expect(countTiles(cardMap, mine)).toEqual(6);
+    expect(countCrowns(cardMap, mine)).toEqual(10);
   });
 });
 
@@ -111,9 +137,8 @@ describe("Shuffles deck", () => {
 
     // Act
     const shuffle = getNextFourCards(seed, deck);
-    const nextFourTiles = shuffle.next.map((t) => t.type);
     // Assert
-    expect(nextFourTiles).toStrictEqual([9, 9, 10, 24]);
+    expect(shuffle.next).toStrictEqual([12, 26, 14, 15]);
   });
   it("Replays same shuffle with same seed", () => {
     // Arrange
@@ -124,11 +149,9 @@ describe("Shuffles deck", () => {
     const shuffle1 = getNextFourCards(seed, deck);
     const shuffle2 = getNextFourCards(seed, deck);
 
-    const nextFourTiles1 = shuffle1.next.map((t) => t.type);
-    const nextFourTiles2 = shuffle2.next.map((t) => t.type);
     // Assert
-    expect(nextFourTiles1).toStrictEqual([9, 9, 10, 24]);
-    expect(nextFourTiles2).toStrictEqual(nextFourTiles1);
+    expect(shuffle1.next).toStrictEqual([12, 26, 14, 15]);
+    expect(shuffle2.next).toStrictEqual(shuffle1.next);
   });
   it("Different shuffle with different seed", () => {
     // Arrange
@@ -140,12 +163,10 @@ describe("Shuffles deck", () => {
     const shuffle1 = getNextFourCards(seed1, deck);
     const shuffle2 = getNextFourCards(seed2, deck);
 
-    const nextFourTiles1 = shuffle1.next.map((t) => t.type);
-    const nextFourTiles2 = shuffle2.next.map((t) => t.type);
     // Assert
-    expect(nextFourTiles1).toStrictEqual([9, 9, 10, 24]);
-    expect(nextFourTiles2).toStrictEqual([10, 4, 40, 12]);
-    expect(nextFourTiles2).not.toStrictEqual(nextFourTiles1);
+    expect(shuffle1.next).toStrictEqual([12, 26, 14, 15]);
+    expect(shuffle2.next).toStrictEqual([20, 6, 22, 30]);
+    expect(shuffle2.next).not.toStrictEqual(shuffle1.next);
   });
   it("Remaing deck excludes shuffled tiles", () => {
     // Arrange

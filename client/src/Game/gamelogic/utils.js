@@ -66,7 +66,7 @@ const getTile = (tileA, tileB, crownsA = noCrown, crownsB = noCrown) => ({
   ],
 });
 
-export const generateDeck = () => {
+export const generateCardMap = () => {
   // 48 cards
   const firstTwelve = [
     getTile(grain, grain), // Two double-grain
@@ -129,6 +129,15 @@ export const generateDeck = () => {
   ];
   return [...firstTwelve, ...secondTwelve, ...thirdTwelve, ...fourthTwelve];
 };
+
+export const generateDeck = () => [...Array(48).keys()];
+
+const cardMap = generateCardMap();
+
+export const getCard = (cardId) => ({
+  id: cardId,
+  ...cardMap[cardId],
+});
 
 export const getNextFourCards = (seed, remainingDeck = generateDeck()) => {
   const shuffledDeck = seededShuffle(seed)(remainingDeck.slice(0));
