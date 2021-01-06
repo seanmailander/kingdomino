@@ -42,12 +42,95 @@ export const combine = async (a, b) => {
   return hashIt(combinedRandom);
 };
 
-// - 128 cards, each is unique (some repeats?)
+// - 48 cards, each is unique (some repeats?)
 // - canonical identification (sort)
 // - both A and B calculate sorted deck using shared seed
+export const castle = 0;
+export const wood = 2 ** 0;
+export const grass = 2 ** 1;
+export const water = 2 ** 2;
+export const grain = 2 ** 3;
+export const marsh = 2 ** 4;
+export const mine = 2 ** 5;
 
-const deck = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-export const getNextFourCards = (seed, remainingDeck = deck) => {
+export const noCrown = 0;
+export const oneCrown = 1;
+export const twoCrown = 2;
+export const threeCrown = 3;
+
+const getTile = (tileA, tileB, crownsA = noCrown, crownsB = noCrown) => ({
+  type: tileA ^ tileB || tileA, // Either the XOR, or just the value itself
+  tiles: [
+    { tile: tileA, value: crownsA },
+    { tile: tileB, value: crownsB },
+  ],
+});
+
+export const generateDeck = () => {
+  // 48 cards
+  const firstTwelve = [
+    getTile(grain, grain), // Two double-grain
+    getTile(grain, grain),
+    getTile(wood, wood), // Four double-wood
+    getTile(wood, wood),
+    getTile(wood, wood),
+    getTile(wood, wood),
+    getTile(water, water), // Three double-water
+    getTile(water, water),
+    getTile(water, water),
+    getTile(grass, grass), // Two double-grass
+    getTile(grass, grass),
+    getTile(marsh, marsh), // One double-marsh
+  ];
+
+  const secondTwelve = [
+    getTile(grain, wood),
+    getTile(grain, water),
+    getTile(grain, grass),
+    getTile(grain, marsh),
+    getTile(wood, water),
+    getTile(wood, grass),
+    getTile(grain, wood, oneCrown),
+    getTile(grain, water, oneCrown),
+    getTile(grain, grass, oneCrown),
+    getTile(grain, marsh, oneCrown),
+    getTile(grain, mine, oneCrown),
+    getTile(wood, grain, oneCrown),
+  ];
+
+  const thirdTwelve = [
+    getTile(wood, grain, oneCrown),
+    getTile(wood, grain, oneCrown),
+    getTile(wood, grain, oneCrown),
+    getTile(wood, water, oneCrown),
+    getTile(wood, grass, oneCrown),
+    getTile(water, grain, oneCrown),
+    getTile(water, grain, oneCrown),
+    getTile(water, wood, oneCrown),
+    getTile(water, wood, oneCrown),
+    getTile(water, wood, oneCrown),
+    getTile(water, wood, oneCrown),
+    getTile(grain, grass, undefined, oneCrown),
+  ];
+
+  const fourthTwelve = [
+    getTile(grass, marsh, undefined, oneCrown),
+    getTile(mine, grain, oneCrown),
+    getTile(grain, marsh, undefined, twoCrown),
+    getTile(water, grass, undefined, oneCrown),
+    getTile(grain, marsh, undefined, oneCrown),
+    getTile(grain, grass, undefined, twoCrown),
+    getTile(water, grass, undefined, twoCrown),
+    getTile(grass, marsh, undefined, twoCrown),
+    getTile(mine, grain, twoCrown),
+    getTile(marsh, mine, undefined, twoCrown),
+    getTile(marsh, mine, undefined, twoCrown),
+    getTile(grain, mine, undefined, threeCrown),
+  ];
+  return [...firstTwelve, ...secondTwelve, ...thirdTwelve, ...fourthTwelve];
+};
+
+export const getNextFourCards = (seed, remainingDeck = generateDeck()) => {
   const shuffledDeck = seededShuffle(seed)(remainingDeck.slice(0));
   const nextFour = shuffledDeck.slice(0, 4);
   const nextRemaining = shuffledDeck.slice(4);
