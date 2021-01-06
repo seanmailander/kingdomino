@@ -1,0 +1,3 @@
+{
+	"payload": "[{\"type\":\"connection/reset\"},{\"type\":\"lobby/playerJoined\",\"payload\":{\"playerId\":\"481b059d-120b-4489-841b-d5c8e64321b3\",\"isMe\":true}},{\"type\":\"connection/connected\"},{\"type\":\"lobby/playerJoined\",\"payload\":{\"playerId\":\"dda014ad-6494-49d8-96b3-f9b0fd461905\",\"isMe\":false}},{\"type\":\"game/started\"},{\"type\":\"game/orderChosen\",\"payload\":[\"481b059d-120b-4489-841b-d5c8e64321b3\",\"dda014ad-6494-49d8-96b3-f9b0fd461905\"]},{\"type\":\"round/deckShuffled\",\"payload\":[8,39,36,42]}]"
+}

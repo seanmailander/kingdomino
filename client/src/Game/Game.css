@@ -1,0 +1,15 @@
+.deal {
+  position: absolute;
+  left: 50%;
+  -webkit-transform: translateX(-50%);
+  transform: translateX(-50%);
+  display: flex;
+  width: 240px;
+  flex-direction: column;
+  border: 1px dashed grey;
+  align-content: center;
+}
+
+.deal .card {
+  margin: 10px;
+}

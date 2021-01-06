@@ -1,5 +1,6 @@
 import { createAction, createSlice } from "@reduxjs/toolkit";
 import { createSelector } from "reselect";
+import { getCard } from "./gamelogic/utils";
 
 // Connection events
 export const connectionReset = createAction("connection/reset");
@@ -59,12 +60,25 @@ export const gameSlice = createSlice({
 });
 
 export const getPlayers = (state) => state.game.players;
+export const getMyPlayerId = createSelector(
+  [getPlayers],
+  (players) => players?.find((p) => p.isMe)?.playerId
+);
 export const getHasEnoughPlayers = createSelector(
   [getPlayers],
   (players) => players.length >= 2
 );
 
-export const getIsMyTurn = createSelector([], () => true);
+const orderEvent = (state) =>
+  state.game.events.find((e) => e.type === `${orderChosen}`);
+
+const shuffleEvent = (state) =>
+  state.game.events.find((e) => e.type === `${deckShuffled}`);
+
+export const getIsMyTurn = createSelector(
+  [orderEvent, getMyPlayerId],
+  (order, myPlayerId) => order?.payload[0] === myPlayerId
+);
 
 const makeMove = (card, x, y, direction) => ({
   card,
@@ -74,5 +88,9 @@ const makeMove = (card, x, y, direction) => ({
 });
 
 export const getMove = createSelector([], () => makeMove(0, 1, 2, 3));
+
+export const getDeal = createSelector([shuffleEvent], (shuffle) =>
+  shuffle?.payload.map(getCard)
+);
 
 export default gameSlice.reducer;

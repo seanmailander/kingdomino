@@ -1,0 +1,16 @@
+.card {
+  border: 1px solid black;
+  flex: 0 1 auto;
+  padding: 10px;
+  float: left;
+}
+
+.card .tile {
+  float: left;
+  height: 80px;
+  width: 80px;
+}
+
+.card img {
+  width: 100%;
+}

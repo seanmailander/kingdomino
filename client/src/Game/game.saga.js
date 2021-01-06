@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
 import {
   all,
   race,
@@ -16,6 +15,7 @@ import {
   playerJoined,
   playerLeft,
   gameEnded,
+  getMove,
   deckShuffled,
   getIsMyTurn,
   cardPicked,
@@ -109,8 +109,10 @@ function* newRound(sendGameMessage, onCommit, onReveal, onMove, currentDeck) {
     const move = yield select(getMove);
 
     yield call(sendGameMessage, moveMessage(move));
+  } else {
+    const move = yield take(onMove);
+    console.debug(move);
   }
-  const move = yield take(onMove);
   return remaining;
 }
 

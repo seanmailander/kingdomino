@@ -4,6 +4,7 @@ import {
   gameStarted,
   playerJoined,
   getHasEnoughPlayers,
+  getIsMyTurn,
 } from "../Game/game.slice";
 
 // States that may occur
@@ -43,12 +44,21 @@ const hintsByRoom = {
   [Shuffle]: "Shuffling",
 };
 export const getHint = createSelector(
-  [getRoom, getHasEnoughPlayers],
-  (room, hasEnoughPlayers) => {
+  [getRoom, getHasEnoughPlayers, getIsMyTurn],
+  (room, hasEnoughPlayers, isMyTurn) => {
     if (room === Lobby) {
       // Check how many we are waiting for
       if (hasEnoughPlayers) {
         return "Players connected, hit 'ready' to start game";
+      }
+    }
+
+    if (room === Game) {
+      // Whose turn is it?
+      if (isMyTurn) {
+        return "Pick your card";
+      } else {
+        return "Waiting for Player 2 to pick their card";
       }
     }
     return hintsByRoom[room];
