@@ -9,7 +9,6 @@ function Game() {
 
   return (
     <>
-      <h1>Game</h1>
       Player order: {JSON.stringify(players, null, 2)}
       <button aria-label="Pick card 1" onClick={() => dispatch(cardPicked(0))}>
         Pick card 1

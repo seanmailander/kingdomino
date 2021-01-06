@@ -1,5 +1,13 @@
 import { v4 as uuidv4 } from "uuid";
-import { all, race, call, put, take, takeLatest } from "redux-saga/effects";
+import {
+  all,
+  race,
+  call,
+  put,
+  take,
+  takeLatest,
+  select,
+} from "redux-saga/effects";
 import {
   connectionReset,
   connectionErrored,
@@ -9,6 +17,9 @@ import {
   playerLeft,
   gameEnded,
   deckShuffled,
+  getIsMyTurn,
+  cardPicked,
+  cardPlaced,
 } from "./game.slice";
 
 import {
@@ -19,12 +30,20 @@ import {
   chooseOrderFromSeed,
 } from "./gamelogic/utils";
 
-import connectionSaga from "./connection.saga";
+import findOtherPlayers, { newConnection } from "./connection.saga";
 
 const START = "START";
 const COMMITTMENT = "COMMITTMENT";
 const REVEAL = "REVEAL";
 const MOVE = "MOVE";
+
+const startMessage = () => ({ type: START });
+const committmentMessage = (committment) => ({
+  type: COMMITTMENT,
+  content: { committment },
+});
+const revealMessage = (secret) => ({ type: REVEAL, content: { secret } });
+const moveMessage = (move) => ({ type: MOVE, content: { move } });
 
 // - A chooses a random number Ra
 // - A calculates hash Ha = H(Ra)
@@ -38,14 +57,11 @@ const MOVE = "MOVE";
 
 function* buildTrustedSeed(sendGameMessage, onCommit, onReveal) {
   const { secret: mySecret, committment: myCommittment } = yield call(commit);
-  yield call(sendGameMessage, {
-    type: COMMITTMENT,
-    content: { committment: myCommittment },
-  });
+  yield call(sendGameMessage, committmentMessage(myCommittment));
 
   const { committment: theirCommittment } = yield take(onCommit);
 
-  yield call(sendGameMessage, { type: REVEAL, content: { secret: mySecret } });
+  yield call(sendGameMessage, revealMessage(mySecret));
 
   const { secret: theirSecret } = yield take(onReveal);
 
@@ -69,6 +85,9 @@ function* trustedDeal(sendGameMessage, onCommit, onReveal, currentDeck) {
 }
 
 function* newRound(sendGameMessage, onCommit, onReveal, onMove, currentDeck) {
+  // Round started
+
+  // Deal out some cards
   const { next, remaining } = yield call(
     trustedDeal,
     sendGameMessage,
@@ -76,8 +95,22 @@ function* newRound(sendGameMessage, onCommit, onReveal, onMove, currentDeck) {
     onReveal,
     currentDeck
   );
+
+  // Put those cards on the screen
   yield put(deckShuffled(next));
-  // TODO: wait for pick/place
+
+  // Whose turn?
+  const isMyTurn = yield select(getIsMyTurn);
+
+  if (isMyTurn) {
+    const pick = yield take(cardPicked);
+    const place = yield take(cardPlaced);
+
+    const move = yield select(getMove);
+
+    yield call(sendGameMessage, moveMessage(move));
+  }
+  const move = yield take(onMove);
   return remaining;
 }
 
@@ -126,7 +159,7 @@ function* newGame(
     );
   }
 
-  yield put(gameEnded());
+  // yield put(gameEnded());
 }
 
 function* newConnections() {
@@ -140,7 +173,9 @@ function* newConnections() {
     //   sendGameMessage,
     //   waitForGameMessage,
     // } = yield call(connectionSaga);
-    const result = yield call(connectionSaga);
+    const { playerId, peerConnection } = yield call(newConnection);
+    yield put(playerJoined({ playerId, isMe: true }));
+    const result = yield call(findOtherPlayers, peerConnection);
     const {
       destroy,
       peerIdentifiers,
@@ -148,8 +183,6 @@ function* newConnections() {
       waitForGameMessage,
     } = result;
     disposeUnderlyingConnection = destroy;
-    // TODO: replace this fake "self" player with a real entity
-    yield put(playerJoined({ playerId: peerIdentifiers.me, isMe: true }));
     // TODO: replace the fake "other" player with a real entity
     yield put(playerJoined({ playerId: peerIdentifiers.them, isMe: false }));
 
@@ -161,11 +194,14 @@ function* newConnections() {
     // Given a valid connection, let multiple games occur
     // while (true) {
     // When the first player starts the game, send it to other players
-    yield race({
+    const { me, them } = yield race({
       me: take(gameStarted),
       them: take(onStart),
     });
-    yield call(sendGameMessage, { type: START });
+    if (them) {
+      yield put(gameStarted());
+    }
+    yield call(sendGameMessage, startMessage());
 
     yield call(
       newGame,

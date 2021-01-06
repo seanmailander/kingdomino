@@ -8,7 +8,6 @@ function Splash() {
 
   return (
     <>
-      <h1>Splash</h1>
       <button
         aria-label="Join lobby"
         onClick={() => dispatch(connectionReset())}

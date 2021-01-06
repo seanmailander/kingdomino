@@ -1,4 +1,5 @@
 import { createAction, createSlice } from "@reduxjs/toolkit";
+import { createSelector } from "reselect";
 
 // Connection events
 export const connectionReset = createAction("connection/reset");
@@ -56,5 +57,22 @@ export const gameSlice = createSlice({
     },
   },
 });
+
+export const getPlayers = (state) => state.game.players;
+export const getHasEnoughPlayers = createSelector(
+  [getPlayers],
+  (players) => players.length >= 2
+);
+
+export const getIsMyTurn = createSelector([], () => true);
+
+const makeMove = (card, x, y, direction) => ({
+  card,
+  x,
+  y,
+  direction,
+});
+
+export const getMove = createSelector([], () => makeMove(0, 1, 2, 3));
 
 export default gameSlice.reducer;

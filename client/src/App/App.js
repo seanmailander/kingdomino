@@ -2,19 +2,22 @@ import React from "react";
 import { useSelector } from "react-redux";
 
 import "./App.css";
-import Splash from "../Splash/Splash.js";
-import Lobby from "../Lobby/Lobby.js";
-import Game from "../Game/Game.js";
+import SplashComponent from "../Splash/Splash.js";
+import LobbyComponent from "../Lobby/Lobby.js";
+import GameComponent from "../Game/Game.js";
 
-import { selectRoom } from "./app.slice.js";
+import { getRoom, getHint } from "./app.slice.js";
 
 function App() {
-  const room = useSelector(selectRoom);
+  const room = useSelector(getRoom);
+  const hint = useSelector(getHint);
   return (
     <div className="App">
-      {room === "Splash" && <Splash />}
-      {room === "Lobby" && <Lobby />}
-      {room === "Game" && <Game />}
+      <h1>Kingdomino</h1>
+      <h5>{hint}</h5>
+      {room === "Splash" && <SplashComponent />}
+      {room === "Lobby" && <LobbyComponent />}
+      {room === "Game" && <GameComponent />}
     </div>
   );
 }

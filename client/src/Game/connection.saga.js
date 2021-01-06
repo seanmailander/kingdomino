@@ -66,7 +66,7 @@ function* filterMessages(messageChannel, messageType, bubbler) {
   while (true) {
     const message = yield take(messageChannel);
     if (message.type === messageType) {
-      console.debug("put message on bubbler for ", messageType, message);
+      // console.debug("put message on bubbler for ", messageType, message);
       yield put(bubbler, message);
     }
   }
@@ -111,7 +111,7 @@ function* handleConnection(peerConnection, dataConnection) {
   };
 }
 
-function* connectionSaga() {
+export function* newConnection() {
   const peerConnection = new Peer(undefined, {
     host: "/",
     path: "/api/peers",
@@ -119,6 +119,14 @@ function* connectionSaga() {
     key: "default",
   });
   const playerId = yield call(waitForPeerId, peerConnection);
+  return {
+    playerId,
+    peerConnection,
+  };
+}
+
+function* findOtherPlayers(peerConnection) {
+  const playerId = peerConnection.id;
   const connected = yield fork(waitForConnection, peerConnection);
 
   let waitingForConnect = false;
@@ -166,4 +174,4 @@ function* connectionSaga() {
   }
 }
 
-export default connectionSaga;
+export default findOtherPlayers;

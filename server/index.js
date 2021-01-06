@@ -33,7 +33,7 @@ app.post("/api/letMeIn", (req, res) => {
     // Just add them to the waiting list
     waitingPlayers[playerId] = {};
     console.debug(`Player: ${playerId} joined as first in line`);
-    res.json({ checkBackInMs: 5000 });
+    res.json({ checkBackInMs: 1000 });
     return;
   }
 

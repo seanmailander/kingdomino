@@ -1,13 +1,17 @@
 import React from "react";
 
 import { useSelector, useDispatch } from "react-redux";
-import { connectionReset, gameStarted } from "../Game/game.slice";
+import {
+  connectionReset,
+  gameStarted,
+  getPlayers,
+  getHasEnoughPlayers,
+} from "../Game/game.slice";
 
 function Lobby() {
-  const players = useSelector((state) => state.game.players);
+  const players = useSelector(getPlayers);
+  const hasEnoughPlayers = useSelector(getHasEnoughPlayers);
   const dispatch = useDispatch();
-
-  const hasEnoughPlayers = players.length >= 2;
 
   const startGame = hasEnoughPlayers && (
     <>
@@ -29,7 +33,6 @@ function Lobby() {
 
   return (
     <>
-      <h1>Lobby</h1>
       Players: {JSON.stringify(players)}
       <br />
       {waitingForPlayers}
