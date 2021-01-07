@@ -14,106 +14,46 @@ These (arbitrary) constraints force the use of technologies like:
 - [mDNS](https://en.wikipedia.org/wiki/Multicast_DNS)
 - [Committment scheme](https://en.wikipedia.org/wiki/Commitment_scheme)
 
+See [research](./RESEARCH.md) for more info
+
 # Current state
 
 - Client app loads in the browser
 - Basic progression from lobby to game and back
 - Connectivity is bare-bones, but works
 - Deck is shuffled in a "fair" way
-
-# Research and thoughts
-
-## Fair play between clients
-
-[Provably fair](https://courses.csail.mit.edu/6.857/2019/project/2-Cen-Fang-Jaba.pdf)
-
-[Untrusted](https://crypto.stackexchange.com/questions/767/how-to-fairly-select-a-random-number-for-a-game-without-trusting-a-third-party)
-
-https://blog.codinghorror.com/shuffling/
-
-### How will it work?
-
-- A chooses a random number Ra
-- A calculates hash Ha = H(Ra)
-- A shares committment Ha
-- B chooses a random number Rb
-- B calculates hash Hb = H(Rb)
-- B shares committment Hb
-- Both A and B reveal Ra and Rb
-- Both A and B verify committments
-- Both A and B calculate shared random as G = H (Ra || Rb)
-
-- 128 cards, each is unique (some repeats?)
-- canonical identification (sort)
-- game seed becomes seed of randomizer used to allocate guid to each card
-- sort by per-card guid to get sorted deck (therefore, deck sorted by seed)
-
-- both A and B calculate sorted deck
-
-- each 4-draw, recommit and re-shuffle
-  - important to re-randomize every turn, or future knowledge will help mis-behaving clients
-
-## Setting up a game
-
-- one instance with a server doing mdns for "kingdomino.local"
-- exposes launchpad on HTTP
-- client A opens "kingdomino.local", bootstraps into swarm
-- client B opens "kingdomino.local", bootstraps into swarm
-- clients set up new game adn start negotiations
-
-- webRTC as transport
-
-https://hpbn.co/webrtc/#partially-reliable-delivery-and-message-size
-
-https://github.com/feross/simple-peer
-
-https://github.com/JustGoscha/simple-datachannel/blob/master/static/index.html
-
-## How it will really work
-
-A well-known discovery mechanism
-
-1.  a central server for discovery platform-agnostic (kingdomino.somepublicdomain.com)
-2.  platform-provided discovery (Apple Game / Steam)
-3.  one bootstrapper on local wifi (mDNS via native app)
-4.  one bootstrapper on wan (NAT FQDN)
-
-For now, go with 1. for simplicity (browser app)
-
-two (later, four) players can join game
-
-- Player A: launch kingdomino.somepublicdomain.com, start new game
-
-- Player B: launch kingdomino.somepublicdomain.com, join existing game
-
-serve static SPA, `/api/bootstrap/currentGame` for current game bootstrapping
-
-- Player A: submit an offering to bootstrapper
-- Player B: take the offer, submit an answer
-- Player A: process answer, we now have a data channel
+- Players can pick cards and take turns making moves
 
 # TODO
 
 ## NOW
 
-1. debug mode, show in panel
-1. display the deck in debug mode
-1. show the next four cards selected
+1. Allow the user to place the card on their board
+2. Calculate only eligible places by open spaces
+3. Restrict player to play on eligible spaces
+4. Calculate only eligible places by neighbors
+5. Calculate only eligible places by board size
 
 ## NEXT
 
-1. user picks a card (share with other players)
-2. user places card
-3. restrictions on card placement
-4. calculation of eligible places
-5. visualization for cards (photo of real ones for now)
+1. Display card value via crown overlay
+2. Provide a score at end of game
+3. Prompt to play again at end of game
 
 ## NIRVANA
 
-1. handle errors
-2. handle disconnects (30 sec start from scratch)
-3. instructions on whats next
-4. arbitrary starting (doesnt matter who goes first)
-5. lobby of games (server)
-6. lobby of games (client)
-7. dynamic card graphics (blending)
+1. End the game when players lose connectivity
+2. Show lobby of players waiting for a game
+3. Better graphics for cards and crowns
+4. Instructions on how to play as the game unfolds
+5. Better graphics for splash screen
+6. Support "Ready" to start game
+7. Show shuffling animation and remaining deck
+8. Let players pick their color
+9. Tile display for 4 players
+10. Hint at whose turn is coming up this round
+11. Hint at whose turn is coming up next round
+12. Automatically zoom board to fit
+13. Add how the score was calculated to score board
+14. Make it usable on a handheld form-factor
+15. Support https://kingdomino.local/ discovery
