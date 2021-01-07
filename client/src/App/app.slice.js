@@ -1,11 +1,7 @@
 import { createSelector, createSlice } from "@reduxjs/toolkit";
-import {
-  gameEnded,
-  gameStarted,
-  playerJoined,
-  getHasEnoughPlayers,
-  getIsMyTurn,
-} from "../Game/game.slice";
+import { getHasEnoughPlayers } from "../Game/game.slice";
+import { gameEnded, gameStarted, playerJoined } from "../Game/game.actions";
+import { getIsMyTurn } from "../Game/round.slice";
 
 // States that may occur
 export const Splash = "Splash";
@@ -21,13 +17,19 @@ export const appSlice = createSlice({
   },
   extraReducers: {
     [playerJoined]: (state, action) => {
-      return { room: Lobby };
+      if (state.room === Splash) {
+        return { room: Lobby };
+      }
     },
     [gameStarted]: (state) => {
-      return { room: Game };
+      if (state.room === Lobby) {
+        return { room: Game };
+      }
     },
     [gameEnded]: (state) => {
-      return { room: Lobby }; // TODO: scoring / game over screen
+      if (state.room === Game) {
+        return { room: Lobby }; // TODO: scoring / game over screen
+      }
     },
   },
 });

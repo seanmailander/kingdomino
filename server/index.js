@@ -9,7 +9,8 @@ app.set("port", process.env.PORT || 3001);
 
 // Express only serves static assets in production
 if (process.env.NODE_ENV === "production") {
-  app.use(express.static("client/build"));
+  console.debug("Serving static files from client/build");
+  app.use(express.static("../client/build"));
 }
 
 const waitingPlayers = {};

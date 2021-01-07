@@ -1,21 +1,10 @@
-import {
-  all,
-  race,
-  call,
-  put,
-  take,
-  takeLatest,
-  spawn,
-  cancel,
-  fork,
-  join,
-} from "redux-saga/effects";
+import { call, put, take, spawn, cancel, fork, join } from "redux-saga/effects";
 import { eventChannel, channel, buffers } from "redux-saga";
 
 import Peer from "peerjs";
 
 import { postData } from "./gamelogic/fetch";
-import { connectionConnected, connectionErrored } from "./game.slice";
+import { connectionConnected, connectionErrored } from "./game.actions";
 
 const joinGameURI = "/api/letMeIn";
 

@@ -45,6 +45,7 @@ export const combine = async (a, b) => {
 // - 48 cards, each is unique (some repeats?)
 // - canonical identification (sort)
 // - both A and B calculate sorted deck using shared seed
+export const blank = -1;
 export const castle = 0;
 export const wood = 2 ** 0;
 export const grass = 2 ** 1;
@@ -134,9 +135,13 @@ export const generateDeck = () => [...Array(48).keys()];
 
 const cardMap = generateCardMap();
 
+const blankCard = {
+  tiles: [{ tile: blank }, { tile: blank }],
+};
+
 export const getCard = (cardId) => ({
   id: cardId,
-  ...cardMap[cardId],
+  ...(cardMap[cardId] || blankCard),
 });
 
 export const getNextFourCards = (seed, remainingDeck = generateDeck()) => {

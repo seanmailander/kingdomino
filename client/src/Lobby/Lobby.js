@@ -1,12 +1,9 @@
 import React from "react";
 
 import { useSelector, useDispatch } from "react-redux";
-import {
-  connectionReset,
-  gameStarted,
-  getPlayers,
-  getHasEnoughPlayers,
-} from "../Game/game.slice";
+import { getPlayers, getHasEnoughPlayers } from "../Game/game.slice";
+
+import { connectionReset, gameStarted } from "../Game/game.actions";
 
 function Lobby() {
   const players = useSelector(getPlayers);

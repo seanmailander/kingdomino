@@ -3,7 +3,8 @@ import { useSelector, useDispatch } from "react-redux";
 
 import "./Card.css";
 
-import { cardPicked, getIsMyTurn } from "./game.slice";
+import { cardPicked } from "./game.actions";
+import { getIsMyTurn } from "./round.slice";
 
 import Tile from "./Tile";
 
@@ -13,19 +14,25 @@ function Card(props) {
   const isMyTurn = useSelector(getIsMyTurn);
   const dispatch = useDispatch();
 
+  const className = `card${isMyTurn ? "" : " disabled"}`;
+
   return (
-    <div className="card" key={id}>
+    <div
+      className={className}
+      key={id}
+      onClick={() => isMyTurn && dispatch(cardPicked(id))}
+    >
       {tiles.map(({ tile, value }, index) => (
         <Tile key={index} tile={tile} value={value} />
       ))}
-      <br />
+      {/* <br />
       <button
         aria-label="Pick card ${id}"
         disabled={!isMyTurn}
         onClick={() => dispatch(cardPicked(id))}
       >
         Pick card {id}
-      </button>
+      </button> */}
     </div>
   );
 }

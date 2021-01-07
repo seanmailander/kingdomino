@@ -1,7 +1,7 @@
 import React from "react";
 
 import { useDispatch } from "react-redux";
-import { connectionReset } from "../Game/game.slice.js";
+import { connectionReset } from "../Game/game.actions.js";
 
 function Splash() {
   const dispatch = useDispatch();

@@ -1,7 +1,16 @@
 import React from "react";
-import { grain, grass, marsh, mine, water, wood } from "./gamelogic/utils";
+import {
+  blank,
+  grain,
+  grass,
+  marsh,
+  mine,
+  water,
+  wood,
+} from "./gamelogic/utils";
 
 const imageNamesByTile = {
+  [blank]: "blank.png",
   [wood]: "wood.png",
   [water]: "water.png",
   [grass]: "grass.png",
