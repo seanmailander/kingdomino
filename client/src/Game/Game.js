@@ -21,8 +21,8 @@ function Game() {
         ))}
       </div>
       <div className="boards">
-        {players.map(({ playerId }) => (
-          <BoardArea key={playerId} playerId={playerId} />
+        {players.map(({ playerId, isMe }) => (
+          <BoardArea key={playerId} playerId={playerId} isMe={isMe} />
         ))}
       </div>
     </>

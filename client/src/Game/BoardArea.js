@@ -10,7 +10,7 @@ import { getCardToPlace } from "./round.slice";
 import Tile from "./Tile";
 
 function BoardArea(props) {
-  const { playerId } = props;
+  const { playerId, isMe } = props;
   const playerBoards = useSelector(getPlayerBoards);
   const cardToPlace = useSelector(getCardToPlace);
   const myBoard = playerBoards[playerId];
@@ -18,25 +18,27 @@ function BoardArea(props) {
 
   return (
     <div className="board" key={playerId}>
-      <pre>{JSON.stringify(myBoard, undefined, true)}</pre>
+      <pre>{JSON.stringify(myBoard, null, 2)}</pre>
       <br />
-      <button
-        aria-label="Place card"
-        disabled={!cardToPlace}
-        onClick={() =>
-          dispatch(
-            cardPlaced({
-              playerId,
-              card: cardToPlace,
-              x: 3,
-              y: 5,
-              direction: 1,
-            })
-          )
-        }
-      >
-        Place card {cardToPlace?.id}
-      </button>
+      {isMe && (
+        <button
+          aria-label="Place card"
+          disabled={!cardToPlace}
+          onClick={() =>
+            dispatch(
+              cardPlaced({
+                playerId,
+                card: cardToPlace,
+                x: 3,
+                y: 5,
+                direction: 1,
+              })
+            )
+          }
+        >
+          Place card {cardToPlace?.id}
+        </button>
+      )}
     </div>
   );
 }
