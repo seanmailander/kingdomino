@@ -8,7 +8,7 @@ import {
   mine,
   water,
   wood,
-} from "./gamelogic/utils";
+} from "./gamelogic/cards";
 
 const imageNamesByTile = {
   [blank]: "blank.png",

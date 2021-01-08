@@ -1,7 +1,7 @@
 import { createAction, createSlice } from "@reduxjs/toolkit";
 import { createSelector } from "reselect";
 
-import { getCard } from "./gamelogic/utils";
+import { getCard } from "./gamelogic/cards";
 import {
   cardPicked,
   cardPlaced,
@@ -33,8 +33,6 @@ const phaseTransitions = [
     state.phase = action.type;
   },
 }));
-
-console.debug(Object.assign({}, ...phaseTransitions));
 
 export const roundSlice = createSlice({
   name: "round",

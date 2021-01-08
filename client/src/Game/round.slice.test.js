@@ -1,4 +1,5 @@
-import gameReducer, { getMyPlayerId } from "./game.slice";
+import gameReducer from "./game.slice";
+import roundReducer, { getIsMyTurn } from "./round.slice";
 
 import { payload as actionsToFirstShuffle } from "./state.after-shuffle.json";
 
@@ -7,17 +8,18 @@ const actions = JSON.parse(actionsToFirstShuffle);
 const applyAllActions = (reducer, actions) =>
   actions.reduce((state, action) => reducer(state, action), undefined);
 
-describe("Game selectors", () => {
-  it("Finds my playerId", () => {
+describe("Round selectors", () => {
+  it("Finds my turn", () => {
     // Arrange
     const state = {
       game: applyAllActions(gameReducer, actions),
+      round: applyAllActions(roundReducer, actions),
     };
 
     // Act
-    const myPlayerId = getMyPlayerId(state);
+    const isMyTurn = getIsMyTurn(state);
 
     // Assert
-    expect(myPlayerId).toBe("481b059d-120b-4489-841b-d5c8e64321b3");
+    expect(isMyTurn).toBe(true);
   });
 });
