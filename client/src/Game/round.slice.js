@@ -29,7 +29,6 @@ const phaseTransitions = [
   roundEnd,
 ].map((event) => ({
   [event]: (state, action) => {
-    console.debug(action);
     state.phase = action.type;
   },
 }));
@@ -64,10 +63,8 @@ export const roundSlice = createSlice({
     [cardPicked]: (state, action) => {
       const card = action.payload;
       state.cardToPlace = card;
-      console.debug(action);
     },
     [cardPlaced]: (state, action) => {
-      console.debug(action);
       state.cardToPlace = undefined;
       const {
         payload: { card },

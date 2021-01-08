@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-import { useSelector, useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
 
 import "./Game.css";
 import BoardArea from "./BoardArea";
@@ -11,7 +11,6 @@ import { getDeal } from "./round.slice";
 function Game() {
   const players = useSelector(getPlayers);
   const deal = useSelector(getDeal);
-  const dispatch = useDispatch();
 
   return (
     <>
