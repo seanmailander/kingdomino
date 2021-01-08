@@ -1,6 +1,7 @@
 import React from "react";
 import {
   blank,
+  castle,
   grain,
   grass,
   marsh,
@@ -11,6 +12,7 @@ import {
 
 const imageNamesByTile = {
   [blank]: "blank.png",
+  [castle]: "castle.png",
   [wood]: "wood.png",
   [water]: "water.png",
   [grass]: "grass.png",
@@ -20,10 +22,12 @@ const imageNamesByTile = {
 };
 
 function Tile(props) {
-  const { tile, value } = props;
+  const { tile, value, disabled = false } = props;
+
+  const className = `tile${disabled ? " disabled" : ""}`;
 
   return (
-    <div className="tile">
+    <div className={className}>
       <img src={imageNamesByTile[tile]} alt={imageNamesByTile[tile]}></img>
     </div>
   );

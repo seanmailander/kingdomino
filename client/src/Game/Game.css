@@ -20,8 +20,3 @@
   display: flex;
   justify-content: space-between;
 }
-
-.board {
-  margin: 10px;
-  border: 1px dashed grey;
-}

@@ -1,43 +1,40 @@
 import React from "react";
 import { useSelector, useDispatch } from "react-redux";
 
-import "./Card.css";
+import "./board.css";
 
-import { getPlayerBoards } from "./game.slice";
+import { getPlayerBoard } from "./game.slice";
 import { cardPlaced } from "./game.actions";
-import { getCardToPlace } from "./round.slice";
+import { getCardToPlace, getIsMyPlace } from "./round.slice";
 
 import Tile from "./Tile";
 
+function BoardSquare(props) {
+  const { handleClick, children } = props;
+  return <div onClick={handleClick}>{children}</div>;
+}
+
 function BoardArea(props) {
   const { playerId, isMe } = props;
-  const playerBoards = useSelector(getPlayerBoards);
-  const cardToPlace = useSelector(getCardToPlace);
-  const myBoard = playerBoards[playerId];
+  const myBoard = useSelector(getPlayerBoard(playerId));
+  const card = useSelector(getCardToPlace);
+  const isMyPlace = useSelector(getIsMyPlace);
   const dispatch = useDispatch();
+
+  const handleClick = (x, y) => () => {
+    if (isMyPlace) {
+      dispatch(cardPlaced({ playerId, card, x, y, direction: 1 }));
+    }
+  };
 
   return (
     <div className="board" key={playerId}>
-      <pre>{JSON.stringify(myBoard, null, 2)}</pre>
-      <br />
-      {isMe && (
-        <button
-          aria-label="Place card"
-          disabled={!cardToPlace}
-          onClick={() =>
-            dispatch(
-              cardPlaced({
-                playerId,
-                card: cardToPlace,
-                x: 3,
-                y: 5,
-                direction: 1,
-              })
-            )
-          }
-        >
-          Place card {cardToPlace?.id}
-        </button>
+      {myBoard.map((row, x) =>
+        row.map(({ tile, value }, y) => (
+          <BoardSquare handleClick={handleClick(x, y)}>
+            <Tile tile={tile} value={value} disabled={!isMe || !isMyPlace} />
+          </BoardSquare>
+        ))
       )}
     </div>
   );

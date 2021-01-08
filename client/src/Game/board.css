@@ -1,0 +1,37 @@
+.board {
+  margin: 10px;
+  /* border: 1px dashed grey; */
+}
+
+.board {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+  flex: 0 1 auto;
+  float: left;
+  align-items: center;
+  width: 400px;
+  height: 400px;
+
+  justify-content: center;
+  align-content: center;
+}
+
+.board .tile:not(.disabled):hover {
+  box-shadow: 0 0 0 5px hsl(138, 51%, 65%), 0 0 0 10px hsl(138, 81%, 80%);
+}
+
+.board .tile {
+  /* 13 tiles wide */
+  flex-basis: 7.5%;
+  float: left;
+  height: 30px;
+  width: 30px;
+
+  outline: 1px dashed rgba(0, 0, 0, 0.01);
+}
+
+.board img {
+  width: 30px;
+  height: 30px;
+}

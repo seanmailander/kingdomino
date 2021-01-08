@@ -7,12 +7,13 @@ import {
   gameEnded,
   cardPlaced,
 } from "./game.actions";
+import { placedCardsToBoard } from "./gamelogic/board";
 
 export const gameSlice = createSlice({
   name: "game",
   initialState: {
     players: [],
-    playerBoards: {},
+    cardsPlacedByPlayer: {},
   },
   extraReducers: {
     [playerJoined]: (state, action) => {
@@ -24,16 +25,16 @@ export const gameSlice = createSlice({
       state.players = state.players.filter((p) => p.playerId !== playerId);
     },
     [gameStarted]: (state) => {
-      state.playerBoards = {};
+      state.cardsPlacedByPlayer = {};
       state.players.forEach(
-        ({ playerId }) => (state.playerBoards[playerId] = [])
+        ({ playerId }) => (state.cardsPlacedByPlayer[playerId] = [])
       );
     },
     [cardPlaced]: (state, action) => {
       const {
         payload: { playerId, card, x, y, direction },
       } = action;
-      state.playerBoards[playerId].push({
+      state.cardsPlacedByPlayer[playerId].push({
         card,
         x,
         y,
@@ -42,7 +43,7 @@ export const gameSlice = createSlice({
     },
     [gameEnded]: (state, action) => {
       // TODO: capture current board and score
-      state.playerBoards = {};
+      state.cardsPlacedByPlayer = {};
     },
   },
 });
@@ -57,6 +58,10 @@ export const getHasEnoughPlayers = createSelector(
   (players) => players.length >= 2
 );
 
-export const getPlayerBoards = (state) => state.game.playerBoards;
+export const getPlayerBoards = (state) =>
+  placedCardsToBoard(state.game.cardsPlacedByPlayer);
+
+export const getPlayerBoard = (playerId) => (state) =>
+  placedCardsToBoard(state.game.cardsPlacedByPlayer[playerId]);
 
 export default gameSlice.reducer;

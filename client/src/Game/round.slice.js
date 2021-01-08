@@ -20,7 +20,7 @@ export const theirPlace = createAction("round-phase/theirPlace");
 export const roundEnd = createAction("round-phase/end");
 
 const phaseTransitions = [
-  // roundStart,
+  roundStart,
   whoseTurn,
   myPick,
   myPlace,
@@ -29,9 +29,12 @@ const phaseTransitions = [
   roundEnd,
 ].map((event) => ({
   [event]: (state, action) => {
-    state.phase = action.payload;
+    console.debug(action);
+    state.phase = action.type;
   },
 }));
+
+console.debug(Object.assign({}, ...phaseTransitions));
 
 export const roundSlice = createSlice({
   name: "round",
@@ -43,7 +46,7 @@ export const roundSlice = createSlice({
     cardToPlace: undefined,
   },
   extraReducers: {
-    ...phaseTransitions,
+    ...Object.assign({}, ...phaseTransitions),
     [roundStart]: (state, action) => {
       state = {
         deal: [],
@@ -63,8 +66,10 @@ export const roundSlice = createSlice({
     [cardPicked]: (state, action) => {
       const card = action.payload;
       state.cardToPlace = card;
+      console.debug(action);
     },
     [cardPlaced]: (state, action) => {
+      console.debug(action);
       state.cardToPlace = undefined;
       const {
         payload: { card },
@@ -88,9 +93,15 @@ export const roundSlice = createSlice({
 
 export const getPickOrder = (state) => state.round.pickOrderThisRound;
 
+const getPhase = (state) => state.round.phase;
 export const getIsMyTurn = createSelector(
   [getPickOrder, getMyPlayerId],
   (pickOrder, myPlayerId) => pickOrder[0] === myPlayerId
+);
+
+export const getIsMyPlace = createSelector(
+  [getIsMyTurn, getPhase],
+  (isMyTurn, phase) => isMyTurn && phase === `${myPlace}`
 );
 
 export const getCardToPlace = (state) => state.round.cardToPlace;
