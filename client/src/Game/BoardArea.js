@@ -1,8 +1,6 @@
 import React, { useState, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 
-import useBoardPosition from "./useBoardPosition";
-
 import "./board.css";
 
 import { getPlayerBoard } from "./game.slice";
@@ -11,13 +9,19 @@ import { getCardToPlace, getIsMyPlace } from "./round.slice";
 
 import Tile from "./Tile";
 import BoardOverlay from "./BoardOverlay";
-import { right } from "./gamelogic/cards";
-import { enrichBoardWithCard } from "./gamelogic/board";
+import { up, down, left, right } from "./gamelogic/cards";
 
 function BoardSquare(props) {
   const { handleClick, children } = props;
   return <div onClick={handleClick}>{children}</div>;
 }
+
+const rotateLookup = {
+  [up]: right,
+  [right]: down,
+  [down]: left,
+  [left]: up,
+};
 
 function BoardArea(props) {
   const { playerId, isMe } = props;
@@ -37,28 +41,37 @@ function BoardArea(props) {
     }
   };
 
+  const handleRotate = () => setDirection(rotateLookup[direction]);
+
   return (
-    <div className="board" key={playerId} ref={boardNode}>
-      {isMe && (
-        <BoardOverlay
-          playerId={playerId}
-          getBoardPosition={getBoardPosition}
-          direction={direction}
-        />
-      )}
-      {myBoard.map((row, y) =>
-        row.map(({ tile, value }, x) => (
-          <BoardSquare handleClick={handleClick(x, y)}>
-            <Tile
-              key={`2${y},${x}`}
-              tile={tile}
-              value={value}
-              disabled={!isMe || !isMyPlace}
+    <>
+      <div className="board" key={playerId}>
+        <div className="panels" ref={boardNode}>
+          {isMe && (
+            <BoardOverlay
+              playerId={playerId}
+              getBoardPosition={getBoardPosition}
+              direction={direction}
             />
-          </BoardSquare>
-        ))
-      )}
-    </div>
+          )}
+          {myBoard.map((row, y) =>
+            row.map(({ tile, value }, x) => (
+              <BoardSquare handleClick={handleClick(x, y)}>
+                <Tile
+                  key={`2${y},${x}`}
+                  tile={tile}
+                  value={value}
+                  disabled={!isMe || !isMyPlace}
+                />
+              </BoardSquare>
+            ))
+          )}
+        </div>
+        <div className="rotator">
+          <button onClick={handleRotate}>Rotate card</button>
+        </div>
+      </div>
+    </>
   );
 }
 

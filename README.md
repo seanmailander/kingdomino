@@ -28,7 +28,6 @@ See [research](./RESEARCH.md) for more info
 
 ## NOW
 
-1. Allow the user to place the card on their board
 2. Calculate only eligible places by open spaces
 3. Restrict player to play on eligible spaces
 4. Calculate only eligible places by neighbors

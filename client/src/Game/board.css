@@ -1,9 +1,9 @@
-.board {
+.panels {
   margin: 10px;
   /* border: 1px dashed grey; */
 }
 
-.board {
+.panels {
   display: flex;
   flex-wrap: wrap;
   flex-direction: row;
@@ -19,11 +19,11 @@
   position: relative;
 }
 
-.board :not(.boardOverlay) .tile:not(.disabled):hover {
+.panels :not(.boardOverlay) .tile:not(.disabled):hover {
   box-shadow: 0 0 0 5px hsl(138, 51%, 65%), 0 0 0 10px hsl(138, 81%, 80%);
 }
 
-.board .tile {
+.panels .tile {
   /* 13 tiles wide */
   flex-basis: 7.5%;
   float: left;
@@ -33,7 +33,7 @@
   outline: 1px dashed rgba(0, 0, 0, 0.01);
 }
 
-.board img {
+.panels img {
   width: 30px;
   height: 30px;
 }
