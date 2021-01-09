@@ -28,10 +28,10 @@ See [research](./RESEARCH.md) for more info
 
 ## NOW
 
-2. Calculate only eligible places by open spaces
-3. Restrict player to play on eligible spaces
-4. Calculate only eligible places by neighbors
-5. Calculate only eligible places by board size
+1. Calculate only eligible places by open spaces
+2. Restrict player to play on eligible spaces
+3. Calculate only eligible places by neighbors
+4. Calculate only eligible places by board size
 
 ## NEXT
 

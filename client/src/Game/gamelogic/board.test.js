@@ -1,6 +1,11 @@
-import { placedCardsToBoard } from "./board";
+import {
+  getEligiblePositions,
+  getValidDirections,
+  placedCardsToBoard,
+} from "./board";
 import {
   castle,
+  down,
   grain,
   grass,
   marsh,
@@ -9,6 +14,7 @@ import {
   right,
   twoCrown,
   up,
+  left,
   water,
   wood,
 } from "./cards";
@@ -101,5 +107,29 @@ describe("Builds deck", () => {
       tile: marsh,
       value: twoCrown,
     });
+  });
+});
+
+describe("Checks moves", () => {
+  it("Allows any move off castle", () => {
+    // Arrange
+    const placedCards = [];
+    const card = 1;
+    const x = 6;
+    const y = 7;
+    const board = placedCardsToBoard(placedCards);
+
+    // Act
+    const eligiblePositions = getEligiblePositions(board, card);
+    const validDirections = getValidDirections(board, card, x, y);
+
+    // Assert
+    expect(eligiblePositions).toStrictEqual([
+      { x: 5, y: 6 },
+      { x: 7, y: 6 },
+      { x: 6, y: 5 },
+      { x: 6, y: 7 },
+    ]);
+    expect(validDirections).toIncludeSameMembers([left, right, down]);
   });
 });

@@ -22,9 +22,11 @@ const imageNamesByTile = {
 };
 
 function Tile(props) {
-  const { tile, value, disabled = false } = props;
+  const { tile, value, disabled = false, allowHighlight = false } = props;
 
-  const className = `tile${disabled ? " disabled" : ""}`;
+  const className = `tile${disabled ? " disabled" : ""}${
+    allowHighlight ? " highlight" : ""
+  }`;
 
   return (
     <div className={className}>

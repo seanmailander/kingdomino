@@ -10,6 +10,17 @@ export const grain = 2 ** 3;
 export const marsh = 2 ** 4;
 export const mine = 2 ** 5;
 
+export const validTiles = [
+  blank,
+  castle,
+  wood,
+  grass,
+  water,
+  grain,
+  marsh,
+  mine,
+];
+
 export const noCrown = 0;
 export const oneCrown = 1;
 export const twoCrown = 2;

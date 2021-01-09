@@ -1,4 +1,4 @@
-import { castle, getCard, up, down, left, right } from "./cards";
+import { castle, validTiles, getCard, up, down, left, right } from "./cards";
 
 const range = (len) => [...Array(len).keys()];
 
@@ -25,7 +25,7 @@ const placeCardOnBoard = (board) => ({ card, x, y, direction }) => {
   const xB = x + xDirection[direction];
   const yB = y + yDirection[direction];
 
-  if (xB < 0 || xB > 12 || yB < 0 || yB > 12) {
+  if (!isWithinBounds({ x: xB, y: yB })) {
     return board;
   }
 
@@ -64,3 +64,30 @@ export const enrichBoardWithCard = (board, card, x, y, direction) => {
   const boardCopy = deepCopy(board);
   return placeCardOnBoard(boardCopy)({ card, x, y, direction });
 };
+
+const tileIsValid = (board, x, y) =>
+  board && validTiles.some((d) => d === board[y][x]?.tile);
+const isWithinBounds = ({ x, y }) => x >= 0 && x <= 12 && y >= 0 && y <= 12;
+const getNeighbors = (x, y) =>
+  [
+    { x: x + 1, y, direction: right },
+    { x: x - 1, y, direction: left },
+    { x, y: y + 1, direction: down },
+    { x, y: y - 1, direction: up },
+  ].filter(isWithinBounds);
+
+export const getEligiblePositions = (board, card) => {
+  return [
+    { x: 5, y: 6 },
+    { x: 7, y: 6 },
+    { x: 6, y: 5 },
+    { x: 6, y: 7 },
+  ];
+};
+
+export const getValidDirections = (board, card, tileX, tileY) =>
+  getNeighbors(tileX, tileY)
+    .map(({ x, y, direction }) =>
+      !tileIsValid(board, x, y) ? direction : null
+    )
+    .filter((s) => s);

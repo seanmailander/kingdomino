@@ -9,7 +9,9 @@ import { getCardToPlace, getIsMyPlace } from "./round.slice";
 
 import Tile from "./Tile";
 import BoardOverlay from "./BoardOverlay";
+import { getEligiblePositions, getValidDirections } from "./gamelogic/board";
 import { up, down, left, right } from "./gamelogic/cards";
+import useKeypress from "./useKeyPress";
 
 function BoardSquare(props) {
   const { handleClick, children } = props;
@@ -36,12 +38,23 @@ function BoardArea(props) {
   const getBoardPosition = () => boardNode.current?.getBoundingClientRect();
 
   const handleClick = (x, y) => () => {
-    if (isMyPlace) {
+    if (isMyPlace && isValidTile(x, y) && isValidDirection(x, y, direction)) {
       dispatch(cardPlaced({ playerId, card: cardId, x, y, direction }));
     }
   };
 
+  const eligiblePositions = getEligiblePositions(myBoard, cardId);
+  const isValidTile = (x, y) =>
+    eligiblePositions.some((pos) => pos.x === x && pos.y === y);
+
+  const isValidDirection = (x, y, direction) =>
+    getValidDirections(myBoard, cardId, x, y).some((d) => d === direction);
+
+  // TODO: this is forcing keypress to re-add listeners on ever change of direction
+  // is there an easier way?
   const handleRotate = () => setDirection(rotateLookup[direction]);
+
+  useKeypress("Space", () => handleRotate(), [direction]);
 
   return (
     <>
@@ -61,7 +74,8 @@ function BoardArea(props) {
                   key={`2${y},${x}`}
                   tile={tile}
                   value={value}
-                  disabled={!isMe || !isMyPlace}
+                  disabled={!isMe || !isMyPlace || !isValidTile(x, y)}
+                  allowHighlight={isValidDirection(x, y, direction)}
                 />
               </BoardSquare>
             ))
