@@ -7,20 +7,28 @@ export const getEmptyBoard = () =>
   range(13).map((r) => range(13).map((x) => ({ tile: null })));
 
 const xDirection = {
+  [up]: 0,
+  [right]: 1,
+  [down]: 0,
+  [left]: -1,
+};
+const yDirection = {
   [up]: -1,
   [right]: 0,
   [down]: 1,
   [left]: 0,
 };
 
-const yDirection = {
-  [up]: 0,
-  [right]: 1,
-  [down]: 0,
-  [left]: -1,
-};
+const deepCopy = (a1) => [...a1.map((a2) => [...a2])];
 
 const placeCardOnBoard = (board) => ({ card, x, y, direction }) => {
+  const xB = x + xDirection[direction];
+  const yB = y + yDirection[direction];
+
+  if (xB < 0 || xB > 12 || yB < 0 || yB > 12) {
+    return board;
+  }
+
   const {
     tiles: [{ tile: tileA, value: valueA }, { tile: tileB, value: valueB }],
   } = getCard(card);
@@ -29,8 +37,6 @@ const placeCardOnBoard = (board) => ({ card, x, y, direction }) => {
     tile: tileA,
     value: valueA,
   };
-  const xB = x + xDirection[direction];
-  const yB = y + yDirection[direction];
 
   board[yB][xB] = {
     tile: tileB,
@@ -51,9 +57,10 @@ export const placedCardsToBoard = (placedCards) => {
 };
 
 export const enrichBoardWithCard = (board, card, x, y, direction) => {
-  console.debug("enriching", x, y);
-  if (!(x ?? y)) {
+  if (x === null || y === null || !board) {
     return board;
   }
-  return placeCardOnBoard(board)({ card, x, y, direction });
+
+  const boardCopy = deepCopy(board);
+  return placeCardOnBoard(boardCopy)({ card, x, y, direction });
 };

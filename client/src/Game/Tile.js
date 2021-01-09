@@ -28,7 +28,9 @@ function Tile(props) {
 
   return (
     <div className={className}>
-      <img src={imageNamesByTile[tile]} alt={imageNamesByTile[tile]}></img>
+      {tile !== undefined && tile !== null ? (
+        <img src={imageNamesByTile[tile]} alt={imageNamesByTile[tile]}></img>
+      ) : null}
     </div>
   );
 }

@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 
-function throttle(callback, wait = 500, immediate = false) {
+function throttle(callback, wait = 50, immediate = false) {
   let timeout = null;
   let initialCall = true;
 
-  return function () {
+  return function throttle() {
     const callNow = immediate && initialCall;
     const next = () => {
       callback.apply(this, arguments);

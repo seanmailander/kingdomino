@@ -49,7 +49,12 @@ function BoardArea(props) {
       {myBoard.map((row, y) =>
         row.map(({ tile, value }, x) => (
           <BoardSquare handleClick={handleClick(x, y)}>
-            <Tile tile={tile} value={value} disabled={!isMe || !isMyPlace} />
+            <Tile
+              key={`2${y},${x}`}
+              tile={tile}
+              value={value}
+              disabled={!isMe || !isMyPlace}
+            />
           </BoardSquare>
         ))
       )}

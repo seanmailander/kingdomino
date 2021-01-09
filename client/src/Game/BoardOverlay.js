@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 
 import useBoardPosition from "./useBoardPosition";
@@ -12,17 +12,20 @@ function BoardOverlay(props) {
   const { playerId, getBoardPosition, direction } = props;
   const cardId = useSelector(getCardToPlace);
   const isMyPlace = useSelector(getIsMyPlace);
+  const [emptyBoard, setBoard] = useState(getEmptyBoard());
 
   const { x, y } = useBoardPosition(getBoardPosition());
   const boardWithCurrentCard = useMemo(
-    () => enrichBoardWithCard(getEmptyBoard(), cardId, x, y, direction),
-    [cardId, x, y, direction]
+    () => enrichBoardWithCard(emptyBoard, cardId, x, y, direction),
+    [emptyBoard, cardId, x, y, direction]
   );
 
-  const shouldShowOverlay = isMyPlace && x !== null && y !== null && false;
+  const shouldShowOverlay = isMyPlace && x !== null && y !== null;
   const overlay = shouldShowOverlay
-    ? boardWithCurrentCard.map((row) =>
-        row.map(({ tile, value }) => <Tile tile={tile} value={value} />)
+    ? boardWithCurrentCard?.map((row, y) =>
+        row.map(({ tile, value }, x) => (
+          <Tile key={`1${y},${x}`} tile={tile} value={value} />
+        ))
       )
     : null;
 
