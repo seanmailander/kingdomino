@@ -12,6 +12,7 @@
   "dependencies": {
     "body-parser": "^1.19.0",
     "express": "^4.17.1",
+    "multicast-dns": "^7.2.2",
     "peer": "^0.6.1"
   },
   "devDependencies": {

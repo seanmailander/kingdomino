@@ -119,6 +119,7 @@ function* newConnections() {
       );
     }
   } catch (error) {
+    console.error("Game error", error);
     yield put(connectionErrored(error.message));
   } finally {
     if (disposeUnderlyingConnection) {

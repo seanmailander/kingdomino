@@ -102,10 +102,10 @@ function* handleConnection(peerConnection, dataConnection) {
 
 export function* newConnection() {
   const peerConnection = new Peer(undefined, {
-    host: "/",
+    host: "kingdomino.local",
     path: "/api/peers",
-    port: 3001,
     key: "default",
+    config: { iceServers: [] },
   });
   const playerId = yield call(waitForPeerId, peerConnection);
   return {

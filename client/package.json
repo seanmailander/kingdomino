@@ -21,7 +21,8 @@
     "web-vitals": "^0.2.4"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "PORT=80 HOST=kingdomino.local react-scripts start",
+    "start-secure": "HTTPS=true PORT=443 HOST=:: SSL_CRT_FILE=./.cert/cert.pem SSL_KEY_FILE=./.cert/key.pem react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test --env=node",
     "eject": "react-scripts eject"
@@ -44,7 +45,6 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:3001",
   "devDependencies": {
     "jest-extended": "^0.11.5"
   },

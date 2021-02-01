@@ -2,6 +2,9 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const { ExpressPeerServer } = require("peer");
 
+const mdns = require("multicast-dns")({ loopback: true });
+const os = require("os");
+
 const app = express();
 
 app.use(bodyParser.json());
@@ -82,3 +85,63 @@ const peerServer = ExpressPeerServer(server, {
 
 // Host this peer server on a fixed route
 app.use("/api/peers", peerServer);
+
+// Expose https://kingdomino.local on the local network
+// TODO: let the user configure which interface to listen on
+const defaultInterface = () => {
+  const networks = os.networkInterfaces();
+  const networksWithIPv4 = Object.keys(networks)
+    .map((name) => Object.values(networks[name]))
+    .filter((network) =>
+      network.some(({ family, internal }) => family === "IPv4" && !internal)
+    );
+
+  const firstNetwork = networksWithIPv4.pop();
+  if (!firstNetwork) {
+    return {
+      ipv4: "127.0.0.1",
+      ipv6: "::1",
+    };
+  }
+
+  const v4Addresses = firstNetwork.filter(({ family }) => family === "IPv4");
+  const v6Addresses = firstNetwork.filter(({ family }) => family === "IPv6");
+
+  return {
+    ipv4: v4Addresses[0].address,
+    ipv6: v6Addresses[0].address,
+  };
+};
+
+const interfaceToListenOn = defaultInterface();
+mdns.on("query", function (query, rinfo) {
+  if (query.questions.some(({ name }) => name === "kingdomino.local")) {
+    // TODO: use subnet of rinfo to find matching address ???
+    mdns.respond({
+      answers: [
+        {
+          name: "kingdomino.local",
+          type: "A",
+          ttl: 300,
+          data: interfaceToListenOn.ipv4,
+        },
+      ],
+      additionals: [
+        {
+          name: "kingdomino.local",
+          type: "A",
+          ttl: 300,
+          class: "IN",
+          data: interfaceToListenOn.ipv4,
+        },
+        {
+          name: "kingdomino.local",
+          type: "AAAA",
+          ttl: 300,
+          class: "IN",
+          data: interfaceToListenOn.ipv6,
+        },
+      ],
+    });
+  }
+});
