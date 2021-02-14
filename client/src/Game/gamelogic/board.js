@@ -77,12 +77,25 @@ const getNeighbors = (x, y) =>
   ].filter(isWithinBounds);
 
 export const getEligiblePositions = (board, card) => {
-  return [
-    { x: 5, y: 6 },
-    { x: 7, y: 6 },
-    { x: 6, y: 5 },
-    { x: 6, y: 7 },
-  ];
+  const allPositions = board.reduce((prev, curr, y) => {
+    return [...prev, ...curr.map((card, x) => ({ card, x, y }))];
+  }, []);
+
+  // const emptySpots = allPositions.filter(({ card }) => card?.tile === null);
+
+  const playedSpots = allPositions.filter(({ card }) => card?.tile !== null);
+
+  // console.debug("played spots", playedSpots);
+
+  const validNeighbors = playedSpots.reduce((prev, { x, y }) => {
+    return [
+      ...prev,
+      ...getNeighbors(x, y).filter(({ x, y }) => !tileIsValid(board, x, y)),
+    ];
+  }, []);
+  // console.debug("valid neighbors", validNeighbors);
+
+  return validNeighbors;
 };
 
 export const getValidDirections = (board, card, tileX, tileY) =>

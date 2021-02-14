@@ -28,12 +28,10 @@ See [research](./RESEARCH.md) for more info
 
 ## NOW
 
-1. Add simple computer player for solo play (and debugging)
+1. Calculate only eligible places by neighbors
 2. Add mid-game debug states
-3. Calculate only eligible places by open spaces
-4. Restrict player to play on eligible spaces
-5. Calculate only eligible places by neighbors
-6. Calculate only eligible places by board size
+3. Calculate only eligible places by rotation
+4. Calculate only eligible places by board size
 
 ## NEXT
 
