@@ -84,7 +84,6 @@ function* roundSaga(sendGameMessage, onCommit, onReveal, onMove, currentDeck) {
       yield put(theirPick());
 
       const { move } = yield take(onMove);
-      console.debug(move);
 
       const { playerId: theirPlayerId, card, x, y, direction } = move;
       yield put(cardPicked(card));

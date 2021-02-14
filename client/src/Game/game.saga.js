@@ -6,11 +6,14 @@ import {
   orderChosen,
   playerJoined,
   gameEnded,
+  startMulti,
+  startSolo,
 } from "./game.actions";
 
 import { chooseOrderFromSeed } from "./gamelogic/utils";
 
 import findOtherPlayers, { newConnection } from "./connection.saga";
+import newSoloConnection from "./connection.solo.saga";
 import roundSaga from "./round.saga";
 import {
   startMessage,
@@ -68,7 +71,7 @@ function* newGame(
   yield put(gameEnded());
 }
 
-function* newConnections() {
+function* newMultiplayerGame() {
   let disposeUnderlyingConnection;
   try {
     // TODO: make peerfinding a saga so we can control the bheavior for multiple peers
@@ -127,8 +130,39 @@ function* newConnections() {
     }
   }
 }
+
+function* newSoloGame() {
+  const result = yield call(newSoloConnection);
+  const {
+    destroy,
+    peerIdentifiers,
+    sendGameMessage,
+    waitForGameMessage,
+  } = result;
+
+  yield put(playerJoined({ playerId: peerIdentifiers.me, isMe: true }));
+  yield put(playerJoined({ playerId: peerIdentifiers.them, isMe: false }));
+
+  const onMove = yield call(waitForGameMessage, MOVE);
+  const onCommit = yield call(waitForGameMessage, COMMITTMENT);
+  const onReveal = yield call(waitForGameMessage, REVEAL);
+
+  // When the first player starts the game, send it to other players
+  yield take(gameStarted);
+
+  yield call(
+    newGame,
+    peerIdentifiers,
+    sendGameMessage,
+    onCommit,
+    onReveal,
+    onMove
+  );
+}
+
 function* gameSaga() {
-  yield takeLatest(connectionReset, newConnections);
+  // yield takeLatest(startMulti, newMultiplayerGame);
+  yield takeLatest(startSolo, newSoloGame);
 }
 
 export default gameSaga;

@@ -1,18 +1,18 @@
 import React from "react";
 
 import { useDispatch } from "react-redux";
-import { connectionReset } from "../Game/game.actions.js";
+import { startMulti, startSolo } from "../Game/game.actions.js";
 
 function Splash() {
   const dispatch = useDispatch();
 
   return (
     <>
-      <button
-        aria-label="Join lobby"
-        onClick={() => dispatch(connectionReset())}
-      >
-        Ready for a game?
+      <button aria-label="Join lobby" onClick={() => dispatch(startMulti())}>
+        Ready for a game with friends?
+      </button>
+      <button aria-label="Start solo" onClick={() => dispatch(startSolo())}>
+        Ready for a game on your own?
       </button>
     </>
   );

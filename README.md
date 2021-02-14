@@ -28,10 +28,12 @@ See [research](./RESEARCH.md) for more info
 
 ## NOW
 
-1. Calculate only eligible places by open spaces
-2. Restrict player to play on eligible spaces
-3. Calculate only eligible places by neighbors
-4. Calculate only eligible places by board size
+1. Add simple computer player for solo play (and debugging)
+2. Add mid-game debug states
+3. Calculate only eligible places by open spaces
+4. Restrict player to play on eligible spaces
+5. Calculate only eligible places by neighbors
+6. Calculate only eligible places by board size
 
 ## NEXT
 
@@ -55,4 +57,4 @@ See [research](./RESEARCH.md) for more info
 12. Automatically zoom board to fit
 13. Add how the score was calculated to score board
 14. Make it usable on a handheld form-factor
-15. Support https://kingdomino.local/ discovery
+15. Make it deployable

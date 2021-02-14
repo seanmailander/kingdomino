@@ -68,3 +68,14 @@ serve static SPA, `/api/bootstrap/currentGame` for current game bootstrapping
 - Player A: submit an offering to bootstrapper
 - Player B: take the offer, submit an answer
 - Player A: process answer, we now have a data channel
+
+
+### Running server as an app
+
+React Native + native implementation of server
+
+### Runnign client in a browser
+
+Debugging on iOS
+
+https://jonsadka.com/blog/how-to-debug-a-chrome-specific-bug-on-ios-using-remote-debugging

@@ -1,5 +1,9 @@
 import { createAction } from "@reduxjs/toolkit";
 
+// Kickoff events
+export const startSolo = createAction("start/solo");
+export const startMulti = createAction("start/multi");
+
 // Connection events
 export const connectionReset = createAction("connection/reset");
 export const connectionConnected = createAction("connection/connected");

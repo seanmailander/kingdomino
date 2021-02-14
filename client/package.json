@@ -9,6 +9,7 @@
     "@testing-library/user-event": "^12.1.10",
     "classnames": "^2.2.6",
     "event-iterator": "^2.0.0",
+    "eventemitter3": "^4.0.7",
     "peerjs": "^1.3.1",
     "react": "^17.0.1",
     "react-dom": "^17.0.1",
@@ -21,7 +22,8 @@
     "web-vitals": "^0.2.4"
   },
   "scripts": {
-    "start": "PORT=80 HOST=kingdomino.local react-scripts start",
+    "start": "react-scripts start",
+    "start-host": "PORT=80 HOST=kingdomino.local react-scripts start",
     "start-secure": "HTTPS=true PORT=443 HOST=:: SSL_CRT_FILE=./.cert/cert.pem SSL_KEY_FILE=./.cert/key.pem react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test --env=node",
