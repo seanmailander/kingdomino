@@ -26,10 +26,10 @@ export const oneCrown = 1;
 export const twoCrown = 2;
 export const threeCrown = 3;
 
-export const up = 1;
-export const right = 2;
-export const down = 3;
-export const left = 4;
+export const up = 0;
+export const right = 1;
+export const down = 2;
+export const left = 3;
 
 const getTile = (tileA, tileB, crownsA = noCrown, crownsB = noCrown) => ({
   type: tileA ^ tileB || tileA, // Either the XOR, or just the value itself

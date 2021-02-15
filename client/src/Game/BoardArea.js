@@ -33,6 +33,7 @@ function BoardArea(props) {
   const dispatch = useDispatch();
 
   const [direction, setDirection] = useState(right);
+  const [flipped, setFlipped] = useState(false);
 
   const boardNode = useRef(null);
   const getBoardPosition = () => boardNode.current?.getBoundingClientRect();
@@ -53,8 +54,10 @@ function BoardArea(props) {
   // TODO: this is forcing keypress to re-add listeners on ever change of direction
   // is there an easier way?
   const handleRotate = () => setDirection(rotateLookup[direction]);
+  const handleFlip = () => setFlipped(!flipped);
 
-  useKeypress("Space", () => handleRotate(), [direction]);
+  useKeypress("KeyR", () => handleRotate(), [direction]);
+  useKeypress("KeyF", () => handleFlip(), [flipped]);
 
   return (
     <>
@@ -65,6 +68,7 @@ function BoardArea(props) {
               playerId={playerId}
               getBoardPosition={getBoardPosition}
               direction={direction}
+              flipped={flipped}
             />
           )}
           {myBoard.map((row, y) =>
@@ -83,6 +87,7 @@ function BoardArea(props) {
         </div>
         <div className="rotator">
           <button onClick={handleRotate}>Rotate card</button>
+          <button onClick={handleFlip}>Flip card</button>
         </div>
       </div>
     </>

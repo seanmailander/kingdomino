@@ -19,6 +19,29 @@ const yDirection = {
   [left]: 0,
 };
 
+export const getFlippedPosition = (x, y, direction, flipped) => {
+  if (!flipped) {
+    return { flippedX: x, flippedY: y, flippedDirection: direction };
+  }
+
+  console.log("flipping", x, y, direction);
+
+  const flippedX = x + xDirection[direction];
+  const flippedY = y + yDirection[direction];
+  const flippedDirection = (direction + 2) % 4;
+
+  console.log(
+    "flipping",
+    { x, y, direction },
+    { flippedX, flippedY, flippedDirection }
+  );
+  return {
+    flippedX,
+    flippedY,
+    flippedDirection,
+  };
+};
+
 const deepCopy = (a1) => [...a1.map((a2) => [...a2])];
 
 const placeCardOnBoard = (board) => ({ card, x, y, direction }) => {
@@ -62,6 +85,7 @@ export const enrichBoardWithCard = (board, card, x, y, direction) => {
   }
 
   const boardCopy = deepCopy(board);
+
   return placeCardOnBoard(boardCopy)({ card, x, y, direction });
 };
 
@@ -76,31 +100,36 @@ const getNeighbors = (x, y) =>
     { x, y: y - 1, direction: up },
   ].filter(isWithinBounds);
 
-export const getEligiblePositions = (board, card) => {
+export const getEligiblePositions = (board, cardId) => {
+  if (!cardId) {
+    return [];
+  }
   const allPositions = board.reduce((prev, curr, y) => {
     return [...prev, ...curr.map((card, x) => ({ card, x, y }))];
   }, []);
 
-  // const emptySpots = allPositions.filter(({ card }) => card?.tile === null);
+  const { type } = getCard(cardId);
+  const onlyPlayedSpots = ({ card }) => card?.tile !== null;
+  const onlyMatchingTiles = ({ card }) =>
+    card.tile === 0 || !!(card.tile & type);
 
-  const playedSpots = allPositions.filter(({ card }) => card?.tile !== null);
+  const playedSpots = allPositions
+    .filter(onlyPlayedSpots)
+    .filter(onlyMatchingTiles);
 
-  // console.debug("played spots", playedSpots);
-
-  const validNeighbors = playedSpots.reduce((prev, { x, y }) => {
-    return [
+  const validNeighbors = playedSpots.reduce(
+    (prev, { x, y }) => [
       ...prev,
       ...getNeighbors(x, y).filter(({ x, y }) => !tileIsValid(board, x, y)),
-    ];
-  }, []);
-  // console.debug("valid neighbors", validNeighbors);
+    ],
+    []
+  );
 
   return validNeighbors;
 };
 
 export const getValidDirections = (board, card, tileX, tileY) =>
   getNeighbors(tileX, tileY)
-    .map(({ x, y, direction }) =>
-      !tileIsValid(board, x, y) ? direction : null
-    )
-    .filter((s) => s);
+    .filter(({ x, y }) => !tileIsValid(board, x, y))
+    .filter(({ x, y }) => !tileIsValid(board, x, y))
+    .map(({ x, y, direction }) => direction);

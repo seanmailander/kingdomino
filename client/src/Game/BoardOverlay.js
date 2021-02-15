@@ -6,19 +6,36 @@ import useBoardPosition from "./useBoardPosition";
 import { getCardToPlace, getIsMyPlace } from "./round.slice";
 
 import Tile from "./Tile";
-import { getEmptyBoard, enrichBoardWithCard } from "./gamelogic/board";
+import {
+  getEmptyBoard,
+  enrichBoardWithCard,
+  getFlippedPosition,
+} from "./gamelogic/board";
 
 function BoardOverlay(props) {
-  const { playerId, getBoardPosition, direction } = props;
+  const { playerId, getBoardPosition, direction, flipped } = props;
   const cardId = useSelector(getCardToPlace);
   const isMyPlace = useSelector(getIsMyPlace);
   const [emptyBoard, setBoard] = useState(getEmptyBoard());
 
   const { x, y } = useBoardPosition(getBoardPosition());
-  const boardWithCurrentCard = useMemo(
-    () => enrichBoardWithCard(emptyBoard, cardId, x, y, direction),
-    [emptyBoard, cardId, x, y, direction]
-  );
+
+  const boardWithCurrentCard = useMemo(() => {
+    const { flippedX, flippedY, flippedDirection } = getFlippedPosition(
+      x,
+      y,
+      direction,
+      flipped
+    );
+
+    return enrichBoardWithCard(
+      emptyBoard,
+      cardId,
+      flippedX,
+      flippedY,
+      flippedDirection
+    );
+  }, [emptyBoard, cardId, x, y, direction, flipped]);
 
   const shouldShowOverlay = isMyPlace && x !== null && y !== null;
   const overlay = shouldShowOverlay

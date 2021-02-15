@@ -7,7 +7,6 @@ import { useEffect } from "react";
 export default function useKeypress(key, action, deps) {
   useEffect(() => {
     //TODO: dont readd every time action changes
-    console.debug("adding listener", key);
     function onKeyup(e) {
       if (e.code === key) action();
     }
