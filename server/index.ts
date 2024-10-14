@@ -1,10 +1,11 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const { ExpressPeerServer } = require("peer");
+import express from "express";
+import bodyParser from "body-parser";
+import { ExpressPeerServer } from "peer";
 
-const mdns = require("multicast-dns")({ loopback: true });
-const os = require("os");
+import mdnsLib from "multicast-dns";
+import os from "os";
 
+const mdns = mdnsLib({ loopback: true });
 const app = express();
 
 app.use(bodyParser.json());
@@ -16,7 +17,12 @@ if (process.env.NODE_ENV === "production") {
   app.use(express.static("../client/build"));
 }
 
-const waitingPlayers = {};
+type Lobby = {
+  [playerId: string]: {
+    waiting: boolean;
+  };
+};
+const waitingPlayers: Lobby = {};
 // Player A is new, gets added to waiting list with an id
 // Player B is new, gets matched to A, gets A's id
 // Player A is existing, was matched with B, waits for B to reach out
@@ -35,7 +41,7 @@ app.post("/api/letMeIn", (req, res) => {
       (k) => k === playerId
     );
     // Just add them to the waiting list
-    waitingPlayers[playerId] = {};
+    waitingPlayers[playerId] = { waiting: false };
     console.debug(`Player: ${playerId} joined as first in line`);
     res.json({ checkBackInMs: 1000 });
     return;
@@ -78,20 +84,20 @@ const server = app.listen(app.get("port"), () => {
   );
 });
 
-// const peerServer = ExpressPeerServer(server, {
-//   key: "default", // TODO: do we need different rooms per lobby?
-//   allow_discovery: true,
-// });
+const peerServer = ExpressPeerServer(server, {
+  key: "default", // TODO: do we need different rooms per lobby?
+  allow_discovery: true,
+});
 
 // Host this peer server on a fixed route
-// app.use("/api/peers", peerServer);
+app.use("/api/peers", peerServer);
 
 // Expose https://kingdomino.local on the local network
 // TODO: let the user configure which interface to listen on
 const defaultInterface = () => {
   const networks = os.networkInterfaces();
   const networksWithIPv4 = Object.keys(networks)
-    .map((name) => Object.values(networks[name]))
+    .map((name) => Object.values(networks[name] ?? {}))
     .filter((network) =>
       network.some(({ family, internal }) => family === "IPv4" && !internal)
     );
