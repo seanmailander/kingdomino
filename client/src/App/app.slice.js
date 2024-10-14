@@ -64,6 +64,6 @@ export const getHint = createSelector(
       }
     }
     return hintsByRoom[room];
-  }
+  },
 );
 export default appSlice.reducer;

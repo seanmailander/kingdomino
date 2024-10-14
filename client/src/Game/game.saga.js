@@ -30,7 +30,7 @@ function* chooseOrder(peerIdentifiers, sendGameMessage, onCommit, onReveal) {
     buildTrustedSeed,
     sendGameMessage,
     onCommit,
-    onReveal
+    onReveal,
   );
 
   // Now use that seed to sort the peer identifiers
@@ -43,7 +43,7 @@ function* newGame(
   sendGameMessage,
   onCommit,
   onReveal,
-  onMove
+  onMove,
 ) {
   // Work out who goes first
   yield call(chooseOrder, peerIdentifiers, sendGameMessage, onCommit, onReveal);
@@ -54,7 +54,7 @@ function* newGame(
     sendGameMessage,
     onCommit,
     onReveal,
-    onMove
+    onMove,
   );
   // Subsequent rounds
   while (remainingDeck.length > 0) {
@@ -64,7 +64,7 @@ function* newGame(
       onCommit,
       onReveal,
       onMove,
-      remainingDeck
+      remainingDeck,
     );
   }
 
@@ -85,12 +85,8 @@ function* newMultiplayerGame() {
     const { playerId, peerConnection } = yield call(newConnection);
     yield put(playerJoined({ playerId, isMe: true }));
     const result = yield call(findOtherPlayers, peerConnection);
-    const {
-      destroy,
-      peerIdentifiers,
-      sendGameMessage,
-      waitForGameMessage,
-    } = result;
+    const { destroy, peerIdentifiers, sendGameMessage, waitForGameMessage } =
+      result;
     disposeUnderlyingConnection = destroy;
     // TODO: replace the fake "other" player with a real entity
     yield put(playerJoined({ playerId: peerIdentifiers.them, isMe: false }));
@@ -118,7 +114,7 @@ function* newMultiplayerGame() {
         sendGameMessage,
         onCommit,
         onReveal,
-        onMove
+        onMove,
       );
     }
   } catch (error) {
@@ -133,12 +129,8 @@ function* newMultiplayerGame() {
 
 function* newSoloGame() {
   const result = yield call(newSoloConnection);
-  const {
-    destroy,
-    peerIdentifiers,
-    sendGameMessage,
-    waitForGameMessage,
-  } = result;
+  const { destroy, peerIdentifiers, sendGameMessage, waitForGameMessage } =
+    result;
 
   yield put(playerJoined({ playerId: peerIdentifiers.me, isMe: true }));
   yield put(playerJoined({ playerId: peerIdentifiers.them, isMe: false }));
@@ -156,7 +148,7 @@ function* newSoloGame() {
     sendGameMessage,
     onCommit,
     onReveal,
-    onMove
+    onMove,
   );
 }
 
