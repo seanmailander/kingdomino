@@ -20,7 +20,9 @@
 }
 
 .panels :not(.boardOverlay) .tile:not(.disabled).highlight:hover {
-  box-shadow: 0 0 0 5px hsl(138, 51%, 65%), 0 0 0 10px hsl(138, 81%, 80%);
+  box-shadow:
+    0 0 0 5px hsl(138, 51%, 65%),
+    0 0 0 10px hsl(138, 81%, 80%);
 }
 
 .panels :not(.boardOverlay) .tile:not(.disabled) {

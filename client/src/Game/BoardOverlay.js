@@ -25,7 +25,7 @@ function BoardOverlay(props) {
       x,
       y,
       direction,
-      flipped
+      flipped,
     );
 
     return enrichBoardWithCard(
@@ -33,7 +33,7 @@ function BoardOverlay(props) {
       cardId,
       flippedX,
       flippedY,
-      flippedDirection
+      flippedDirection,
     );
   }, [emptyBoard, cardId, x, y, direction, flipped]);
 
@@ -42,7 +42,7 @@ function BoardOverlay(props) {
     ? boardWithCurrentCard?.map((row, y) =>
         row.map(({ tile, value }, x) => (
           <Tile key={`1${y},${x}`} tile={tile} value={value} />
-        ))
+        )),
       )
     : null;
 

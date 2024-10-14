@@ -27,7 +27,7 @@ export const gameSlice = createSlice({
     [gameStarted]: (state) => {
       state.cardsPlacedByPlayer = {};
       state.players.forEach(
-        ({ playerId }) => (state.cardsPlacedByPlayer[playerId] = [])
+        ({ playerId }) => (state.cardsPlacedByPlayer[playerId] = []),
       );
     },
     [cardPlaced]: (state, action) => {
@@ -51,11 +51,11 @@ export const gameSlice = createSlice({
 export const getPlayers = (state) => state.game.players;
 export const getMyPlayerId = createSelector(
   [getPlayers],
-  (players) => players?.find((p) => p.isMe)?.playerId
+  (players) => players?.find((p) => p.isMe)?.playerId,
 );
 export const getHasEnoughPlayers = createSelector(
   [getPlayers],
-  (players) => players.length >= 2
+  (players) => players.length >= 2,
 );
 
 export const getPlayerBoards = (state) =>

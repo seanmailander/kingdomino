@@ -82,7 +82,7 @@ function BoardArea(props) {
                   allowHighlight={isValidDirection(x, y, direction)}
                 />
               </BoardSquare>
-            ))
+            )),
           )}
         </div>
         <div className="rotator">

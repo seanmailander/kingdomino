@@ -128,11 +128,11 @@ function* findOtherPlayers(peerConnection) {
         return yield call(handleConnection, peerConnection, dataConnection);
       }
 
-      const {
-        otherPlayerId,
-        checkBackInMs,
-        waitForConnection,
-      } = yield call(postData, joinGameURI, { playerId });
+      const { otherPlayerId, checkBackInMs, waitForConnection } = yield call(
+        postData,
+        joinGameURI,
+        { playerId },
+      );
       if (otherPlayerId) {
         const dataConnection = peerConnection.connect(otherPlayerId);
         yield call(waitForOpen, dataConnection);

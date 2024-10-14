@@ -69,7 +69,6 @@ serve static SPA, `/api/bootstrap/currentGame` for current game bootstrapping
 - Player B: take the offer, submit an answer
 - Player A: process answer, we now have a data channel
 
-
 ### Running server as an app
 
 React Native + native implementation of server

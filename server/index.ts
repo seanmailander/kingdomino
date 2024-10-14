@@ -33,12 +33,12 @@ app.post("/api/letMeIn", (req, res) => {
   // Player has not been seen before
   // Find any other players already waiting
   const otherPlayerIds = Object.keys(waitingPlayers).filter(
-    (k) => k !== playerId
+    (k) => k !== playerId,
   );
   if (otherPlayerIds.length === 0) {
     // No other players waiting
     const thisPlayerInWaitLine = Object.keys(waitingPlayers).filter(
-      (k) => k === playerId
+      (k) => k === playerId,
     );
     // Just add them to the waiting list
     waitingPlayers[playerId] = { waiting: false };
@@ -52,7 +52,7 @@ app.post("/api/letMeIn", (req, res) => {
   const otherPlayerId = otherPlayerIds[0];
 
   console.debug(
-    `Player: ${playerId} is joining ${otherPlayerId} in game lobby`
+    `Player: ${playerId} is joining ${otherPlayerId} in game lobby`,
   );
   // TODO: when do these get cleared?
   waitingPlayers[playerId] = {
@@ -63,7 +63,7 @@ app.post("/api/letMeIn", (req, res) => {
     console.debug(
       "Both are connected, purging them from lobby",
       playerId,
-      otherPlayerId
+      otherPlayerId,
     );
     delete waitingPlayers[playerId];
     delete waitingPlayers[otherPlayerId];
@@ -79,8 +79,8 @@ const server = app.listen(app.get("port"), () => {
   console.log(`Find the server at: http://localhost:${app.get("port")}/`);
   console.log(
     `See current peers at: http://localhost:${app.get(
-      "port"
-    )}/api/peers/default/peers`
+      "port",
+    )}/api/peers/default/peers`,
   );
 });
 
@@ -99,7 +99,7 @@ const defaultInterface = () => {
   const networksWithIPv4 = Object.keys(networks)
     .map((name) => Object.values(networks[name] ?? {}))
     .filter((network) =>
-      network.some(({ family, internal }) => family === "IPv4" && !internal)
+      network.some(({ family, internal }) => family === "IPv4" && !internal),
     );
 
   const firstNetwork = networksWithIPv4.pop();

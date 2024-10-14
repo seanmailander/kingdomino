@@ -33,7 +33,7 @@ export const getFlippedPosition = (x, y, direction, flipped) => {
   console.log(
     "flipping",
     { x, y, direction },
-    { flippedX, flippedY, flippedDirection }
+    { flippedX, flippedY, flippedDirection },
   );
   return {
     flippedX,
@@ -44,29 +44,31 @@ export const getFlippedPosition = (x, y, direction, flipped) => {
 
 const deepCopy = (a1) => [...a1.map((a2) => [...a2])];
 
-const placeCardOnBoard = (board) => ({ card, x, y, direction }) => {
-  const xB = x + xDirection[direction];
-  const yB = y + yDirection[direction];
+const placeCardOnBoard =
+  (board) =>
+  ({ card, x, y, direction }) => {
+    const xB = x + xDirection[direction];
+    const yB = y + yDirection[direction];
 
-  if (!isWithinBounds({ x: xB, y: yB })) {
+    if (!isWithinBounds({ x: xB, y: yB })) {
+      return board;
+    }
+
+    const {
+      tiles: [{ tile: tileA, value: valueA }, { tile: tileB, value: valueB }],
+    } = getCard(card);
+
+    board[y][x] = {
+      tile: tileA,
+      value: valueA,
+    };
+
+    board[yB][xB] = {
+      tile: tileB,
+      value: valueB,
+    };
     return board;
-  }
-
-  const {
-    tiles: [{ tile: tileA, value: valueA }, { tile: tileB, value: valueB }],
-  } = getCard(card);
-
-  board[y][x] = {
-    tile: tileA,
-    value: valueA,
   };
-
-  board[yB][xB] = {
-    tile: tileB,
-    value: valueB,
-  };
-  return board;
-};
 
 export const placedCardsToBoard = (placedCards) => {
   const thisBoard = getEmptyBoard();
@@ -122,7 +124,7 @@ export const getEligiblePositions = (board, cardId) => {
       ...prev,
       ...getNeighbors(x, y).filter(({ x, y }) => !tileIsValid(board, x, y)),
     ],
-    []
+    [],
   );
 
   return validNeighbors;

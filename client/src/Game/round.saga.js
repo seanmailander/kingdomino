@@ -22,7 +22,7 @@ function* trustedDeal(sendGameMessage, onCommit, onReveal, currentDeck) {
     buildTrustedSeed,
     sendGameMessage,
     onCommit,
-    onReveal
+    onReveal,
   );
 
   // - each 4-draw, recommit and re-shuffle
@@ -41,7 +41,7 @@ function* roundSaga(sendGameMessage, onCommit, onReveal, onMove, currentDeck) {
     sendGameMessage,
     onCommit,
     onReveal,
-    currentDeck
+    currentDeck,
   );
 
   // Put those cards on the screen

@@ -91,12 +91,12 @@ export const getPickOrder = (state) => state.round.pickOrderThisRound;
 const getPhase = (state) => state.round.phase;
 export const getIsMyTurn = createSelector(
   [getPickOrder, getMyPlayerId],
-  (pickOrder, myPlayerId) => pickOrder[0] === myPlayerId
+  (pickOrder, myPlayerId) => pickOrder[0] === myPlayerId,
 );
 
 export const getIsMyPlace = createSelector(
   [getIsMyTurn, getPhase],
-  (isMyTurn, phase) => isMyTurn && phase === `${myPlace}`
+  (isMyTurn, phase) => isMyTurn && phase === `${myPlace}`,
 );
 
 export const getCardToPlace = (state) => state.round.cardToPlace;

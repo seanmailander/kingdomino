@@ -100,7 +100,7 @@ describe("Builds deck", () => {
       deck.reduce(
         (prev, { tiles }) =>
           prev + (tiles.find((t) => t.tile === typeToMatch)?.value || 0),
-        0
+        0,
       );
 
     // Act
