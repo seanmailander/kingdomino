@@ -22,6 +22,7 @@
     "web-vitals": "^0.2.4"
   },
   "scripts": {
+    "lint": "eslint",
     "start": "react-scripts start",
     "start-host": "PORT=80 HOST=kingdomino.local react-scripts start",
     "start-secure": "HTTPS=true PORT=443 HOST=:: SSL_CRT_FILE=./.cert/cert.pem SSL_KEY_FILE=./.cert/key.pem react-scripts start",
