@@ -84,13 +84,13 @@ const server = app.listen(app.get("port"), () => {
   );
 });
 
-// const peerServer = ExpressPeerServer(server, {
-//   key: "default", // TODO: do we need different rooms per lobby?
-//   allow_discovery: true,
-// });
+const peerServer = ExpressPeerServer(server, {
+  key: "default", // TODO: do we need different rooms per lobby?
+  allow_discovery: true,
+});
 
 // Host this peer server on a fixed route
-// app.use("/api/peers", peerServer);
+app.use("/api/peers", peerServer);
 
 // Expose https://kingdomino.local on the local network
 // TODO: let the user configure which interface to listen on
