@@ -41,7 +41,7 @@ app.post("/api/letMeIn", (req, res) => {
       (k) => k === playerId,
     );
     // Just add them to the waiting list
-    waitingPlayers[playerId] = { waiting: false };
+    waitingPlayers[playerId] = { waiting: !!thisPlayerInWaitLine };
     console.debug(`Player: ${playerId} joined as first in line`);
     res.json({ checkBackInMs: 1000 });
     return;
@@ -120,7 +120,7 @@ const defaultInterface = () => {
 };
 
 const interfaceToListenOn = defaultInterface();
-mdns.on("query", function (query, rinfo) {
+mdns.on("query", function (query) {
   if (query.questions.some(({ name }) => name === "kingdomino.local")) {
     // TODO: use subnet of rinfo to find matching address ???
     mdns.respond({
