@@ -11,8 +11,12 @@ export const connectionErrored = createAction("connection/errored");
 export const connectionTimeout = createAction("connection/timeout");
 
 // Lobby events
-export const playerJoined = createAction("lobby/playerJoined");
-export const playerLeft = createAction("lobby/playerLeft");
+export const playerJoined = createAction<{ playerId: string; isMe: boolean }>(
+  "lobby/playerJoined",
+);
+export const playerLeft = createAction<{ playerId: string }>(
+  "lobby/playerLeft",
+);
 
 // Game events
 export const gameStarted = createAction("game/started");
@@ -22,4 +26,10 @@ export const gameEnded = createAction("game/ended");
 // Round events
 export const deckShuffled = createAction("round/deckShuffled");
 export const cardPicked = createAction("round/cardPicked");
-export const cardPlaced = createAction("round/cardPlaced");
+export const cardPlaced = createAction<{
+  playerId: string;
+  card: string;
+  x: string;
+  y: string;
+  direction: string;
+}>("round/cardPlaced");

@@ -8,13 +8,21 @@ import {
   cardPlaced,
 } from "./game.actions";
 import { placedCardsToBoard } from "./gamelogic/board";
+import { RootState } from "../App/reducer";
+
+type Players = Array<{ playerId: string; isMe: boolean }>;
+type PlacedCard = ReturnType<typeof cardPlaced>["payload"];
+type CardsPlaced = {
+  [playerId: string]: Array<Omit<PlacedCard, "playerId">>;
+};
+const initialState = {
+  players: [] as Players,
+  cardsPlacedByPlayer: {} as CardsPlaced,
+};
 
 export const gameSlice = createSlice({
   name: "game",
-  initialState: {
-    players: [],
-    cardsPlacedByPlayer: {},
-  },
+  initialState,
   reducers: {},
   extraReducers: (builder) => {
     builder
@@ -50,7 +58,7 @@ export const gameSlice = createSlice({
   },
 });
 
-export const getPlayers = (state) => state.game.players;
+export const getPlayers = (state: RootState) => state.game.players;
 export const getMyPlayerId = createSelector(
   [getPlayers],
   (players) => players?.find((p) => p.isMe)?.playerId,
@@ -60,10 +68,10 @@ export const getHasEnoughPlayers = createSelector(
   (players) => players.length >= 2,
 );
 
-export const getPlayerBoards = (state) =>
+export const getPlayerBoards = (state: RootState) =>
   placedCardsToBoard(state.game.cardsPlacedByPlayer);
 
-export const getPlayerBoard = (playerId) => (state) =>
+export const getPlayerBoard = (playerId: string) => (state: RootState) =>
   placedCardsToBoard(state.game.cardsPlacedByPlayer[playerId]);
 
 export default gameSlice.reducer;
