@@ -11,6 +11,7 @@ import {
   REVEAL,
   revealMessage,
 } from "./game.messages";
+import { MovePayload } from "./types";
 
 const unwrapReturnMessage = ({ type, content }) => ({
   type,
@@ -25,7 +26,7 @@ function responseToPlayerMove(gameMessage, emit) {
     }
     case REVEAL: {
       emit(unwrapReturnMessage(revealMessage("their-secret")));
-      const move = {
+      const move: MovePayload = {
         playerId: "them",
         card: 0,
         x: 0,
@@ -37,7 +38,7 @@ function responseToPlayerMove(gameMessage, emit) {
       break;
     }
     case MOVE: {
-      const move = {
+      const move: MovePayload = {
         playerId: "them",
         card: 0,
         x: 0,
@@ -66,6 +67,7 @@ function makeGameMessageChannel(dataConnection) {
     };
 
     return unsubscribe;
+    //@ts-expect-error as-is
   }, buffers.expanding(10));
 }
 
@@ -107,6 +109,7 @@ function newSoloConnection() {
 
   // TODO: support graceful closing from peer
   const destroy = () => {
+    // @ts-expect-error as-is
     inprocEmitter.close();
   };
 

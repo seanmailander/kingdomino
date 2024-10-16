@@ -1,5 +1,8 @@
 // - 48 cards, each is unique (some repeats?)
 // - canonical identification (sort)
+
+import { CardInfo, CardType, CardValue } from "../types";
+
 // - both A and B calculate sorted deck using shared seed
 export const blank = -1;
 export const castle = 0;
@@ -19,7 +22,7 @@ export const validTiles = [
   grain,
   marsh,
   mine,
-];
+] as const;
 
 export const noCrown = 0;
 export const oneCrown = 1;
@@ -31,7 +34,12 @@ export const right = 1;
 export const down = 2;
 export const left = 3;
 
-const getTile = (tileA, tileB, crownsA = noCrown, crownsB = noCrown) => ({
+const getTile = (
+  tileA: CardType,
+  tileB: CardType,
+  crownsA: CardValue = noCrown,
+  crownsB: CardValue = noCrown,
+): CardInfo => ({
   type: tileA ^ tileB || tileA, // Either the XOR, or just the value itself
   tiles: [
     { tile: tileA, value: crownsA },

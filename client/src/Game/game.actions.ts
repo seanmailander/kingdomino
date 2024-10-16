@@ -1,4 +1,5 @@
 import { createAction } from "@reduxjs/toolkit";
+import { Card, Direction, PeerIdentifiers, PlayerId } from "./types";
 
 // Kickoff events
 export const startSolo = createAction("start/solo");
@@ -20,16 +21,16 @@ export const playerLeft = createAction<{ playerId: string }>(
 
 // Game events
 export const gameStarted = createAction("game/started");
-export const orderChosen = createAction("game/orderChosen");
+export const orderChosen = createAction<string[]>("game/orderChosen");
 export const gameEnded = createAction("game/ended");
 
 // Round events
-export const deckShuffled = createAction("round/deckShuffled");
+export const deckShuffled = createAction<Card[]>("round/deckShuffled");
 export const cardPicked = createAction("round/cardPicked");
 export const cardPlaced = createAction<{
-  playerId: string;
-  card: string;
+  playerId: PlayerId;
+  card: Card;
   x: string;
   y: string;
-  direction: string;
+  direction: Direction;
 }>("round/cardPlaced");

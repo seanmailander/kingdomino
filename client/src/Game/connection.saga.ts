@@ -28,6 +28,7 @@ function makeGameMessageChannel(dataConnection) {
     };
 
     return unsubscribe;
+    // @ts-expect-error as-is
   }, buffers.expanding(10));
 }
 
@@ -101,6 +102,7 @@ function* handleConnection(peerConnection, dataConnection) {
 }
 
 export function* newConnection() {
+  // @ts-expect-error as-is
   const peerConnection = new Peer(undefined, {
     host: "kingdomino.local",
     path: "/api/peers",
@@ -154,6 +156,7 @@ function* findOtherPlayers(peerConnection) {
       }
     } catch (err) {
       console.error("channel error:", err);
+      // @ts-expect-error as-is
       yield put(connectionErrored(err));
       // socketChannel is still open in catch block
       // if we want end the socketChannel, we need close it explicitly

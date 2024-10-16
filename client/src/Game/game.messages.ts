@@ -1,6 +1,7 @@
 import { call, take } from "redux-saga/effects";
 
 import { commit, verify, combine } from "./gamelogic/utils";
+import { MovePayload } from "./types";
 
 export const START = "START";
 export const COMMITTMENT = "COMMITTMENT";
@@ -16,7 +17,7 @@ export const revealMessage = (secret) => ({
   type: REVEAL,
   content: { secret },
 });
-export const moveMessage = (move) => ({ type: MOVE, content: { move } });
+export const moveMessage = (move: MovePayload) => ({ type: MOVE, content: { move } });
 
 // - A chooses a random number Ra
 // - A calculates hash Ha = H(Ra)

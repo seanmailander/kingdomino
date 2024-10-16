@@ -23,8 +23,14 @@ import {
   REVEAL,
   MOVE,
 } from "./game.messages";
+import { PeerIdentifiers } from "./types";
 
-function* chooseOrder(peerIdentifiers, sendGameMessage, onCommit, onReveal) {
+function* chooseOrder(
+  peerIdentifiers: PeerIdentifiers,
+  sendGameMessage,
+  onCommit,
+  onReveal,
+) {
   // Get a shared seed so its random who goes first
   const firstSeed = yield call(
     buildTrustedSeed,
@@ -39,7 +45,7 @@ function* chooseOrder(peerIdentifiers, sendGameMessage, onCommit, onReveal) {
 }
 
 function* newGame(
-  peerIdentifiers,
+  peerIdentifiers: PeerIdentifiers,
   sendGameMessage,
   onCommit,
   onReveal,
@@ -50,6 +56,7 @@ function* newGame(
 
   // First round!
   let remainingDeck = yield call(
+    // @ts-expect-error as-is
     roundSaga,
     sendGameMessage,
     onCommit,
@@ -119,6 +126,7 @@ function* newMultiplayerGame() {
     }
   } catch (error) {
     console.error("Game error", error);
+    // @ts-expect-error as-is
     yield put(connectionErrored(error.message));
   } finally {
     if (disposeUnderlyingConnection) {

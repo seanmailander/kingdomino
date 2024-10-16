@@ -9,8 +9,9 @@ import {
 } from "./game.actions";
 import { placedCardsToBoard } from "./gamelogic/board";
 import { RootState } from "../App/reducer";
+import { PlayerId } from "./types";
 
-type Players = Array<{ playerId: string; isMe: boolean }>;
+type Players = Array<{ playerId: PlayerId; isMe: boolean }>;
 type PlacedCard = ReturnType<typeof cardPlaced>["payload"];
 type CardsPlaced = {
   [playerId: string]: Array<Omit<PlacedCard, "playerId">>;
