@@ -16,45 +16,49 @@ import {
 } from "./round.slice";
 
 import { buildTrustedSeed, moveMessage } from "./game.messages";
+import { useDispatch } from "react-redux";
+import { addListener } from "@reduxjs/toolkit";
 
-function* trustedDeal(sendGameMessage, onCommit, onReveal, currentDeck) {
-  const trustedSeed = yield call(
-    buildTrustedSeed,
+const trustedDeal = async (
+  sendGameMessage,
+  waitForGameMessage,
+  currentDeck,
+) => {
+  const trustedSeed = await buildTrustedSeed(
     sendGameMessage,
-    onCommit,
-    onReveal,
+    waitForGameMessage,
   );
 
   // - each 4-draw, recommit and re-shuffle
   //   - important to re-randomize every turn, or future knowledge will help mis-behaving clients
   const { next, remaining } = getNextFourCards(trustedSeed, currentDeck);
   return { next, remaining };
-}
+};
 
-function* roundSaga(sendGameMessage, onCommit, onReveal, onMove, currentDeck) {
+export const useRound = async (sendGameMessage, waitForGameMessage, currentDeck) => {
+  const dispatch = useDispatch();
+
   // Round started
-  yield put(roundStart());
+  dispatch(roundStart());
 
   // Deal out some cards
-  const { next, remaining } = yield call(
-    trustedDeal,
+  const { next, remaining } = await trustedDeal(
     sendGameMessage,
-    onCommit,
-    onReveal,
+    waitForGameMessage,
     currentDeck,
   );
 
   // Put those cards on the screen
-  yield put(deckShuffled(next));
+  dispatch(deckShuffled(next));
 
-  yield put(whoseTurn());
+  dispatch(whoseTurn());
 
   while (true) {
     // Whose turn?
     const pickOrder = yield select(getPickOrder);
     if (pickOrder.length === 0) {
       // No turns left
-      yield put(roundEnd());
+      dispatch(roundEnd());
       break;
     }
 
@@ -62,37 +66,56 @@ function* roundSaga(sendGameMessage, onCommit, onReveal, onMove, currentDeck) {
     const isMyTurn = pickOrder[0] === playerId;
 
     if (isMyTurn) {
-      yield put(myPick());
+      dispatch(myPick());
 
-      const { payload: picked } = yield take(cardPicked);
-      console.debug(picked);
-      yield put(myPlace());
-      const { payload: placed } = yield take(cardPlaced);
-      console.debug(placed);
-      const { card, x, y, direction } = placed;
+      // When the first player starts the game, send it to other players
+      const unsubscribePicked = dispatch(
+        addListener({
+          predicate: (action) => true,
+          effect: async (action, api) => {
+            const { payload: picked } = await api.take(cardPicked.match);
+            console.debug(picked);
+            dispatch(myPlace());
+            dispatch(unsubscribePicked);
+          },
+        }),
+      );
 
-      const move = {
-        playerId,
-        card,
-        x,
-        y,
-        direction,
-      };
+      // When the first player starts the game, send it to other players
+      const unsubscribePlaced = dispatch(
+        addListener({
+          predicate: (action) => true,
+          effect: async (action, api) => {
+            const { payload: placed } = await api.take(cardPlaced.match);
+            console.debug(placed);
+            const { card, x, y, direction } = placed;
 
-      yield call(sendGameMessage, moveMessage(move));
-    } else {
-      yield put(theirPick());
+            const move = {
+              playerId,
+              card,
+              x,
+              y,
+              direction,
+            };
 
-      const { move } = yield take(onMove);
-
-      const { playerId: theirPlayerId, card, x, y, direction } = move;
-      yield put(cardPicked(card));
-      yield put(theirPlace());
-      yield put(cardPlaced({ playerId: theirPlayerId, card, x, y, direction }));
+            sendGameMessage(moveMessage(move));
+            dispatch(unsubscribePlaced);
+          },
+        }),
+      );
+      return;
     }
+
+    dispatch(theirPick());
+
+    // TODO! wait for mesasage
+    const { move } = await onMove();
+
+    const { playerId: theirPlayerId, card, x, y, direction } = move;
+    dispatch(cardPicked(card));
+    dispatch(theirPlace());
+    dispatch(cardPlaced({ playerId: theirPlayerId, card, x, y, direction }));
   }
 
   return remaining;
-}
-
-export default roundSaga;
+};
