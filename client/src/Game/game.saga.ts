@@ -1,4 +1,3 @@
-import { call, put, take, takeLatest } from "redux-saga/effects";
 import {
   gameStarted,
   orderChosen,
@@ -10,7 +9,7 @@ import {
 import { chooseOrderFromSeed } from "./gamelogic/utils";
 
 import newSoloConnection from "./connection.solo.saga";
-import roundSaga from "./round.saga";
+import { useRound } from "./round.saga";
 import { buildTrustedSeed, COMMITTMENT, REVEAL, MOVE } from "./game.messages";
 import { PeerIdentifiers } from "./types";
 import { useDispatch } from "react-redux";
@@ -45,10 +44,14 @@ const useNewGame = async (
   // const onReveal = yield call(waitForGameMessage, REVEAL);
 
   // First round!
-  let remainingDeck = roundSaga(sendGameMessage);
+  let remainingDeck = await useRound(sendGameMessage, waitForGameMessage, []);
   // Subsequent rounds
   while (remainingDeck.length > 0) {
-    remainingDeck = roundSaga(sendGameMessage, remainingDeck);
+    remainingDeck = useRound(
+      sendGameMessage,
+      waitForGameMessage,
+      remainingDeck,
+    );
   }
 
   dispatch(gameEnded());
