@@ -1,10 +1,37 @@
 import "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { GameConnection } from "../Game/types";
+import { newSoloConnection } from "../Game/connection/connection.solo";
 
-// import { connectionReset, gameStarted } from "../Game/game.actions";
+const uninitializedGameConnection = {
+    destroy: () => {},
+    players: [],
+    sendGameMessage: () => {},
+    waitForGameMessage: () => {},
+  };
+
+const useNewSoloConnection = () => {
+  const [soloConnection, setSoloConnection] = useState<GameConnection>(uninitializedGameConnection);
+  useEffect(() => {
+    async function initializeSoloGame() {
+      const { destroy, players, sendGameMessage, waitForGameMessage } = await newSoloConnection();
+
+      setSoloConnection({
+        destroy, players, sendGameMessage, waitForGameMessage
+      });
+    }
+
+    initializeSoloGame();
+  }, []);
+  
+  return soloConnection;
+}
 
 export function LobbyComponent() {
-  const [players, setPlayers] = useState([]);
+
+  const soloConnection = useNewSoloConnection();
+  const { players } = soloConnection;
+  
   const hasEnoughPlayers = players.length >= 2;
 
   const startGame = hasEnoughPlayers ? (

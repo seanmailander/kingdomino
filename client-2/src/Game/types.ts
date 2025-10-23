@@ -46,3 +46,14 @@ export type CardInfo = {
 };
 
 export type Board = { tile?: CardType; value?: CardValue }[][];
+
+export type Players = Array<{ playerId: PlayerId; isMe: boolean }>;
+
+type SendGameMessageType = () => void;
+type WaitForGameMessageType = () => void;
+export type GameConnection = {
+  destroy: () => void;
+  players: Players;
+  sendGameMessage: SendGameMessageType;
+  waitForGameMessage: WaitForGameMessageType;
+};
