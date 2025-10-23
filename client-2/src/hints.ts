@@ -1,8 +1,6 @@
 import { Scenes, type ValidScenes } from "./scenes";
 
 const hintsByScene = {
-  [Scenes.Splash]: "Press any key to start",
-  [Scenes.Lobby]: "Waiting for players",
   [Scenes.Game]: "Game",
   [Scenes.Shuffle]: "Shuffling",
   [Scenes.Scoring]: "",
@@ -10,18 +8,10 @@ const hintsByScene = {
 
 type GetHintArgs = {
   scene: ValidScenes;
-  hasEnoughPlayers: boolean;
   isMyTurn: boolean;
 };
 
-export const getHint = ({ scene, hasEnoughPlayers, isMyTurn }: GetHintArgs) => {
-  if (scene === Scenes.Lobby) {
-    // Check how many we are waiting for
-    if (hasEnoughPlayers) {
-      return "Players connected, hit 'ready' to start game";
-    }
-  }
-
+export const getHint = ({ scene, isMyTurn }: GetHintArgs) => {
   if (scene === Scenes.Game) {
     // Whose turn is it?
     if (isMyTurn) {
