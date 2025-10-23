@@ -71,10 +71,10 @@ function makeGameMessageChannel(dataConnection) {
 function* filterMessages(messageChannel: EventEmitter, messageType) {
   return new Promise((resolve, reject) => {
     messageChannel;
-    const message = yield take(messageChannel);
+    const message = take(messageChannel);
     if (message.type === messageType) {
       console.log("bubbling", messageType, message);
-      yield put(bubbler, message);
+      put(bubbler, message);
     }
   });
 }
@@ -84,7 +84,7 @@ export const newSoloConnection: () => GameConnection = () => {
 
   inprocEmitter.on("*", () => {});
 
-  function* waitForGameMessage(messageType) {
+  function waitForGameMessage(messageType) {
     return filterMessages(inprocEmitter, messageType);
   }
 
