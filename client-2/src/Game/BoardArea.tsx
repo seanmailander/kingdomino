@@ -1,18 +1,18 @@
 import React, { useState, useRef } from "react";
-import { useSelector, useDispatch } from "react-redux";
+// import { useSelector, useDispatch } from "react-redux";
 
 import "./board.css";
 
-import { getPlayerBoard } from "./game.slice";
-import { cardPlaced } from "./game.actions";
-import { getCardToPlace, getIsMyPlace } from "./round.slice";
+// import { getPlayerBoard } from "./game.slice";
+// import { cardPlaced } from "./game.actions";
+// import { getCardToPlace, getIsMyPlace } from "./round.slice";
 
-import Tile from "./Tile";
-import BoardOverlay from "./BoardOverlay";
-import { getEligiblePositions, getValidDirections } from "./gamelogic/board";
+// import Tile from "./Tile";
+// import BoardOverlay from "./BoardOverlay";
+// import { getEligiblePositions, getValidDirections } from "./gamelogic/board";
 import { up, down, left, right } from "./gamelogic/cards";
-import useKeypress from "./useKeyPress";
-import { Direction } from "./types";
+// import useKeypress from "./useKeyPress";
+import type { Direction } from "./types";
 
 function BoardSquare(props) {
   const { handleClick, children } = props;

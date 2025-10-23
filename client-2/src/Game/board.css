@@ -1,0 +1,54 @@
+.panels {
+  margin: 10px;
+  /* border: 1px dashed grey; */
+}
+
+.panels {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+  flex: 0 1 auto;
+  float: left;
+  align-items: center;
+  width: 400px;
+  height: 400px;
+
+  justify-content: center;
+  align-content: center;
+
+  position: relative;
+}
+
+.panels :not(.boardOverlay) .tile:not(.disabled).highlight:hover {
+  box-shadow:
+    0 0 0 5px hsl(138, 51%, 65%),
+    0 0 0 10px hsl(138, 81%, 80%);
+}
+
+.panels :not(.boardOverlay) .tile:not(.disabled) {
+  background: hsl(137, 100%, 90%);
+}
+.panels .tile {
+  /* 13 tiles wide */
+  flex-basis: 7.5%;
+  float: left;
+  height: 30px;
+  width: 30px;
+
+  outline: 1px dashed rgba(0, 0, 0, 0.01);
+}
+
+.panels img {
+  width: 30px;
+  height: 30px;
+}
+
+.boardOverlay {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+
+  opacity: 80%;
+
+  pointer-events: none;
+}

@@ -2,8 +2,8 @@ import "react";
 
 import "./game.css";
 import BoardArea from "./BoardArea";
-import Card from "./Card";
-import { getDeal } from "./round.slice";
+// import Card from "./Card";
+// import { getDeal } from "./round.slice";
 
 type Player = { playerId: string; isMe: boolean };
 type GameProps = {
@@ -11,12 +11,12 @@ type GameProps = {
 };
 
 export function Game({ players }: GameProps) {
-  const deal = useSelector(getDeal);
+  // const deal = useSelector(getDeal);
 
   return (
     <>
       <div className="deal">
-        {deal?.map((card) => <Card key={card.id} card={card} />)}
+        {/* {deal?.map((card) => <Card key={card.id} card={card} />)} */}
       </div>
       <div className="boards">
         {players.map(({ playerId, isMe }) => (
