@@ -3,7 +3,6 @@ import logger from "redux-logger";
 import createSagaMiddleware from "redux-saga";
 
 import reducer, { RootState } from "./reducer";
-import saga from "./saga";
 
 const devTools = process.env.NODE_ENV !== "production";
 const sagaMiddleware = createSagaMiddleware();
@@ -22,8 +21,6 @@ const configureAppStore = (preloadedState?: RootState) => {
     // @ts-expect-error hot is injected
     module.hot.accept("./reducer", () => store.replaceReducer(reducer));
   }
-
-  sagaMiddleware.run(saga);
 
   return store;
 };

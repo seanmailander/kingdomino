@@ -1,0 +1,22 @@
+.deal {
+  position: absolute;
+  left: 50%;
+  -webkit-transform: translateX(-50%);
+  transform: translateX(-50%);
+  display: flex;
+  width: 170px;
+  flex-direction: column;
+  border: 1px dashed grey;
+  align-content: center;
+  padding: 10px;
+}
+
+.deal .card {
+  margin: 10px 0;
+}
+
+.boards {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+}

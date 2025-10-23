@@ -1,0 +1,21 @@
+.card {
+  flex: 0 1 auto;
+  float: left;
+  align-items: center;
+}
+
+.card:not(.disabled):hover {
+  box-shadow:
+    0 0 0 5px hsl(138, 51%, 65%),
+    0 0 0 10px hsl(138, 81%, 80%);
+}
+
+.card .tile {
+  float: left;
+  height: 80px;
+  width: 80px;
+}
+
+.card img {
+  width: 100%;
+}
