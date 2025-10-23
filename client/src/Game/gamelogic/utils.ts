@@ -1,13 +1,14 @@
 import seedrandom from "seedrandom";
 
 import { generateDeck } from "./cards";
+import { PeerIdentifiers } from "../types";
 
 // Make a predictable pseudorandom number generator.
 // https://stackoverflow.com/a/12646864
 const seededShuffle = (seed) => {
   const seededRandom = seedrandom(seed);
 
-  return (array) => {
+  return (array: number[]) => {
     for (let i = array.length - 1; i > 0; i--) {
       const j = Math.floor(seededRandom() * (i + 1));
       [array[i], array[j]] = [array[j], array[i]];
@@ -54,7 +55,7 @@ export const getNextFourCards = (seed, remainingDeck = generateDeck()) => {
   };
 };
 
-export const chooseOrderFromSeed = (seed, peerIdentifiers) => {
+export const chooseOrderFromSeed = (seed, peerIdentifiers: PeerIdentifiers) => {
   const { me, them } = peerIdentifiers;
 
   const seededRandom = seedrandom(seed);

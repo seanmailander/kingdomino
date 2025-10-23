@@ -1,6 +1,6 @@
 import gameReducer from "./game.slice";
 import roundReducer, { getIsMyTurn } from "./round.slice";
-
+// @ts-expect-error as-is
 import { payload as actionsToFirstShuffle } from "./state.after-shuffle.json";
 
 const actions = JSON.parse(actionsToFirstShuffle);
@@ -17,6 +17,7 @@ describe("Round selectors", () => {
     };
 
     // Act
+    // @ts-expect-error as-is
     const isMyTurn = getIsMyTurn(state);
 
     // Assert

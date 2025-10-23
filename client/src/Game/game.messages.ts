@@ -1,6 +1,5 @@
-import { call, take } from "redux-saga/effects";
-
 import { commit, verify, combine } from "./gamelogic/utils";
+import { MovePayload } from "./types";
 
 export const START = "START";
 export const COMMITTMENT = "COMMITTMENT";
@@ -16,7 +15,7 @@ export const revealMessage = (secret) => ({
   type: REVEAL,
   content: { secret },
 });
-export const moveMessage = (move) => ({ type: MOVE, content: { move } });
+export const moveMessage = (move: MovePayload) => ({ type: MOVE, content: { move } });
 
 // - A chooses a random number Ra
 // - A calculates hash Ha = H(Ra)
@@ -28,18 +27,21 @@ export const moveMessage = (move) => ({ type: MOVE, content: { move } });
 // - Both A and B verify committments
 // - Both A and B calculate shared random as G = H (Ra || Rb)
 
-export function* buildTrustedSeed(sendGameMessage, onCommit, onReveal) {
+export const buildTrustedSeed = async (sendGameMessage, waitForGameMessage) => {
+  const onCommit = waitForGameMessage(COMMITTMENT);
+  const onReveal = waitForGameMessage(REVEAL);
+
   console.debug("building trusted seed");
-  const { secret: mySecret, committment: myCommittment } = yield call(commit);
-  yield call(sendGameMessage, committmentMessage(myCommittment));
+  const { secret: mySecret, committment: myCommittment } = await commit();
+  sendGameMessage(committmentMessage(myCommittment));
 
-  const { committment: theirCommittment } = yield take(onCommit);
+  const { committment: theirCommittment } = await onCommit();
 
-  yield call(sendGameMessage, revealMessage(mySecret));
+  sendGameMessage(revealMessage(mySecret));
 
-  const { secret: theirSecret } = yield take(onReveal);
+  const { secret: theirSecret } = await onReveal();
 
-  yield call(verify, theirSecret, theirCommittment);
+  await verify(theirSecret, theirCommittment);
   console.debug("done building trusted seed");
-  return yield call(combine, mySecret, theirSecret);
-}
+  return combine(mySecret, theirSecret);
+};

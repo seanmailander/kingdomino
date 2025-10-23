@@ -12,13 +12,14 @@ import BoardOverlay from "./BoardOverlay";
 import { getEligiblePositions, getValidDirections } from "./gamelogic/board";
 import { up, down, left, right } from "./gamelogic/cards";
 import useKeypress from "./useKeyPress";
+import { Direction } from "./types";
 
 function BoardSquare(props) {
   const { handleClick, children } = props;
   return <div onClick={handleClick}>{children}</div>;
 }
 
-const rotateLookup = {
+const rotateLookup: { [key: number]: Direction } = {
   [up]: right,
   [right]: down,
   [down]: left,
@@ -32,14 +33,20 @@ function BoardArea(props) {
   const isMyPlace = useSelector(getIsMyPlace);
   const dispatch = useDispatch();
 
-  const [direction, setDirection] = useState(right);
+  const [direction, setDirection] = useState<Direction>(right);
   const [flipped, setFlipped] = useState(false);
 
   const boardNode = useRef(null);
+  // @ts-expect-error need to type the ref
   const getBoardPosition = () => boardNode.current?.getBoundingClientRect();
 
   const handleClick = (x, y) => () => {
-    if (isMyPlace && isValidTile(x, y) && isValidDirection(x, y, direction)) {
+    if (
+      isMyPlace &&
+      cardId &&
+      isValidTile(x, y) &&
+      isValidDirection(x, y, direction)
+    ) {
       dispatch(cardPlaced({ playerId, card: cardId, x, y, direction }));
     }
   };
