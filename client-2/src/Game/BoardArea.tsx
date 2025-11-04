@@ -7,7 +7,7 @@ import "./board.css";
 // import { cardPlaced } from "./game.actions";
 // import { getCardToPlace, getIsMyPlace } from "./round.slice";
 
-// import Tile from "./Tile";
+import Tile from "./Tile";
 // import BoardOverlay from "./BoardOverlay";
 // import { getEligiblePositions, getValidDirections } from "./gamelogic/board";
 import { up, down, left, right } from "./gamelogic/cards";
@@ -31,7 +31,6 @@ function BoardArea(props) {
   const myBoard = useSelector(getPlayerBoard(playerId));
   const cardId = useSelector(getCardToPlace);
   const isMyPlace = useSelector(getIsMyPlace);
-  const dispatch = useDispatch();
 
   const [direction, setDirection] = useState<Direction>(right);
   const [flipped, setFlipped] = useState(false);

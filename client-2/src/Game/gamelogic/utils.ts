@@ -45,7 +45,7 @@ export const combine = async (a, b) => {
   return hashIt(combinedRandom);
 };
 
-export const getNextFourCards = (seed, remainingDeck = generateDeck()) => {
+export const getNextFourCards = (seed, remainingDeck) => {
   const shuffledDeck = seededShuffle(seed)(remainingDeck.slice(0));
   const nextFour = shuffledDeck.slice(0, 4);
   const nextRemaining = shuffledDeck.slice(4);

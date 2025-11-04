@@ -27,7 +27,7 @@ const useNewSoloConnection = () => {
   return soloConnection;
 }
 
-export function LobbyScene({ onPlayersFound }) {
+export function LobbyScene({ onGameStarted }) {
 
   const soloConnection = useNewSoloConnection();
   const { players } = soloConnection;
@@ -35,7 +35,7 @@ export function LobbyScene({ onPlayersFound }) {
   const hasEnoughPlayers = players.length >= 2;
 
   const handleGameStarted = () => {
-    onPlayersFound(players);
+    onGameStarted(soloConnection);
   }
   const handleGameDeparture = () => {
     soloConnection.destroy();

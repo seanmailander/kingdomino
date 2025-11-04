@@ -2,16 +2,17 @@ import "react";
 
 import "./game.css";
 import BoardArea from "./BoardArea";
+import type { GameConnection } from "./types";
+import { useChooseOrder } from "./game.effects";
 // import Card from "./Card";
 // import { getDeal } from "./round.slice";
 
-type Player = { playerId: string; isMe: boolean };
 type GameProps = {
-  players: Array<Player>;
+  gameConnection: GameConnection;
 };
 
-export function GameScene({ players }: GameProps) {
-  // const deal = useSelector(getDeal);
+export function GameScene({ gameConnection }: GameProps) {
+  const chosenOrder = useChooseOrder(gameConnection);
 
   return (
     <>

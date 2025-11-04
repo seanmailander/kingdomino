@@ -9,10 +9,10 @@ import type { GameConnection } from "../Game/types";
 
 export function App() {
   const [scene, setScene] = useState<ValidScenes>(Splash);
-  const [players, setPlayers] = useState<GameConnection['players']>([]);
+  const [gameConnection, setGameConnection] = useState<GameConnection | undefined>(undefined);
 
-  const handlePlayersFound = (newPlayers: GameConnection['players']) => {
-    setPlayers(newPlayers);
+  const handleGameStarted = (newGameConnection: GameConnection) => {
+    setGameConnection(newGameConnection);
     setScene(Scenes.Game);
   }
 
@@ -21,8 +21,8 @@ export function App() {
       {scene === Scenes.Splash ? (
         <SplashScene onGameStart={() => setScene(Scenes[Lobby])} />
       ) : null}
-      {scene === Scenes.Lobby ? <LobbyScene onPlayersFound={handlePlayersFound} /> : null}
-      {scene === Scenes.Game ? <GameScene players={players} /> : null}
+      {scene === Scenes.Lobby ? <LobbyScene onGameStarted={handleGameStarted} /> : null}
+      {scene === Scenes.Game ? <GameScene gameConnection={gameConnection} /> : null}
     </div>
   );
 }
