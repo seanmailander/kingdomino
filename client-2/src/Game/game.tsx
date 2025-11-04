@@ -3,7 +3,7 @@ import "react";
 import "./game.css";
 import BoardArea from "./BoardArea";
 import type { GameConnection } from "./types";
-import { useChooseOrder } from "./game.effects";
+import { useChooseOrder, useWhoseTurn } from "./game.effects";
 // import Card from "./Card";
 // import { getDeal } from "./round.slice";
 
@@ -13,6 +13,8 @@ type GameProps = {
 
 export function GameScene({ gameConnection }: GameProps) {
   const chosenOrder = useChooseOrder(gameConnection);
+  const { isMyTurn, pickOrder, handleCardPlayed, handleRoundEnded } =
+    useWhoseTurn({ myPlayerId: "" });
 
   return (
     <>
