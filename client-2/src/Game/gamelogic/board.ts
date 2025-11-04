@@ -1,4 +1,4 @@
-import { Board } from "../types";
+import type { Board } from "../types";
 import { castle, validTiles, getCard, up, down, left, right } from "./cards";
 
 const range = (len) => [...Array(len).keys()];

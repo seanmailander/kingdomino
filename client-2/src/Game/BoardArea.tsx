@@ -13,6 +13,7 @@ import Tile from "./Tile";
 import { up, down, left, right } from "./gamelogic/cards";
 // import useKeypress from "./useKeyPress";
 import type { Direction } from "./types";
+import { getEligiblePositions, getValidDirections } from "./gamelogic/board";
 
 function BoardSquare(props) {
   const { handleClick, children } = props;
@@ -26,18 +27,17 @@ const rotateLookup: { [key: number]: Direction } = {
   [left]: up,
 };
 
-function BoardArea(props) {
-  const { playerId, isMe } = props;
-  const myBoard = useSelector(getPlayerBoard(playerId));
-  const cardId = useSelector(getCardToPlace);
-  const isMyPlace = useSelector(getIsMyPlace);
+function BoardArea({ myBoard, playerId, isMe, cardId, isMyPlace }) {
+  // const myBoard = useSelector(getPlayerBoard(playerId));
+  // const cardId = useSelector(getCardToPlace);
+  // const isMyPlace = true; //useSelector(getIsMyPlace);
 
   const [direction, setDirection] = useState<Direction>(right);
   const [flipped, setFlipped] = useState(false);
 
   const boardNode = useRef(null);
   // @ts-expect-error need to type the ref
-  const getBoardPosition = () => boardNode.current?.getBoundingClientRect();
+  // const getBoardPosition = () => boardNode.current?.getBoundingClientRect();
 
   const handleClick = (x, y) => () => {
     if (
@@ -46,7 +46,7 @@ function BoardArea(props) {
       isValidTile(x, y) &&
       isValidDirection(x, y, direction)
     ) {
-      dispatch(cardPlaced({ playerId, card: cardId, x, y, direction }));
+      cardPlaced({ playerId, card: cardId, x, y, direction });
     }
   };
 
@@ -62,21 +62,21 @@ function BoardArea(props) {
   const handleRotate = () => setDirection(rotateLookup[direction]);
   const handleFlip = () => setFlipped(!flipped);
 
-  useKeypress("KeyR", () => handleRotate(), [direction]);
-  useKeypress("KeyF", () => handleFlip(), [flipped]);
+  // useKeypress("KeyR", () => handleRotate(), [direction]);
+  // useKeypress("KeyF", () => handleFlip(), [flipped]);
 
   return (
     <>
       <div className="board" key={playerId}>
         <div className="panels" ref={boardNode}>
-          {isMe && (
+          {/* {isMe && (
             <BoardOverlay
               playerId={playerId}
               getBoardPosition={getBoardPosition}
               direction={direction}
               flipped={flipped}
             />
-          )}
+          )} */}
           {myBoard.map((row, y) =>
             row.map(({ tile, value }, x) => (
               <BoardSquare handleClick={handleClick(x, y)}>

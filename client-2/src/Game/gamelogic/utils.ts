@@ -1,7 +1,6 @@
 import seedrandom from "seedrandom";
 
-import { generateDeck } from "./cards";
-import { PeerIdentifiers } from "../types";
+import type { PeerIdentifiers } from "../types";
 
 // Make a predictable pseudorandom number generator.
 // https://stackoverflow.com/a/12646864

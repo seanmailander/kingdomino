@@ -12,7 +12,7 @@ import {
   REVEAL,
   revealMessage,
 } from "./game.messages";
-import { eachRound, prepForNextRound } from "./round.flow";
+import { prepForNextRound } from "./round.flow";
 
 // - A chooses a random number Ra
 // - A calculates hash Ha = H(Ra)
@@ -80,11 +80,14 @@ export const wholeGame = async ({
     currentDeck: wholeDeck,
   });
   onNextRound(nextRound);
+  // TODO: await player turns
+  // assume 4
+
   // Subsequent rounds
   while (nextRound.remainingDeck.length > 0) {
     // TODO: handle cancellation mid-game
     // We dont want this function hanging around forever
-    
+
     nextRound = await prepForNextRound({
       gameConnection,
       currentDeck: nextRound.remainingDeck,

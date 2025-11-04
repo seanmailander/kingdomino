@@ -1,26 +1,17 @@
 import React from "react";
-// import { useSelector, useDispatch } from "react-redux";
 
 import "./Card.css";
+import Tile from "./Tile";
 
-// import { cardPicked } from "./game.actions";
-// import { getIsMyTurn } from "./round.slice";
-
-// import Tile from "./Tile";
-
-function Card(props) {
-  const { card } = props;
-  // const { id, type, tiles } = card;
-  // const isMyTurn = useSelector(getIsMyTurn);
-  // const dispatch = useDispatch();
-
-  // const className = `card${isMyTurn ? "" : " disabled"}`;
+function Card({ card, isMyTurn, onCardPicked }) {
+  const { id, tiles } = card;
+  const className = `card${isMyTurn ? "" : " disabled"}`;
 
   return (
     <div
       className={className}
       key={id}
-      onClick={() => isMyTurn && dispatch(cardPicked(id))}
+      onClick={() => isMyTurn && onCardPicked(id)}
     >
       {tiles.map(({ tile, value }, index) => (
         <Tile key={index} tile={tile} value={value} />

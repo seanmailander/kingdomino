@@ -24,24 +24,21 @@ export const useNextRound = (gameConnection: GameConnection) => {
   // Inputs:
   //  - remainding deck from prior rounds
   //  - pick order from prior rounds
-
   // Whose turn?
-  const pickOrder = getPickOrder();
-  if (pickOrder.length === 0) {
-    // No turns left
-    onRoundEnd();
-    return;
-  }
-
-  const playerId = yield select(getMyPlayerId);
-  const isMyTurn = pickOrder[0] === playerId;
-
-  wholeGame({
-    gameConnection,
-    onGameStarted,
-    onNextRound,
-    onGameEnded,
-  });
+  // const pickOrder = getPickOrder();
+  // if (pickOrder.length === 0) {
+  //   // No turns left
+  //   onRoundEnd();
+  //   return;
+  // }
+  // const playerId = yield select(getMyPlayerId);
+  // const isMyTurn = pickOrder[0] === playerId;
+  // wholeGame({
+  //   gameConnection,
+  //   onGameStarted,
+  //   onNextRound,
+  //   onGameEnded,
+  // });
 };
 
 export const usePlayedCards = () => {
@@ -68,18 +65,6 @@ export const usePlayedCards = () => {
 
 export const useWhoseTurn = ({ myPlayerId }) => {
   // Track whose turn, built upon choices prior turn
-
-  // // Whose turn?
-  // const pickOrder = yield select(getPickOrder);
-  // if (pickOrder.length === 0) {
-  //   // No turns left
-  //   yield put(roundEnd());
-  //   break;
-  // }
-
-  // const playerId = yield select(getMyPlayerId);
-  // const isMyTurn = pickOrder[0] === playerId;
-
   const [pickOrderThisRound, setPickOrderThisRound] = useState(new Array(4));
   const [pickOrderNextRound, setPickOrderNextRound] = useState(new Array(4));
   const handleCardPlayed = ({ playerId, card, deal }) => {
