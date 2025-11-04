@@ -2,30 +2,27 @@ import "react";
 import "./App.css";
 import { useState } from "react";
 import { Lobby, Scenes, Splash, type ValidScenes } from "../scenes";
-import { SplashComponent } from "../Splash/splash";
-import { Game } from "../Game/game";
-import { LobbyComponent } from "../Lobby/lobby";
-
-const peerIdentifiers = {
-  me: "me",
-  them: "them",
-};
+import { SplashScene } from "../Splash/splash";
+import { GameScene } from "../Game/game";
+import { LobbyScene } from "../Lobby/lobby";
+import type { GameConnection } from "../Game/types";
 
 export function App() {
   const [scene, setScene] = useState<ValidScenes>(Splash);
+  const [players, setPlayers] = useState<GameConnection['players']>([]);
 
-  const players = [
-    { playerId: peerIdentifiers.me, isMe: true },
-    { playerId: peerIdentifiers.them, isMe: false },
-  ];
+  const handlePlayersFound = (newPlayers: GameConnection['players']) => {
+    setPlayers(newPlayers);
+    setScene(Scenes.Game);
+  }
 
   return (
     <div className="App">
-      {scene === Scenes.Splash && (
-        <SplashComponent onGameStart={() => setScene(Scenes[Lobby])} />
-      )}
-      {scene === Scenes.Lobby && <LobbyComponent />}
-      {scene === Scenes.Game && <Game players={players} />}
+      {scene === Scenes.Splash ? (
+        <SplashScene onGameStart={() => setScene(Scenes[Lobby])} />
+      ) : null}
+      {scene === Scenes.Lobby ? <LobbyScene onPlayersFound={handlePlayersFound} /> : null}
+      {scene === Scenes.Game ? <GameScene players={players} /> : null}
     </div>
   );
 }

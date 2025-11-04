@@ -27,21 +27,28 @@ const useNewSoloConnection = () => {
   return soloConnection;
 }
 
-export function LobbyComponent() {
+export function LobbyScene({ onPlayersFound }) {
 
   const soloConnection = useNewSoloConnection();
   const { players } = soloConnection;
   
   const hasEnoughPlayers = players.length >= 2;
 
+  const handleGameStarted = () => {
+    onPlayersFound(players);
+  }
+  const handleGameDeparture = () => {
+    soloConnection.destroy();
+  }
+
   const startGame = hasEnoughPlayers ? (
     <>
       Ready!
-      <button aria-label="Start game" onClick={() => gameStarted()}>
+      <button aria-label="Start game" onClick={handleGameStarted}>
         Start game
       </button>
       <br />
-      <button aria-label="Leave game" onClick={() => connectionReset()}>
+      <button aria-label="Leave game" onClick={handleGameDeparture}>
         Leave game
       </button>
     </>

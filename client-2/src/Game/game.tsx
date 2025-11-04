@@ -10,7 +10,7 @@ type GameProps = {
   players: Array<Player>;
 };
 
-export function Game({ players }: GameProps) {
+export function GameScene({ players }: GameProps) {
   // const deal = useSelector(getDeal);
 
   return (

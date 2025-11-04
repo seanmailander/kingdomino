@@ -4,7 +4,7 @@ type Props = {
   onGameStart: () => void;
 };
 
-export function SplashComponent({ onGameStart }: Props) {
+export function SplashScene({ onGameStart }: Props) {
   return (
     <>
       <h1>Kingdomino</h1>
