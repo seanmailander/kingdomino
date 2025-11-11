@@ -7,22 +7,18 @@ import {
   moveMessage,
   REVEAL,
   revealMessage,
+  type ValidMessages,
 } from "./game.messages";
 import type { GameConnection, MovePayload } from "../types";
-
-const unwrapReturnMessage = ({ type, content }) => ({
-  type,
-  ...content,
-});
 
 function responseToPlayerMove(gameMessage, emit) {
   switch (gameMessage.type) {
     case COMMITTMENT: {
-      emit(unwrapReturnMessage(committmentMessage("their-committment")));
+      emit(committmentMessage("their-committment"));
       break;
     }
     case REVEAL: {
-      emit(unwrapReturnMessage(revealMessage("their-secret")));
+      emit(revealMessage("their-secret"));
       const move: MovePayload = {
         playerId: "them",
         card: 0,
@@ -31,7 +27,7 @@ function responseToPlayerMove(gameMessage, emit) {
         direction: 0,
       };
       // emit a first move, just in case its my turn
-      emit(unwrapReturnMessage(moveMessage(move)));
+      emit(moveMessage(move));
       break;
     }
     case MOVE: {
@@ -42,7 +38,7 @@ function responseToPlayerMove(gameMessage, emit) {
         y: 0,
         direction: 0,
       };
-      emit(unwrapReturnMessage(moveMessage(move)));
+      emit(moveMessage(move));
       break;
     }
     default: {
@@ -51,49 +47,31 @@ function responseToPlayerMove(gameMessage, emit) {
   }
 }
 
-function makeGameMessageChannel(dataConnection) {
-  return eventChannel((emit) => {
-    const dataHandler = (gameMessage) =>
-      responseToPlayerMove(gameMessage, emit);
-    dataConnection.on("player1", dataHandler);
-
-    // the subscriber must return an unsubscribe function
-    // this will be invoked when the saga calls `channel.close` method
-    const unsubscribe = () => {
-      dataConnection.off("player1", dataHandler);
-    };
-
-    return unsubscribe;
-    //@ts-expect-error as-is
-  }, buffers.expanding(10));
-}
-
-function* filterMessages(messageChannel: EventEmitter, messageType) {
-  return new Promise((resolve, reject) => {
-    messageChannel;
-    const message = take(messageChannel);
-    if (message.type === messageType) {
-      console.log("bubbling", messageType, message);
-      put(bubbler, message);
-    }
-  });
-}
+type ValidGameEvents = {
+  [messageType in ValidMessages["type"]]: ValidMessages;
+};
 
 export const newSoloConnection: () => GameConnection = () => {
-  const inprocEmitter = new EventEmitter(); // Build the interface for this game
+  const inprocEmitter = new EventEmitter<ValidGameEvents>(); // Build the interface for this game
 
-  inprocEmitter.on("*", () => {});
+  const waitForGameMessage: GameConnection["waitForGameMessage"] = async (
+    messageType,
+  ) => {
+    return new Promise((resolve, reject) => {
+      const handleMatchingMessage = (message: ValidMessages) => {
+        if (message.type === messageType) {
+          console.log("bubbling", messageType, message);
+          resolve(message);
+          inprocEmitter.off(messageType, handleMatchingMessage);
+        }
+      };
+      inprocEmitter.on(messageType, handleMatchingMessage);
+    });
+  };
 
-  function waitForGameMessage(messageType) {
-    return filterMessages(inprocEmitter, messageType);
-  }
-
-  const sendGameMessage = ({ type, content }) => {
-    const message = {
-      type,
-      ...content,
-    };
-    inprocEmitter.emit("player1", message);
+  const sendGameMessage: GameConnection["sendGameMessage"] = (message) => {
+    console.log("emitting", message.type, message);
+    inprocEmitter.emit(message.type, message);
   };
 
   const peerIdentifiers = {

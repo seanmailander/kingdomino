@@ -1,3 +1,7 @@
+import type {
+  ValidMessages,
+  ValidMessageTypes,
+} from "./connection/game.messages";
 import {
   down,
   left,
@@ -49,12 +53,13 @@ export type Board = { tile?: CardType; value?: CardValue }[][];
 
 export type Players = Array<{ playerId: PlayerId; isMe: boolean }>;
 
-type GameMessageType<T> = { type: string; content: T };
-type SendGameMessageType<T> = (message: GameMessageType<T>) => void;
-type WaitForGameMessageType<T> = (type: string) => Promise<T>;
+type SendGameMessageType<T extends ValidMessages> = (message: T) => void;
+type WaitForGameMessage<T extends ValidMessages> = (
+  type: T["type"],
+) => Promise<T>;
 export type GameConnection = {
   destroy: () => void;
   players: Players;
-  sendGameMessage: SendGameMessageType<any>;
-  waitForGameMessage: WaitForGameMessageType<any>;
+  sendGameMessage: SendGameMessageType<ValidMessages>;
+  waitForGameMessage: WaitForGameMessage<ValidMessages>;
 };

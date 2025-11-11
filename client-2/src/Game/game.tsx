@@ -15,7 +15,7 @@ export function GameScene({ gameConnection }: GameProps) {
   const chosenOrder = useChooseOrder(gameConnection);
   const { playedCards, ...playedCardsHandlers } = usePlayedCards();
   const { isMyTurn, ...whoseTurnHandlers } = useWhoseTurn({
-    myPlayerId: "",
+    myPlayerId: gameConnection.players[0].playerId,
   });
 
   const deal = [];
@@ -23,7 +23,37 @@ export function GameScene({ gameConnection }: GameProps) {
   // const { triggerCardPlaced } = useGame(gameConnection);
 
   const handleCardPicked = () => {
+    const { playerId, card, x, y, direction } = undefined;
     // Picked but not placed
+
+    playedCardsHandlers.handleCardPlayed({
+      playerId,
+      card,
+      x,
+      y,
+      direction,
+    });
+    whoseTurnHandlers.handleCardPlayed({
+      playerId,
+      card,
+      deal,
+    });
+  };
+
+  const handleCardPlaced = () => {
+    const { playerId, card, x, y, direction } = undefined;
+    playedCardsHandlers.handleCardPlayed({
+      playerId,
+      card,
+      x,
+      y,
+      direction,
+    });
+    whoseTurnHandlers.handleCardPlayed({
+      playerId,
+      card,
+      deal,
+    });
   };
 
   return (

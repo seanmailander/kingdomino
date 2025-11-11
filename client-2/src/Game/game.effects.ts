@@ -7,6 +7,9 @@ export const useChooseOrder = (gameConnection: GameConnection) => {
   const [chosenOrder, setChosenOrder] = useState<string[] | undefined>(
     undefined,
   );
+  // TODO: bail out of effects
+  // Better to just make a state machine for the game
+  // Create it once, let it run, emit events and handle triggers
   useEffect(() => {
     async function waitForPlayersToAgreeOnOrder() {
       const newChosenOrder = await chooseOrder({ gameConnection });
@@ -24,21 +27,12 @@ export const useNextRound = (gameConnection: GameConnection) => {
   // Inputs:
   //  - remainding deck from prior rounds
   //  - pick order from prior rounds
-  // Whose turn?
-  // const pickOrder = getPickOrder();
-  // if (pickOrder.length === 0) {
-  //   // No turns left
-  //   onRoundEnd();
-  //   return;
-  // }
-  // const playerId = yield select(getMyPlayerId);
-  // const isMyTurn = pickOrder[0] === playerId;
-  // wholeGame({
-  //   gameConnection,
-  //   onGameStarted,
-  //   onNextRound,
-  //   onGameEnded,
-  // });
+  wholeGame({
+    gameConnection,
+    onGameStarted,
+    onNextRound,
+    onGameEnded,
+  });
 };
 
 export const usePlayedCards = () => {
