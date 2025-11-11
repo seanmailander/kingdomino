@@ -4,7 +4,7 @@ import type { PeerIdentifiers } from "../types";
 
 // Make a predictable pseudorandom number generator.
 // https://stackoverflow.com/a/12646864
-const seededShuffle = (seed) => {
+const seededShuffle = (seed: string) => {
   const seededRandom = seedrandom(seed);
 
   return (array: number[]) => {
@@ -16,9 +16,9 @@ const seededShuffle = (seed) => {
   };
 };
 
-export const hashIt = async (input) => {
+export const hashIt = async (input: string | number) => {
   const encoder = new TextEncoder();
-  const data = encoder.encode(input);
+  const data = encoder.encode(input.toString());
   const hash = await crypto.subtle.digest("SHA-1", data);
   const hashString = btoa(String.fromCharCode(...new Uint8Array(hash)));
   return hashString;
@@ -34,17 +34,17 @@ export const commit = async () => {
   };
 };
 
-export const verify = async (secret, committment) => {
+export const verify = async (secret: string, committment: string) => {
   const hashString = await hashIt(secret);
   return committment === hashString;
 };
 
-export const combine = async (a, b) => {
+export const combine = async (a: number, b: number) => {
   const combinedRandom = a ^ b;
   return hashIt(combinedRandom);
 };
 
-export const getNextFourCards = (seed, remainingDeck) => {
+export const getNextFourCards = (seed: string, remainingDeck: number[]) => {
   const shuffledDeck = seededShuffle(seed)(remainingDeck.slice(0));
   const nextFour = shuffledDeck.slice(0, 4);
   const nextRemaining = shuffledDeck.slice(4);
@@ -54,14 +54,17 @@ export const getNextFourCards = (seed, remainingDeck) => {
   };
 };
 
-export const chooseOrderFromSeed = (seed, peerIdentifiers: PeerIdentifiers) => {
+export const chooseOrderFromSeed = (
+  seed: string,
+  peerIdentifiers: PeerIdentifiers,
+) => {
   const { me, them } = peerIdentifiers;
 
   const seededRandom = seedrandom(seed);
   const invertOrder = seededRandom() < 0.5;
 
-  const straightSort = (a, b) => (a < b ? -1 : 1);
-  const invertedSort = (a, b) => (a > b ? -1 : 1);
+  const straightSort = (a: string, b: string) => (a < b ? -1 : 1);
+  const invertedSort = (a: string, b: string) => (a > b ? -1 : 1);
 
   return [me, them].sort(invertOrder ? invertedSort : straightSort);
 };
