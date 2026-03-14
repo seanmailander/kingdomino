@@ -106,7 +106,7 @@ function newSoloConnection() {
 
   // TODO: support graceful closing from peer
   const destroy = () => {
-    inprocEmitter.close();
+    inprocEmitter.removeAllListeners();
   };
 
   return {

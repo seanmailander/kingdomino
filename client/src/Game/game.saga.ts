@@ -31,11 +31,17 @@ function* newGame(peerIdentifiers, sendGameMessage, onCommit, onReveal, onMove) 
   yield call(chooseOrder, peerIdentifiers, sendGameMessage, onCommit, onReveal);
 
   // First round!
-  let remainingDeck = yield call(roundSaga, sendGameMessage, onCommit, onReveal, onMove);
+  let remainingDeck = yield call(
+    roundSaga as (...args: unknown[]) => unknown,
+    sendGameMessage,
+    onCommit,
+    onReveal,
+    onMove,
+  );
   // Subsequent rounds
   while (remainingDeck.length > 0) {
     remainingDeck = yield call(
-      roundSaga,
+      roundSaga as (...args: unknown[]) => unknown,
       sendGameMessage,
       onCommit,
       onReveal,

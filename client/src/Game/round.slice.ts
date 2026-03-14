@@ -4,6 +4,15 @@ import { createSelector } from "reselect";
 import { getCard } from "./gamelogic/cards";
 import { cardPicked, cardPlaced, deckShuffled, orderChosen } from "./game.actions";
 import { getMyPlayerId } from "./game.slice";
+import type { Card, PlayerId } from "./types";
+
+type RoundState = {
+  phase: string;
+  deal: Array<Card | undefined>;
+  pickOrderThisRound: Array<PlayerId | undefined>;
+  pickOrderNextRound: Array<PlayerId | undefined>;
+  cardToPlace: Card | undefined;
+};
 
 // Round phases
 export const roundStart = createAction("round-phase/start");
@@ -14,15 +23,23 @@ export const theirPick = createAction("round-phase/theirPick");
 export const theirPlace = createAction("round-phase/theirPlace");
 export const roundEnd = createAction("round-phase/end");
 
+const initialState: RoundState = {
+  phase: `${roundStart}`,
+  deal: [],
+  pickOrderThisRound: [],
+  pickOrderNextRound: [],
+  cardToPlace: undefined,
+};
+
+type RoundSelectorState = {
+  game: { players: Array<{ playerId: PlayerId; isMe: boolean }> };
+  round: RoundState;
+};
+
 export const roundSlice = createSlice({
   name: "round",
-  initialState: {
-    phase: `${roundStart}`,
-    deal: [],
-    pickOrderThisRound: [],
-    pickOrderNextRound: [],
-    cardToPlace: undefined,
-  },
+  initialState,
+  reducers: {},
   extraReducers: (builder) => {
     builder.addCase(roundStart, (state) => {
       state.phase = `${roundStart}`;
@@ -81,9 +98,9 @@ export const roundSlice = createSlice({
   },
 });
 
-export const getPickOrder = (state) => state.round.pickOrderThisRound;
+export const getPickOrder = (state: RoundSelectorState) => state.round.pickOrderThisRound;
 
-const getPhase = (state) => state.round.phase;
+const getPhase = (state: RoundSelectorState) => state.round.phase;
 export const getIsMyTurn = createSelector(
   [getPickOrder, getMyPlayerId],
   (pickOrder, myPlayerId) => pickOrder[0] === myPlayerId,
@@ -94,8 +111,8 @@ export const getIsMyPlace = createSelector(
   (isMyTurn, phase) => isMyTurn && phase === `${myPlace}`,
 );
 
-export const getCardToPlace = (state) => state.round.cardToPlace;
+export const getCardToPlace = (state: RoundSelectorState) => state.round.cardToPlace;
 
-export const getDeal = (state) => state.round.deal.map(getCard);
+export const getDeal = (state: RoundSelectorState) => state.round.deal.map(getCard);
 
 export default roundSlice.reducer;

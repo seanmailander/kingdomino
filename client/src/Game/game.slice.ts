@@ -2,13 +2,27 @@ import { createSlice } from "@reduxjs/toolkit";
 import { createSelector } from "reselect";
 import { playerJoined, playerLeft, gameStarted, gameEnded, cardPlaced } from "./game.actions";
 import { placedCardsToBoard } from "./gamelogic/board";
+import type { PlayerId } from "./types";
+
+type Players = Array<{ playerId: PlayerId; isMe: boolean }>;
+type PlacedCard = ReturnType<typeof cardPlaced>["payload"];
+type CardsPlaced = {
+  [playerId: string]: Array<Omit<PlacedCard, "playerId">>;
+};
+
+const initialState = {
+  players: [] as Players,
+  cardsPlacedByPlayer: {} as CardsPlaced,
+};
+
+type GameSelectorState = {
+  game: typeof initialState;
+};
 
 export const gameSlice = createSlice({
   name: "game",
-  initialState: {
-    players: [],
-    cardsPlacedByPlayer: {},
-  },
+  initialState,
+  reducers: {},
   extraReducers: (builder) => {
     builder.addCase(playerJoined, (state, action) => {
       const { playerId, isMe } = action.payload;
@@ -40,16 +54,17 @@ export const gameSlice = createSlice({
   },
 });
 
-export const getPlayers = (state) => state.game.players;
+export const getPlayers = (state: GameSelectorState) => state.game.players;
 export const getMyPlayerId = createSelector(
   [getPlayers],
   (players) => players?.find((p) => p.isMe)?.playerId,
 );
 export const getHasEnoughPlayers = createSelector([getPlayers], (players) => players.length >= 2);
 
-export const getPlayerBoards = (state) => placedCardsToBoard(state.game.cardsPlacedByPlayer);
+export const getPlayerBoards = (state: GameSelectorState) =>
+  placedCardsToBoard(state.game.cardsPlacedByPlayer);
 
-export const getPlayerBoard = (playerId) => (state) =>
+export const getPlayerBoard = (playerId: PlayerId) => (state: GameSelectorState) =>
   placedCardsToBoard(state.game.cardsPlacedByPlayer[playerId]);
 
 export default gameSlice.reducer;

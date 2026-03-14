@@ -3,19 +3,17 @@ import logger from "redux-logger";
 import createSagaMiddleware from "redux-saga";
 
 import reducer from "./reducer";
+import type { RootState } from "./reducer";
 import saga from "./saga";
 
 const devTools = import.meta.env.DEV;
 const sagaMiddleware = createSagaMiddleware();
 
-const configureAppStore = (preloadedState) => {
+const configureAppStore = (preloadedState?: RootState) => {
   const store = configureStore({
     reducer,
-    middleware: (getDefaultMiddleware) => [
-      ...getDefaultMiddleware({ thunk: false }),
-      sagaMiddleware,
-      logger,
-    ],
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({ thunk: false }).concat([sagaMiddleware, logger]),
     preloadedState,
     devTools,
   });
