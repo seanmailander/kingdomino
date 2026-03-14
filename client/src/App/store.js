@@ -5,7 +5,7 @@ import createSagaMiddleware from "redux-saga";
 import reducer from "./reducer";
 import saga from "./saga";
 
-const devTools = process.env.NODE_ENV !== "production";
+const devTools = import.meta.env.DEV;
 const sagaMiddleware = createSagaMiddleware();
 
 const configureAppStore = (preloadedState) => {
@@ -20,8 +20,12 @@ const configureAppStore = (preloadedState) => {
     devTools,
   });
 
-  if (process.env.NODE_ENV !== "production" && module.hot) {
-    module.hot.accept("./reducer", () => store.replaceReducer(reducer));
+  if (import.meta.hot) {
+    import.meta.hot.accept("./reducer", (next) => {
+      if (next?.default) {
+        store.replaceReducer(next.default);
+      }
+    });
   }
 
   sagaMiddleware.run(saga);

@@ -2,9 +2,9 @@ import React from "react";
 import { useSelector } from "react-redux";
 
 import "./App.css";
-import SplashComponent from "../Splash/Splash.js";
-import LobbyComponent from "../Lobby/Lobby.js";
-import GameComponent from "../Game/Game.js";
+import SplashComponent from "../Splash/Splash.jsx";
+import LobbyComponent from "../Lobby/Lobby.jsx";
+import GameComponent from "../Game/Game.jsx";
 
 import { getRoom, getHint } from "./app.slice.js";
 

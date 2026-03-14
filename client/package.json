@@ -14,7 +14,6 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-redux": "^9.1.2",
-    "react-scripts": "^5.0.1",
     "redux-logger": "^3.0.6",
     "redux-saga": "^1.3.0",
     "seedrandom": "^3.0.5",
@@ -22,33 +21,17 @@
   },
   "scripts": {
     "lint": "eslint",
-    "start": "react-scripts start",
-    "start-host": "PORT=80 HOST=kingdomino.local react-scripts start",
-    "start-secure": "HTTPS=true PORT=443 HOST=:: SSL_CRT_FILE=./.cert/cert.pem SSL_KEY_FILE=./.cert/key.pem react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test --env=node",
-    "eject": "react-scripts eject"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+    "start": "vite",
+    "start-host": "vite --host kingdomino.local --port 80",
+    "start-secure": "HTTPS=true HOST=:: PORT=443 SSL_CRT_FILE=./.cert/cert.pem SSL_KEY_FILE=./.cert/key.pem vite",
+    "build": "vite build --outDir build",
+    "preview": "vite preview --host",
+    "test": "vitest run"
   },
   "devDependencies": {
-    "jest-extended": "^4.0.2"
-  },
-  "jest": {}
+    "@vitejs/plugin-react": "^5.1.0",
+    "jest-extended": "^4.0.2",
+    "vite": "^8.0.0",
+    "vitest": "^4.0.0"
+  }
 }
