@@ -10,6 +10,4 @@ const reducer = combineReducers({
   round,
 });
 
-export type RootState = ReturnType<typeof reducer>
-
 export default reducer;

@@ -7,7 +7,6 @@ function throttle(callback, wait = 50, immediate = false) {
   return function throttle() {
     const callNow = immediate && initialCall;
     const next = () => {
-      // @ts-expect-error as-is
       callback.apply(this, arguments);
       timeout = null;
     };
@@ -18,7 +17,6 @@ function throttle(callback, wait = 50, immediate = false) {
     }
 
     if (!timeout) {
-      // @ts-expect-error as-is
       timeout = setTimeout(next, wait);
     }
   };
@@ -60,7 +58,6 @@ const useBoardPosition = (boardNodePosition) => {
       right,
       bottom,
     });
-    // @ts-expect-error as-is
     setBoardPosition(converted);
   };
 
