@@ -3,8 +3,7 @@ import { castle, validTiles, getCard, up, down, left, right } from "./cards";
 const range = (len) => [...Array(len).keys()];
 
 // Max board size is 13 x 13
-export const getEmptyBoard = () =>
-  range(13).map((r) => range(13).map((x) => ({ tile: null })));
+export const getEmptyBoard = () => range(13).map((r) => range(13).map((x) => ({ tile: null })));
 
 const xDirection = {
   [up]: 0,
@@ -30,11 +29,7 @@ export const getFlippedPosition = (x, y, direction, flipped) => {
   const flippedY = y + yDirection[direction];
   const flippedDirection = (direction + 2) % 4;
 
-  console.log(
-    "flipping",
-    { x, y, direction },
-    { flippedX, flippedY, flippedDirection },
-  );
+  console.log("flipping", { x, y, direction }, { flippedX, flippedY, flippedDirection });
   return {
     flippedX,
     flippedY,
@@ -91,8 +86,7 @@ export const enrichBoardWithCard = (board, card, x, y, direction) => {
   return placeCardOnBoard(boardCopy)({ card, x, y, direction });
 };
 
-const tileIsValid = (board, x, y) =>
-  board && validTiles.some((d) => d === board[y][x]?.tile);
+const tileIsValid = (board, x, y) => board && validTiles.some((d) => d === board[y][x]?.tile);
 const isWithinBounds = ({ x, y }) => x >= 0 && x <= 12 && y >= 0 && y <= 12;
 const getNeighbors = (x, y) =>
   [
@@ -112,12 +106,9 @@ export const getEligiblePositions = (board, cardId) => {
 
   const { type } = getCard(cardId);
   const onlyPlayedSpots = ({ card }) => card?.tile !== null;
-  const onlyMatchingTiles = ({ card }) =>
-    card.tile === 0 || !!(card.tile & type);
+  const onlyMatchingTiles = ({ card }) => card.tile === 0 || !!(card.tile & type);
 
-  const playedSpots = allPositions
-    .filter(onlyPlayedSpots)
-    .filter(onlyMatchingTiles);
+  const playedSpots = allPositions.filter(onlyPlayedSpots).filter(onlyMatchingTiles);
 
   const validNeighbors = playedSpots.reduce(
     (prev, { x, y }) => [

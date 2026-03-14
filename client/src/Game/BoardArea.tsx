@@ -45,8 +45,7 @@ function BoardArea(props) {
   };
 
   const eligiblePositions = getEligiblePositions(myBoard, cardId);
-  const isValidTile = (x, y) =>
-    eligiblePositions.some((pos) => pos.x === x && pos.y === y);
+  const isValidTile = (x, y) => eligiblePositions.some((pos) => pos.x === x && pos.y === y);
 
   const isValidDirection = (x, y, direction) =>
     getValidDirections(myBoard, cardId, x, y).some((d) => d === direction);

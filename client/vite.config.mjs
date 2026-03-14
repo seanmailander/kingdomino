@@ -19,9 +19,7 @@ export default defineConfig(() => {
     plugins: [react()],
     server: {
       host: process.env.HOST,
-      port: process.env.PORT
-        ? Number.parseInt(process.env.PORT, 10)
-        : undefined,
+      port: process.env.PORT ? Number.parseInt(process.env.PORT, 10) : undefined,
       https,
       proxy: {
         "/api/peers/peerjs": {

@@ -17,10 +17,7 @@ function Lobby() {
         Start game
       </button>
       <br />
-      <button
-        aria-label="Leave game"
-        onClick={() => dispatch(connectionReset())}
-      >
+      <button aria-label="Leave game" onClick={() => dispatch(connectionReset())}>
         Leave game
       </button>
     </>

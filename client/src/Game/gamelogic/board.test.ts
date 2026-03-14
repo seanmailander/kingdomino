@@ -1,8 +1,4 @@
-import {
-  getEligiblePositions,
-  getValidDirections,
-  placedCardsToBoard,
-} from "./board";
+import { getEligiblePositions, getValidDirections, placedCardsToBoard } from "./board";
 import {
   castle,
   down,

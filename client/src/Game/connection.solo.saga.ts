@@ -55,8 +55,7 @@ function responseToPlayerMove(gameMessage, emit) {
 
 function makeGameMessageChannel(dataConnection) {
   return eventChannel((emit) => {
-    const dataHandler = (gameMessage) =>
-      responseToPlayerMove(gameMessage, emit);
+    const dataHandler = (gameMessage) => responseToPlayerMove(gameMessage, emit);
     dataConnection.on("player1", dataHandler);
 
     // the subscriber must return an unsubscribe function

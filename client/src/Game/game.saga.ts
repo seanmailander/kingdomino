@@ -15,47 +15,23 @@ import { chooseOrderFromSeed } from "./gamelogic/utils";
 import findOtherPlayers, { newConnection } from "./connection.saga";
 import newSoloConnection from "./connection.solo.saga";
 import roundSaga from "./round.saga";
-import {
-  startMessage,
-  buildTrustedSeed,
-  START,
-  COMMITTMENT,
-  REVEAL,
-  MOVE,
-} from "./game.messages";
+import { startMessage, buildTrustedSeed, START, COMMITTMENT, REVEAL, MOVE } from "./game.messages";
 
 function* chooseOrder(peerIdentifiers, sendGameMessage, onCommit, onReveal) {
   // Get a shared seed so its random who goes first
-  const firstSeed = yield call(
-    buildTrustedSeed,
-    sendGameMessage,
-    onCommit,
-    onReveal,
-  );
+  const firstSeed = yield call(buildTrustedSeed, sendGameMessage, onCommit, onReveal);
 
   // Now use that seed to sort the peer identifiers
   const choosenOrder = chooseOrderFromSeed(firstSeed, peerIdentifiers);
   yield put(orderChosen(choosenOrder));
 }
 
-function* newGame(
-  peerIdentifiers,
-  sendGameMessage,
-  onCommit,
-  onReveal,
-  onMove,
-) {
+function* newGame(peerIdentifiers, sendGameMessage, onCommit, onReveal, onMove) {
   // Work out who goes first
   yield call(chooseOrder, peerIdentifiers, sendGameMessage, onCommit, onReveal);
 
   // First round!
-  let remainingDeck = yield call(
-    roundSaga,
-    sendGameMessage,
-    onCommit,
-    onReveal,
-    onMove,
-  );
+  let remainingDeck = yield call(roundSaga, sendGameMessage, onCommit, onReveal, onMove);
   // Subsequent rounds
   while (remainingDeck.length > 0) {
     remainingDeck = yield call(
@@ -85,8 +61,7 @@ function* newMultiplayerGame() {
     const { playerId, peerConnection } = yield call(newConnection);
     yield put(playerJoined({ playerId, isMe: true }));
     const result = yield call(findOtherPlayers, peerConnection);
-    const { destroy, peerIdentifiers, sendGameMessage, waitForGameMessage } =
-      result;
+    const { destroy, peerIdentifiers, sendGameMessage, waitForGameMessage } = result;
     disposeUnderlyingConnection = destroy;
     // TODO: replace the fake "other" player with a real entity
     yield put(playerJoined({ playerId: peerIdentifiers.them, isMe: false }));
@@ -108,14 +83,7 @@ function* newMultiplayerGame() {
       }
       yield call(sendGameMessage, startMessage());
 
-      yield call(
-        newGame,
-        peerIdentifiers,
-        sendGameMessage,
-        onCommit,
-        onReveal,
-        onMove,
-      );
+      yield call(newGame, peerIdentifiers, sendGameMessage, onCommit, onReveal, onMove);
     }
   } catch (error) {
     console.error("Game error", error);
@@ -129,8 +97,7 @@ function* newMultiplayerGame() {
 
 function* newSoloGame() {
   const result = yield call(newSoloConnection);
-  const { destroy, peerIdentifiers, sendGameMessage, waitForGameMessage } =
-    result;
+  const { destroy, peerIdentifiers, sendGameMessage, waitForGameMessage } = result;
 
   yield put(playerJoined({ playerId: peerIdentifiers.me, isMe: true }));
   yield put(playerJoined({ playerId: peerIdentifiers.them, isMe: false }));
@@ -142,14 +109,7 @@ function* newSoloGame() {
   // When the first player starts the game, send it to other players
   yield take(gameStarted);
 
-  yield call(
-    newGame,
-    peerIdentifiers,
-    sendGameMessage,
-    onCommit,
-    onReveal,
-    onMove,
-  );
+  yield call(newGame, peerIdentifiers, sendGameMessage, onCommit, onReveal, onMove);
 }
 
 function* gameSaga() {

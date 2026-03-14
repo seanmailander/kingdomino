@@ -1,4 +1,3 @@
-
 import { createSelector, createSlice } from "@reduxjs/toolkit";
 import { getHasEnoughPlayers } from "../Game/game.slice";
 import { gameEnded, gameStarted, playerJoined } from "../Game/game.actions";

@@ -2,12 +2,7 @@ import { createAction, createSlice } from "@reduxjs/toolkit";
 import { createSelector } from "reselect";
 
 import { getCard } from "./gamelogic/cards";
-import {
-  cardPicked,
-  cardPlaced,
-  deckShuffled,
-  orderChosen,
-} from "./game.actions";
+import { cardPicked, cardPlaced, deckShuffled, orderChosen } from "./game.actions";
 import { getMyPlayerId } from "./game.slice";
 
 // Round phases

@@ -98,8 +98,7 @@ describe("Builds deck", () => {
 
     const countCrowns = (deck, typeToMatch) =>
       deck.reduce(
-        (prev, { tiles }) =>
-          prev + (tiles.find((t) => t.tile === typeToMatch)?.value || 0),
+        (prev, { tiles }) => prev + (tiles.find((t) => t.tile === typeToMatch)?.value || 0),
         0,
       );
 
