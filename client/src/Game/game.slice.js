@@ -15,22 +15,22 @@ export const gameSlice = createSlice({
     players: [],
     cardsPlacedByPlayer: {},
   },
-  extraReducers: {
-    [playerJoined]: (state, action) => {
+  extraReducers: (builder) => {
+    builder.addCase(playerJoined, (state, action) => {
       const { playerId, isMe } = action.payload;
       state.players.push({ playerId, isMe });
-    },
-    [playerLeft]: (state, action) => {
+    });
+    builder.addCase(playerLeft, (state, action) => {
       const { playerId } = action.payload;
       state.players = state.players.filter((p) => p.playerId !== playerId);
-    },
-    [gameStarted]: (state) => {
+    });
+    builder.addCase(gameStarted, (state) => {
       state.cardsPlacedByPlayer = {};
       state.players.forEach(
         ({ playerId }) => (state.cardsPlacedByPlayer[playerId] = []),
       );
-    },
-    [cardPlaced]: (state, action) => {
+    });
+    builder.addCase(cardPlaced, (state, action) => {
       const {
         payload: { playerId, card, x, y, direction },
       } = action;
@@ -40,11 +40,11 @@ export const gameSlice = createSlice({
         y,
         direction,
       });
-    },
-    [gameEnded]: (state, action) => {
+    });
+    builder.addCase(gameEnded, (state, action) => {
       // TODO: capture current board and score
       state.cardsPlacedByPlayer = {};
-    },
+    });
   },
 });
 

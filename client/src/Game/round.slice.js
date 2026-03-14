@@ -19,20 +19,6 @@ export const theirPick = createAction("round-phase/theirPick");
 export const theirPlace = createAction("round-phase/theirPlace");
 export const roundEnd = createAction("round-phase/end");
 
-const phaseTransitions = [
-  roundStart,
-  whoseTurn,
-  myPick,
-  myPlace,
-  theirPick,
-  theirPlace,
-  roundEnd,
-].map((event) => ({
-  [event]: (state, action) => {
-    state.phase = action.type;
-  },
-}));
-
 export const roundSlice = createSlice({
   name: "round",
   initialState: {
@@ -42,29 +28,42 @@ export const roundSlice = createSlice({
     pickOrderNextRound: [],
     cardToPlace: undefined,
   },
-  extraReducers: {
-    ...Object.assign({}, ...phaseTransitions),
-    [roundStart]: (state, action) => {
-      state = {
-        deal: [],
-        pickOrderThisRound: [undefined, undefined, undefined, undefined],
-        pickOrderNextRound: [undefined, undefined, undefined, undefined],
-        cardToPlace: undefined,
-      };
-    },
-    [orderChosen]: (state, action) => {
+  extraReducers: (builder) => {
+    builder.addCase(roundStart, (state) => {
+      state.phase = `${roundStart}`;
+      state.deal = [];
+      state.pickOrderThisRound = [undefined, undefined, undefined, undefined];
+      state.pickOrderNextRound = [undefined, undefined, undefined, undefined];
+      state.cardToPlace = undefined;
+    });
+    builder.addCase(whoseTurn, (state) => {
+      state.phase = `${whoseTurn}`;
+    });
+    builder.addCase(myPick, (state) => {
+      state.phase = `${myPick}`;
+    });
+    builder.addCase(myPlace, (state) => {
+      state.phase = `${myPlace}`;
+    });
+    builder.addCase(theirPick, (state) => {
+      state.phase = `${theirPick}`;
+    });
+    builder.addCase(theirPlace, (state) => {
+      state.phase = `${theirPlace}`;
+    });
+    builder.addCase(orderChosen, (state, action) => {
       const { payload: order } = action;
       state.pickOrderThisRound = order;
-    },
-    [deckShuffled]: (state, action) => {
+    });
+    builder.addCase(deckShuffled, (state, action) => {
       state.deal = action.payload;
       state.cardToPlace = undefined;
-    },
-    [cardPicked]: (state, action) => {
+    });
+    builder.addCase(cardPicked, (state, action) => {
       const card = action.payload;
       state.cardToPlace = card;
-    },
-    [cardPlaced]: (state, action) => {
+    });
+    builder.addCase(cardPlaced, (state, action) => {
       state.cardToPlace = undefined;
       const {
         payload: { card },
@@ -77,12 +76,13 @@ export const roundSlice = createSlice({
       const playerId = state.pickOrderThisRound.shift();
       // Mark this player in order for next round
       state.pickOrderNextRound[placeInDeal] = playerId;
-    },
-    [roundEnd]: (state, action) => {
+    });
+    builder.addCase(roundEnd, (state) => {
+      state.phase = `${roundEnd}`;
       // Strip empty slots, and set that as the order for next round
       state.pickOrderThisRound = state.pickOrderNextRound.filter((p) => !!p);
       state.pickOrderNextRound = [undefined, undefined, undefined, undefined];
-    },
+    });
   },
 });
 
