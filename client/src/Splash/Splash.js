@@ -1,7 +1,7 @@
 import React from "react";
 
 import { useDispatch } from "react-redux";
-import { startMulti, startSolo } from "../Game/game.actions";
+import { startMulti, startSolo } from "../Game/game.actions.js";
 
 function Splash() {
   const dispatch = useDispatch();

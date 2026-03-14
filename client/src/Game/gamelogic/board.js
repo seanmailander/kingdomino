@@ -1,11 +1,10 @@
-import { Board } from "../types";
 import { castle, validTiles, getCard, up, down, left, right } from "./cards";
 
 const range = (len) => [...Array(len).keys()];
 
 // Max board size is 13 x 13
-export const getEmptyBoard: () => Board = () =>
-  range(13).map((r) => range(13).map((x) => ({ tile: undefined })));
+export const getEmptyBoard = () =>
+  range(13).map((r) => range(13).map((x) => ({ tile: null })));
 
 const xDirection = {
   [up]: 0,
