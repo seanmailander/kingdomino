@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import seedrandom from "seedrandom";
 
 import { generateDeck } from "./cards";

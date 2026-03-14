@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import EventEmitter from "eventemitter3";
 
 import { call, put, take, spawn } from "redux-saga/effects";

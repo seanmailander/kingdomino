@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { useState, useEffect } from "react";
 
 function throttle(callback, wait = 50, immediate = false) {

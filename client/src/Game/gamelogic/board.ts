@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { castle, validTiles, getCard, up, down, left, right } from "./cards";
 
 const range = (len) => [...Array(len).keys()];

@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 // - 48 cards, each is unique (some repeats?)
 // - canonical identification (sort)
 // - both A and B calculate sorted deck using shared seed

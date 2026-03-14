@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 // Example POST method implementation:
 export async function getData(url = "", data = {}) {
   // Default options are marked with *

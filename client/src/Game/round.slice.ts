@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { createAction, createSlice } from "@reduxjs/toolkit";
 import { createSelector } from "reselect";
 

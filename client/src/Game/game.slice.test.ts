@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import gameReducer, { getMyPlayerId } from "./game.slice";
 
 import { payload as actionsToFirstShuffle } from "./state.after-shuffle.json";

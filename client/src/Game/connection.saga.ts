@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { call, put, take, spawn, cancel, fork, join } from "redux-saga/effects";
 import { eventChannel, channel, buffers } from "redux-saga";
 

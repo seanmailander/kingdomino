@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import gameReducer from "./game.slice";
 import roundReducer, { getIsMyTurn } from "./round.slice";
 

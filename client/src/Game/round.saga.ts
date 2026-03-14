@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { call, put, take, select } from "redux-saga/effects";
 import { getMyPlayerId } from "./game.slice";
 

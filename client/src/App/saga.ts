@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { all, call, spawn } from "redux-saga/effects";
 
 import game from "../Game/game.saga";

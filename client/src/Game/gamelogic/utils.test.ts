@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { getNextFourCards } from "./utils";
 
 import { generateDeck } from "./cards";

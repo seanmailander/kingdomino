@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { call, take } from "redux-saga/effects";
 
 import { commit, verify, combine } from "./gamelogic/utils";

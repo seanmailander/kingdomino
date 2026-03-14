@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { createAction } from "@reduxjs/toolkit";
 
 // Kickoff events
