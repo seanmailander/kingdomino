@@ -20,21 +20,24 @@
     "uuid": "^10.0.0"
   },
   "scripts": {
-    "lint": "eslint src",
+    "lint": "oxlint src",
     "start": "vite",
     "start-host": "vite --host kingdomino.local --port 80",
     "start-secure": "HTTPS=true HOST=:: PORT=443 SSL_CRT_FILE=./.cert/cert.pem SSL_KEY_FILE=./.cert/key.pem vite",
     "build": "vite build --outDir build",
     "preview": "vite preview --host",
-    "test": "vitest run"
+    "test": "vitest run",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check"
   },
   "devDependencies": {
     "@types/node": "^24.7.2",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^5.1.0",
-    "eslint": "^9.38.0",
     "jest-extended": "^4.0.2",
+    "oxfmt": "^0.40.0",
+    "oxlint": "^1.16.0",
     "typescript": "^5.9.3",
     "vite": "^8.0.0",
     "vitest": "^4.0.0"
