@@ -1,11 +1,11 @@
 import React, { useState, useRef } from "react";
 
 import "./board.css";
-import { useGameDispatch, useGameSelector } from "../App/store";
+import { useGameSelector, useGameSignal } from "../App/store";
 
-import { getPlayerBoard } from "./game.slice";
+import { Game as GameState } from "./game.slice";
 import { cardPlaced } from "./game.actions";
-import { getCardToPlace, getIsMyPlace } from "./round.slice";
+import Round from "./Round";
 
 import Tile from "./Tile";
 import BoardOverlay from "./BoardOverlay";
@@ -28,10 +28,10 @@ const rotateLookup: { [key: number]: Direction } = {
 
 function BoardArea(props) {
   const { playerId, isMe } = props;
-  const myBoard = useGameSelector(getPlayerBoard(playerId));
-  const cardId = useGameSelector(getCardToPlace);
-  const isMyPlace = useGameSelector(getIsMyPlace);
-  const dispatch = useGameDispatch();
+  const myBoard = useGameSelector((state) => GameState.fromSelectorState(state).boardFor(playerId));
+  const cardId = useGameSelector(Round.cardToPlace);
+  const isMyPlace = useGameSelector(Round.isMyPlace);
+  const signalCardPlaced = useGameSignal(cardPlaced);
 
   const [direction, setDirection] = useState<Direction>(right);
   const [flipped, setFlipped] = useState(false);
@@ -41,7 +41,7 @@ function BoardArea(props) {
 
   const handleClick = (x, y) => () => {
     if (isMyPlace && isValidTile(x, y) && isValidDirection(x, y, direction)) {
-      dispatch(cardPlaced({ playerId, card: cardId, x, y, direction }));
+      signalCardPlaced({ playerId, card: cardId, x, y, direction });
     }
   };
 

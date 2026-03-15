@@ -6,11 +6,11 @@ import LobbyComponent from "../Lobby/Lobby";
 import GameComponent from "../Game/Game";
 import { useGameSelector } from "./store";
 
-import { getRoom, getHint } from "./app.slice";
+import { App as AppState } from "./app.slice";
 
 function App() {
-  const room = useGameSelector(getRoom);
-  const hint = useGameSelector(getHint);
+  const room = useGameSelector((state) => AppState.fromSelectorState(state).room());
+  const hint = useGameSelector((state) => AppState.fromSelectorState(state).hint(state));
   return (
     <div className="App">
       <h1>Kingdomino</h1>

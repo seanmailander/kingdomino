@@ -1,23 +1,23 @@
 import React from "react";
 
 import "./Card.css";
-import { useGameDispatch, useGameSelector } from "../App/store";
+import { useGameSelector, useGameSignal } from "../App/store";
 
 import { cardPicked } from "./game.actions";
-import { getIsMyTurn } from "./round.slice";
+import Round from "./Round";
 
 import Tile from "./Tile";
 
 function Card(props) {
   const { card } = props;
   const { id, tiles } = card;
-  const isMyTurn = useGameSelector(getIsMyTurn);
-  const dispatch = useGameDispatch();
+  const isMyTurn = useGameSelector(Round.isMyTurn);
+  const signalCardPicked = useGameSignal(cardPicked);
 
   const className = `card${isMyTurn ? "" : " disabled"}`;
 
   return (
-    <div className={className} key={id} onClick={() => isMyTurn && dispatch(cardPicked(id))}>
+    <div className={className} key={id} onClick={() => isMyTurn && signalCardPicked(id)}>
       {tiles.map(({ tile, value }, index) => (
         <Tile key={index} tile={tile} value={value} />
       ))}
@@ -25,7 +25,7 @@ function Card(props) {
       <button
         aria-label="Pick card ${id}"
         disabled={!isMyTurn}
-        onClick={() => dispatch(cardPicked(id))}
+        onClick={() => signalCardPicked(id)}
       >
         Pick card {id}
       </button> */}

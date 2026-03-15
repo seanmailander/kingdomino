@@ -3,13 +3,13 @@ import React from "react";
 import "./Game.css";
 import BoardArea from "./BoardArea";
 import Card from "./Card";
-import { getPlayers } from "./game.slice";
-import { getDeal } from "./round.slice";
+import { Game as GameState } from "./game.slice";
+import Round from "./Round";
 import { useGameSelector } from "../App/store";
 
 function Game() {
-  const players = useGameSelector(getPlayers);
-  const deal = useGameSelector(getDeal);
+  const players = useGameSelector((state) => GameState.fromSelectorState(state).players());
+  const deal = useGameSelector(Round.deal);
 
   return (
     <>

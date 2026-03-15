@@ -1,6 +1,8 @@
 import { type GameAction, GAME_ENDED, GAME_STARTED, PLAYER_JOINED } from "../Game/game.actions";
-import { getHasEnoughPlayers } from "../Game/game.slice";
-import { getIsMyTurn } from "../Game/round.slice";
+import { Game as GameState } from "../Game/game.slice";
+import Round from "../Game/Round";
+import type { GameSelectorState } from "../Game/game.slice";
+import type { RoundState } from "../Game/Round";
 
 // States that may occur
 export const Splash = "Splash";
@@ -9,62 +11,116 @@ export const Game = "Game";
 export const Shuffle = "Shuffle";
 export const Scoring = "Scoring";
 
-const initialState = {
+export type AppState = {
+  room: string;
+};
+
+export type AppSelectorState = {
+  app: AppState;
+};
+
+type AppHintState = AppSelectorState & GameSelectorState & { round: RoundState };
+
+const initialState: AppState = {
   room: Splash,
 };
 
-export const appReducer = (state = initialState, action: GameAction) => {
-  switch (action.type) {
-    case PLAYER_JOINED:
-      if (state.room === Splash) {
-        return { room: Lobby };
-      }
-      return state;
-    case GAME_STARTED:
-      if (state.room === Lobby) {
-        return { room: Game };
-      }
-      return state;
-    case GAME_ENDED:
-      if (state.room === Game) {
-        return { room: Lobby };
-      }
-      return state;
-    default:
-      return state;
+export class App {
+  private state: AppState;
+
+  private static readonly hintsByRoom: Record<string, string> = {
+    [Splash]: "Press any key to start",
+    [Lobby]: "Waiting for players",
+    [Game]: "Game",
+    [Shuffle]: "Shuffling",
+  };
+
+  private constructor(state: AppState) {
+    this.state = {
+      room: state.room,
+    };
   }
-};
 
-// The function below is called a selector and allows us to select a value from
-// the state. Selectors can also be defined inline where they're used instead of
-// in the slice file. For example: `useSelector((state) => state.counter.value)`
-export const getRoom = (state) => state.app.room;
+  static initialState(): AppState {
+    return {
+      room: Splash,
+    };
+  }
 
-const hintsByRoom = {
-  [Splash]: "Press any key to start",
-  [Lobby]: "Waiting for players",
-  [Game]: "Game",
-  [Shuffle]: "Shuffling",
-};
-export const getHint = (state) => {
-  const room = getRoom(state);
-  const hasEnoughPlayers = getHasEnoughPlayers(state);
-  const isMyTurn = getIsMyTurn(state);
+  static fromState(state: AppState = App.initialState()): App {
+    return new App(state);
+  }
 
-  if (room === Lobby) {
-    // Check how many we are waiting for
-    if (hasEnoughPlayers) {
-      return "Players connected, hit 'ready' to start game";
+  static fromSelectorState(state: AppSelectorState): App {
+    return App.fromState(state.app);
+  }
+
+  static appReducer(state: AppState = initialState, action: GameAction): AppState {
+    const app = App.fromState(state);
+
+    switch (action.type) {
+      case PLAYER_JOINED:
+        return app.onPlayerJoined().stateSnapshot();
+      case GAME_STARTED:
+        return app.onGameStarted().stateSnapshot();
+      case GAME_ENDED:
+        return app.onGameEnded().stateSnapshot();
+      default:
+        return state;
     }
   }
 
-  if (room === Game) {
-    // Whose turn is it?
-    if (isMyTurn) {
-      return "Pick your card";
-    }
-    return "Waiting for Player 2 to pick their card";
+  stateSnapshot(): AppState {
+    return {
+      room: this.state.room,
+    };
   }
-  return hintsByRoom[room];
-};
-export default appReducer;
+
+  onPlayerJoined(): App {
+    if (this.state.room === Splash) {
+      this.state.room = Lobby;
+    }
+    return this;
+  }
+
+  onGameStarted(): App {
+    if (this.state.room === Lobby) {
+      this.state.room = Game;
+    }
+    return this;
+  }
+
+  onGameEnded(): App {
+    if (this.state.room === Game) {
+      this.state.room = Lobby;
+    }
+    return this;
+  }
+
+  room(): string {
+    return this.state.room;
+  }
+
+  hint(state: AppHintState): string {
+    const room = this.room();
+    const hasEnoughPlayers = GameState.fromSelectorState(state).hasEnoughPlayers();
+    const isMyTurn = Round.isMyTurn(state);
+
+    if (room === Lobby) {
+      if (hasEnoughPlayers) {
+        return "Players connected, hit 'ready' to start game";
+      }
+    }
+
+    if (room === Game) {
+      if (isMyTurn) {
+        return "Pick your card";
+      }
+      return "Waiting for Player 2 to pick their card";
+    }
+
+    return App.hintsByRoom[room];
+  }
+}
+
+export default App.appReducer;

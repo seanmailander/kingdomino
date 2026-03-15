@@ -1,4 +1,4 @@
-import gameReducer, { getMyPlayerId } from "./game.slice";
+import gameReducer, { Game } from "./game.slice";
 
 import { payload as actionsToFirstShuffle } from "./state.after-shuffle.json";
 
@@ -15,7 +15,7 @@ describe("Game selectors", () => {
     };
 
     // Act
-    const myPlayerId = getMyPlayerId(state);
+    const myPlayerId = Game.fromSelectorState(state).myPlayerId();
 
     // Assert
     expect(myPlayerId).toBe("481b059d-120b-4489-841b-d5c8e64321b3");

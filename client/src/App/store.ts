@@ -1,39 +1,83 @@
-import { useSyncExternalStore } from "react";
+import { computed, effect, signal } from "alien-signals";
+import { useEffect, useMemo, useState } from "react";
 
 import reducer from "./reducer";
 import type { RootState } from "./reducer";
 import type { GameAction } from "../Game/game.actions";
 
-type Listener = () => void;
-
 export type GameStore = {
-  getState: () => RootState;
-  dispatch: (action: GameAction) => void;
-  subscribe: (listener: Listener) => () => void;
+  state: {
+    (): RootState;
+    (value: RootState): void;
+  };
+  emit: (action: GameAction) => void;
 };
 
 const configureAppStore = (preloadedState?: RootState): GameStore => {
-  let state = reducer(preloadedState, { type: "@@init" });
-  const listeners = new Set<Listener>();
+  let currentState = reducer(preloadedState, { type: "@@init" });
+  const state = signal(currentState);
+  const action = signal<GameAction | undefined>(undefined);
+
+  effect(() => {
+    const nextAction = action();
+
+    if (!nextAction) {
+      return;
+    }
+
+    currentState = reducer(currentState, nextAction);
+    state(currentState);
+  });
 
   return {
-    getState: () => state,
-    dispatch: (action) => {
-      state = reducer(state, action);
-      listeners.forEach((listener) => listener());
-    },
-    subscribe: (listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
+    state,
+    emit: (nextAction) => {
+      action(nextAction);
     },
   };
 };
 
 export const gameStore = configureAppStore();
 
-export const useGameDispatch = () => gameStore.dispatch;
+export const emitGameAction = (action: GameAction) => gameStore.emit(action);
 
-export const useGameSelector = <TSelected>(selector: (state: RootState) => TSelected): TSelected =>
-  useSyncExternalStore(gameStore.subscribe, () => selector(gameStore.getState()));
+export const createGameSignal = <TPayload>(actionCreator: (payload: TPayload) => GameAction) => {
+  return (payload: TPayload) => {
+    emitGameAction(actionCreator(payload));
+  };
+};
+
+export const createGameSignalNoPayload = (actionCreator: () => GameAction) => {
+  return () => {
+    emitGameAction(actionCreator());
+  };
+};
+
+export function useGameSignal(actionCreator: () => GameAction): () => void;
+export function useGameSignal<TPayload>(
+  actionCreator: (payload: TPayload) => GameAction<TPayload>,
+): (payload: TPayload) => void;
+export function useGameSignal<TPayload>(actionCreator: (payload?: TPayload) => GameAction) {
+  return (payload?: TPayload) => {
+    emitGameAction(actionCreator(payload));
+  };
+}
+
+export const selectComputed = <TSelected>(selector: (state: RootState) => TSelected) =>
+  computed(() => selector(gameStore.state()));
+
+export const useGameSelector = <TSelected>(selector: (state: RootState) => TSelected): TSelected => {
+  const selectedSignal = useMemo(() => selectComputed(selector), [selector]);
+  const [selected, setSelected] = useState(() => selectedSignal());
+
+  useEffect(() => {
+    return effect(() => {
+      const next = selectedSignal();
+      setSelected((previous) => (Object.is(previous, next) ? previous : next));
+    });
+  }, [selectedSignal]);
+
+  return selected;
+};
 
 export default configureAppStore;

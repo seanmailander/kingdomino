@@ -1,5 +1,5 @@
 import gameReducer from "./game.slice";
-import roundReducer, { getIsMyTurn } from "./round.slice";
+import Round from "./Round";
 
 import { payload as actionsToFirstShuffle } from "./state.after-shuffle.json";
 
@@ -13,11 +13,11 @@ describe("Round selectors", () => {
     // Arrange
     const state = {
       game: applyAllActions(gameReducer, actions),
-      round: applyAllActions(roundReducer, actions),
+      round: applyAllActions(Round.roundReducer, actions),
     };
 
     // Act
-    const isMyTurn = getIsMyTurn(state);
+    const isMyTurn = Round.isMyTurn(state);
 
     // Assert
     expect(isMyTurn).toBe(true);
