@@ -4,12 +4,12 @@ import {
   DECK_SHUFFLED,
   ORDER_CHOSEN,
   type GameAction,
-} from "./game.actions";
+} from "../game.actions";
 import { computed, signal } from "alien-signals";
-import { getCard } from "./gamelogic/cards";
+import { getCard } from "../gamelogic/cards";
 import type { GameSelectorState } from "./game.slice";
 import { Game } from "./game.slice";
-import type { Card, PlayerId } from "./types";
+import type { Card, PlayerId } from "../types";
 
 export type RoundState = {
   phase: string;
@@ -135,30 +135,28 @@ export class Round {
     return Round.reducedRoundState() ?? state;
   }
 
-  static fromSelectorState(state: RoundSelectorState): Round {
-    return Round.fromState(state.round);
+  static fromSelectorState(state: GameSelectorState): Round | undefined {
+    return Game.fromSelectorState(state).round();
   }
 
-  static pickOrder(state: RoundSelectorState): Array<PlayerId | undefined> {
-    return Round.fromSelectorState(state).pickOrder();
+  static pickOrder(state: GameSelectorState): Array<PlayerId | undefined> {
+    return Game.fromSelectorState(state).pickOrder();
   }
 
-  static isMyTurn(state: RoundSelectorState): boolean {
-    const myPlayerId = Game.fromSelectorState(state).myPlayerId();
-    return Round.fromSelectorState(state).isMyTurn(myPlayerId);
+  static isMyTurn(state: GameSelectorState): boolean {
+    return Game.fromSelectorState(state).isMyTurn();
   }
 
-  static isMyPlace(state: RoundSelectorState): boolean {
-    const myPlayerId = Game.fromSelectorState(state).myPlayerId();
-    return Round.fromSelectorState(state).isMyPlace(myPlayerId);
+  static isMyPlace(state: GameSelectorState): boolean {
+    return Game.fromSelectorState(state).isMyPlace();
   }
 
-  static cardToPlace(state: RoundSelectorState): Card | undefined {
-    return Round.fromSelectorState(state).cardToPlace();
+  static cardToPlace(state: GameSelectorState): Card | undefined {
+    return Game.fromSelectorState(state).cardToPlace();
   }
 
-  static deal(state: RoundSelectorState) {
-    return Round.fromSelectorState(state).deal();
+  static deal(state: GameSelectorState) {
+    return Game.fromSelectorState(state).deal();
   }
 
   stateSnapshot(): RoundState {
@@ -273,10 +271,6 @@ export class Round {
     return this.isMyTurn(playerId) && this.state.phase === MY_PLACE;
   }
 }
-
-type RoundSelectorState = GameSelectorState & {
-  round: RoundState;
-};
 
 type RoundReducerSignal = (round: Round, payload: unknown) => Round;
 

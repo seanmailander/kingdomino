@@ -1,5 +1,5 @@
 import React from "react";
-import { blank, castle, grain, grass, marsh, mine, water, wood } from "./gamelogic/cards";
+import { blank, castle, grain, grass, marsh, mine, water, wood } from "../gamelogic/cards";
 
 const imageNamesByTile = {
   [blank]: "blank.png",

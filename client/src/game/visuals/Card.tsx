@@ -1,17 +1,15 @@
 import React from "react";
 
 import "./Card.css";
-import { useGameSelector, useGameSignal } from "../App/store";
+import { useGameSignal } from "../../App/store";
 
-import { cardPicked } from "./game.actions";
-import Round from "./Round";
+import { cardPicked } from "../game.actions";
 
 import Tile from "./Tile";
 
 function Card(props) {
-  const { card } = props;
+  const { card, isMyTurn } = props;
   const { id, tiles } = card;
-  const isMyTurn = useGameSelector(Round.isMyTurn);
   const signalCardPicked = useGameSignal(cardPicked);
 
   const className = `card${isMyTurn ? "" : " disabled"}`;

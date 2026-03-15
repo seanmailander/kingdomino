@@ -1,8 +1,5 @@
-import { type GameAction, GAME_ENDED, GAME_STARTED, PLAYER_JOINED } from "../Game/game.actions";
-import { Game as GameState } from "../Game/game.slice";
-import Round from "../Game/Round";
-import type { GameSelectorState } from "../Game/game.slice";
-import type { RoundState } from "../Game/Round";
+import { type GameAction, GAME_ENDED, GAME_STARTED, PLAYER_JOINED } from "../game/game.actions";
+import gameReducer, { Game as GameModel, type GameState } from "../game/state/game.slice";
 
 // States that may occur
 export const Splash = "Splash";
@@ -13,16 +10,16 @@ export const Scoring = "Scoring";
 
 export type AppState = {
   room: string;
+  game: GameState;
 };
 
 export type AppSelectorState = {
   app: AppState;
 };
 
-type AppHintState = AppSelectorState & GameSelectorState & { round: RoundState };
-
 const initialState: AppState = {
   room: Splash,
+  game: GameModel.initialState(),
 };
 
 export class App {
@@ -38,12 +35,14 @@ export class App {
   private constructor(state: AppState) {
     this.state = {
       room: state.room,
+      game: GameModel.fromState(state.game).getState(),
     };
   }
 
   static initialState(): AppState {
     return {
       room: Splash,
+      game: GameModel.initialState(),
     };
   }
 
@@ -57,6 +56,7 @@ export class App {
 
   static appReducer(state: AppState = initialState, action: GameAction): AppState {
     const app = App.fromState(state);
+    app.state.game = gameReducer(app.state.game, action);
 
     switch (action.type) {
       case PLAYER_JOINED:
@@ -73,6 +73,7 @@ export class App {
   stateSnapshot(): AppState {
     return {
       room: this.state.room,
+      game: GameModel.fromState(this.state.game).getState(),
     };
   }
 
@@ -97,14 +98,19 @@ export class App {
     return this;
   }
 
+  game(): GameModel {
+    return GameModel.fromState(this.state.game);
+  }
+
   room(): string {
     return this.state.room;
   }
 
-  hint(state: AppHintState): string {
+  hint(): string {
+    const game = this.game();
     const room = this.room();
-    const hasEnoughPlayers = GameState.fromSelectorState(state).hasEnoughPlayers();
-    const isMyTurn = Round.isMyTurn(state);
+    const hasEnoughPlayers = game.hasEnoughPlayers();
+    const isMyTurn = game.isMyTurn();
 
     if (room === Lobby) {
       if (hasEnoughPlayers) {

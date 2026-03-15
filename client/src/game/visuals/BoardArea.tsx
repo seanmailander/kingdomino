@@ -1,17 +1,15 @@
 import React, { useState, useRef } from "react";
 
 import "./board.css";
-import { useGameSelector, useGameSignal } from "../App/store";
+import { useGameSignal } from "../../App/store";
 
-import { Game as GameState } from "./game.slice";
-import { cardPlaced } from "./game.actions";
-import Round from "./Round";
+import { cardPlaced } from "../game.actions";
 
 import Tile from "./Tile";
 import BoardOverlay from "./BoardOverlay";
-import { getEligiblePositions, getValidDirections } from "./gamelogic/board";
-import { up, down, left, right } from "./gamelogic/cards";
-import type { Direction } from "./types";
+import { getEligiblePositions, getValidDirections } from "../gamelogic/board";
+import { up, down, left, right } from "../gamelogic/cards";
+import type { Direction } from "../types";
 import useKeypress from "./useKeyPress";
 
 function BoardSquare(props) {
@@ -27,10 +25,10 @@ const rotateLookup: { [key: number]: Direction } = {
 };
 
 function BoardArea(props) {
-  const { playerId, isMe } = props;
-  const myBoard = useGameSelector((state) => GameState.fromSelectorState(state).boardFor(playerId));
-  const cardId = useGameSelector(Round.cardToPlace);
-  const isMyPlace = useGameSelector(Round.isMyPlace);
+  const { game, playerId, isMe } = props;
+  const myBoard = game.boardFor(playerId);
+  const cardId = game.cardToPlace();
+  const isMyPlace = game.isMyPlace();
   const signalCardPlaced = useGameSignal(cardPlaced);
 
   const [direction, setDirection] = useState<Direction>(right);
@@ -69,6 +67,8 @@ function BoardArea(props) {
               getBoardPosition={getBoardPosition}
               direction={direction}
               flipped={flipped}
+              cardId={cardId}
+              isMyPlace={isMyPlace}
             />
           )}
           {myBoard.map((row, y) =>

@@ -1,13 +1,26 @@
 import {
+  CARD_PICKED,
   CARD_PLACED,
+  DECK_SHUFFLED,
   GAME_ENDED,
   GAME_STARTED,
+  ORDER_CHOSEN,
   PLAYER_JOINED,
   PLAYER_LEFT,
   type GameAction,
-} from "./game.actions";
-import { placedCardsToBoard } from "./gamelogic/board";
-import type { Card, Direction, PlayerId } from "./types";
+} from "../game.actions";
+import { placedCardsToBoard } from "../gamelogic/board";
+import Round, {
+  MY_PICK,
+  MY_PLACE,
+  ROUND_END,
+  ROUND_START,
+  THEIR_PICK,
+  THEIR_PLACE,
+  WHOSE_TURN,
+  type RoundState,
+} from "./Round";
+import type { Card, Direction, PlayerId } from "../types";
 
 type Players = Array<{ playerId: PlayerId; isMe: boolean }>;
 type PlacedCard = {
@@ -23,15 +36,19 @@ type CardsPlaced = {
 export type GameState = {
   players: Players;
   cardsPlacedByPlayer: CardsPlaced;
+  round?: RoundState;
 };
 
 const initialState: GameState = {
   players: [] as Players,
   cardsPlacedByPlayer: {} as CardsPlaced,
+  round: undefined,
 };
 
 export type GameSelectorState = {
-  game: GameState;
+  app: {
+    game: GameState;
+  };
 };
 
 type CardPlacedPayload = {
@@ -51,6 +68,7 @@ export class Game {
       cardsPlacedByPlayer: Object.fromEntries(
         Object.entries(state.cardsPlacedByPlayer).map(([playerId, cards]) => [playerId, [...cards]]),
       ),
+      round: state.round ? Round.fromState(state.round).stateSnapshot() : undefined,
     };
   }
 
@@ -58,6 +76,7 @@ export class Game {
     return {
       players: [],
       cardsPlacedByPlayer: {},
+      round: undefined,
     };
   }
 
@@ -66,7 +85,7 @@ export class Game {
   }
 
   static fromSelectorState(state: GameSelectorState): Game {
-    return Game.fromState(state.game);
+    return Game.fromState(state.app.game);
   }
 
   static gameReducer(state: GameState = initialState, action: GameAction): GameState {
@@ -90,7 +109,7 @@ export class Game {
         return game.leavePlayer(payload.playerId).getState();
       }
       case GAME_STARTED:
-        return game.startGame().getState();
+        return game.startGame().reduceRound(action).getState();
       case CARD_PLACED: {
         const payload = action.payload as CardPlacedPayload | undefined;
         if (!payload) {
@@ -104,12 +123,13 @@ export class Game {
             y: payload.y,
             direction: payload.direction,
           })
+          .reduceRound(action)
           .getState();
       }
       case GAME_ENDED:
-        return game.endGame().getState();
+        return game.endGame().reduceRound(action).getState();
       default:
-        return state;
+        return game.reduceRound(action).getState();
     }
   }
 
@@ -122,7 +142,32 @@ export class Game {
           [...cards],
         ]),
       ),
+      round: this.state.round ? Round.fromState(this.state.round).stateSnapshot() : undefined,
     };
+  }
+
+  reduceRound(action: GameAction): Game {
+    const shouldInstantiateRound = [
+      ROUND_START,
+      WHOSE_TURN,
+      MY_PICK,
+      MY_PLACE,
+      THEIR_PICK,
+      THEIR_PLACE,
+      ROUND_END,
+      ORDER_CHOSEN,
+      DECK_SHUFFLED,
+      CARD_PICKED,
+      CARD_PLACED,
+    ].includes(action.type);
+
+    if (!this.state.round && !shouldInstantiateRound) {
+      return this;
+    }
+
+    const currentRound = this.state.round ?? Round.initialState();
+    this.state.round = Round.roundReducer(currentRound, action);
+    return this;
   }
 
   joinPlayer(playerId: PlayerId, isMe: boolean): Game {
@@ -154,6 +199,7 @@ export class Game {
 
   endGame(): Game {
     this.state.cardsPlacedByPlayer = {};
+    this.state.round = undefined;
     return this;
   }
 
@@ -175,6 +221,34 @@ export class Game {
 
   boardFor(playerId: PlayerId) {
     return placedCardsToBoard(this.state.cardsPlacedByPlayer[playerId]);
+  }
+
+  round(): Round | undefined {
+    if (!this.state.round) {
+      return undefined;
+    }
+
+    return Round.fromState(this.state.round);
+  }
+
+  pickOrder(): Array<PlayerId | undefined> {
+    return this.round()?.pickOrder() ?? [];
+  }
+
+  cardToPlace(): Card | undefined {
+    return this.round()?.cardToPlace();
+  }
+
+  deal() {
+    return this.round()?.deal() ?? [];
+  }
+
+  isMyTurn(): boolean {
+    return this.round()?.isMyTurn(this.myPlayerId()) ?? false;
+  }
+
+  isMyPlace(): boolean {
+    return this.round()?.isMyPlace(this.myPlayerId()) ?? false;
   }
 }
 

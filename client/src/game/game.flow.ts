@@ -15,9 +15,9 @@ import {
   startSolo,
 } from "./game.actions";
 import { chooseOrderFromSeed, getNextFourCards } from "./gamelogic/utils";
-import { Game } from "./game.slice";
+import { Game } from "./state/game.slice";
 import { buildTrustedSeed, MOVE, moveMessage } from "./game.messages";
-import Round from "./Round";
+import Round from "./state/Round";
 import newSoloConnection from "./connection.solo";
 import type { MovePayload } from "./types";
 
@@ -56,7 +56,7 @@ async function waitForComputed(predicate: () => boolean, timeoutMs = 0) {
 }
 
 function getMostRecentPlacement(playerId: string): Omit<MovePayload, "playerId"> {
-  const placements = gameStore.state().game.cardsPlacedByPlayer[playerId] ?? [];
+  const placements = gameStore.state().app.game.cardsPlacedByPlayer[playerId] ?? [];
   return placements[placements.length - 1];
 }
 
@@ -77,10 +77,10 @@ const signalGameEnded = createGameSignalNoPayload(gameEnded);
 const signalConnectionErrored = createGameSignalNoPayload(connectionErrored);
 const signalStartMulti = createGameSignalNoPayload(startMulti);
 
-const pickOrderComputed = selectComputed(Round.pickOrder);
+const pickOrderComputed = selectComputed((state) => Game.fromSelectorState(state).pickOrder());
 const myPlayerIdComputed = selectComputed((state) => Game.fromSelectorState(state).myPlayerId());
 const roomComputed = selectComputed((state) => AppState.fromSelectorState(state).room());
-const cardToPlaceComputed = selectComputed(Round.cardToPlace);
+const cardToPlaceComputed = selectComputed((state) => Game.fromSelectorState(state).cardToPlace());
 
 async function playRound(
   sendGameMessage: (message: { type: string; content?: unknown }) => void,

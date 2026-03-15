@@ -1,13 +1,8 @@
 import { App, type AppState } from "./app.slice";
-import game, { Game, type GameState } from "../Game/game.slice";
-import Round from "../Game/Round";
-import type { RoundState } from "../Game/Round";
-import type { GameAction } from "../Game/game.actions";
+import type { GameAction } from "../game/game.actions";
 
 export type RootState = {
   app: AppState;
-  game: GameState;
-  round: RoundState;
 };
 
 export class Root {
@@ -15,17 +10,13 @@ export class Root {
 
   private constructor(state: RootState) {
     this.state = {
-      app: { ...state.app },
-      game: Game.fromState(state.game).getState(),
-      round: Round.fromState(state.round).stateSnapshot(),
+      app: App.fromState(state.app).stateSnapshot(),
     };
   }
 
   static initialState(): RootState {
     return {
       app: App.initialState(),
-      game: Game.initialState(),
-      round: Round.initialState(),
     };
   }
 
@@ -40,8 +31,6 @@ export class Root {
   apply(action: GameAction): Root {
     this.state = {
       app: App.appReducer(this.state.app, action),
-      game: game(this.state.game, action),
-      round: Round.roundReducer(this.state.round, action),
     };
 
     return this;
@@ -49,22 +38,12 @@ export class Root {
 
   stateSnapshot(): RootState {
     return {
-      app: { ...this.state.app },
-      game: Game.fromState(this.state.game).getState(),
-      round: Round.fromState(this.state.round).stateSnapshot(),
+      app: App.fromState(this.state.app).stateSnapshot(),
     };
   }
 
   app(): App {
     return App.fromState(this.state.app);
-  }
-
-  game(): Game {
-    return Game.fromState(this.state.game);
-  }
-
-  round(): Round {
-    return Round.fromState(this.state.round);
   }
 }
 

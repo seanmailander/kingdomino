@@ -1,19 +1,14 @@
 import React, { useMemo } from "react";
 
 import useBoardPosition from "./useBoardPosition";
-import { useGameSelector } from "../App/store";
-
-import Round from "./Round";
 
 import Tile from "./Tile";
-import { getEmptyBoard, enrichBoardWithCard, getFlippedPosition } from "./gamelogic/board";
+import { getEmptyBoard, enrichBoardWithCard, getFlippedPosition } from "../gamelogic/board";
 
 const emptyBoard = getEmptyBoard();
 
 function BoardOverlay(props) {
-  const { playerId, getBoardPosition, direction, flipped } = props;
-  const cardId = useGameSelector(Round.cardToPlace);
-  const isMyPlace = useGameSelector(Round.isMyPlace);
+  const { playerId, getBoardPosition, direction, flipped, cardId, isMyPlace } = props;
 
   const { x, y } = useBoardPosition(getBoardPosition());
 

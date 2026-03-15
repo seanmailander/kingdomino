@@ -1,15 +1,17 @@
 import React from "react";
 
-import { Game } from "../Game/game.slice";
-import { useGameSelector, useGameSignal } from "../App/store";
+import { Game } from "../game/state/game.slice";
+import { useGameSignal } from "../App/store";
 
-import { connectionReset, gameStarted } from "../Game/game.actions";
+import { connectionReset, gameStarted } from "../game/game.actions";
 
-function Lobby() {
-  const players = useGameSelector((state) => Game.fromSelectorState(state).players());
-  const hasEnoughPlayers = useGameSelector((state) =>
-    Game.fromSelectorState(state).hasEnoughPlayers(),
-  );
+type LobbyProps = {
+  game: Game;
+};
+
+function Lobby({ game }: LobbyProps) {
+  const players = game.players();
+  const hasEnoughPlayers = game.hasEnoughPlayers();
   const signalGameStarted = useGameSignal(gameStarted);
   const signalConnectionReset = useGameSignal(connectionReset);
 
