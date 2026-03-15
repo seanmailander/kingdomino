@@ -1,5 +1,5 @@
-import { type GameAction, GAME_ENDED, GAME_STARTED, PLAYER_JOINED } from "../game/state/game.actions";
-import gameReducer, { Game as GameModel, type GameState } from "../game/state/game.slice";
+import { type GameAction, GAME_ENDED, GAME_STARTED, PLAYER_JOINED } from "../game/state/events";
+import gameReducer, { Game as GameModel, type GameState } from "../game/state/Game";
 
 // States that may occur
 export const Splash = "Splash";

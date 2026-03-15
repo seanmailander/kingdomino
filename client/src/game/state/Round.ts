@@ -4,11 +4,11 @@ import {
   DECK_SHUFFLED,
   ORDER_CHOSEN,
   type GameAction,
-} from "./game.actions";
+} from "./events";
 import { computed, signal } from "alien-signals";
 import { getCard } from "../gamelogic/cards";
-import type { GameSelectorState } from "./game.slice";
-import { Game } from "./game.slice";
+import type { GameSelectorState } from "./Game";
+import { Game } from "./Game";
 import type { Card, PlayerId } from "./types";
 
 export type RoundState = {

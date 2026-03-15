@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import reducer from "./reducer";
 import type { RootState } from "./reducer";
-import type { GameAction } from "../game/state/game.actions";
+import type { GameAction } from "../game/state/events";
 
 export type GameStore = {
   state: {

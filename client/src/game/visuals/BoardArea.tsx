@@ -3,7 +3,7 @@ import React, { useState, useRef } from "react";
 import "./board.css";
 import { useGameSignal } from "../../App/store";
 
-import { cardPlaced } from "../state/game.actions";
+import { cardPlaced } from "../state/events";
 
 import Tile from "./Tile";
 import BoardOverlay from "./BoardOverlay";

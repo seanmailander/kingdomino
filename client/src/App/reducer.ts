@@ -1,5 +1,5 @@
-import { App, type AppState } from "./app.slice";
-import type { GameAction } from "../game/state/game.actions";
+import { App, type AppState } from "./App";
+import type { GameAction } from "../game/state/events";
 
 export type RootState = {
   app: AppState;

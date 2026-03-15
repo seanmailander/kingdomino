@@ -8,7 +8,7 @@ import {
   PLAYER_JOINED,
   PLAYER_LEFT,
   type GameAction,
-} from "./game.actions";
+} from "./events";
 import { placedCardsToBoard } from "../gamelogic/board";
 import Round, {
   MY_PICK,

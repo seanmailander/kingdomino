@@ -3,7 +3,7 @@ import React from "react";
 import "./Game.css";
 import BoardArea from "./BoardArea";
 import Card from "./Card";
-import { Game as GameState } from "../state/game.slice";
+import { Game as GameState } from "../state/Game";
 
 type GameProps = {
   game: GameState;

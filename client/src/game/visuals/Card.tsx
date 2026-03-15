@@ -3,7 +3,7 @@ import React from "react";
 import "./Card.css";
 import { useGameSignal } from "../../App/store";
 
-import { cardPicked } from "../state/game.actions";
+import { cardPicked } from "../state/events";
 
 import Tile from "./Tile";
 
