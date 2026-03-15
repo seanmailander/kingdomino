@@ -15,22 +15,23 @@ export const appSlice = createSlice({
   initialState: {
     room: Splash,
   },
-  extraReducers: {
-    [playerJoined]: (state, action) => {
+  reducers: {},
+  extraReducers: (builder) => {
+    builder.addCase(playerJoined, (state) => {
       if (state.room === Splash) {
         return { room: Lobby };
       }
-    },
-    [gameStarted]: (state) => {
+    });
+    builder.addCase(gameStarted, (state) => {
       if (state.room === Lobby) {
         return { room: Game };
       }
-    },
-    [gameEnded]: (state) => {
+    });
+    builder.addCase(gameEnded, (state) => {
       if (state.room === Game) {
         return { room: Lobby }; // TODO: scoring / game over screen
       }
-    },
+    });
   },
 });
 

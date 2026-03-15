@@ -37,8 +37,7 @@ const awaitOnce = async (emitter, event) => {
   });
 };
 
-const waitForPeerId = async (peerConnection) =>
-  awaitOnce(peerConnection, "open");
+const waitForPeerId = async (peerConnection) => awaitOnce(peerConnection, "open");
 
 const waitForConnection = async (peerConnection) => {
   const dataConnection = await awaitOnce(peerConnection, "connection");

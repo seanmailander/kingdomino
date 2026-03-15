@@ -17,11 +17,7 @@ function Card(props) {
   const className = `card${isMyTurn ? "" : " disabled"}`;
 
   return (
-    <div
-      className={className}
-      key={id}
-      onClick={() => isMyTurn && dispatch(cardPicked(id))}
-    >
+    <div className={className} key={id} onClick={() => isMyTurn && dispatch(cardPicked(id))}>
       {tiles.map(({ tile, value }, index) => (
         <Tile key={index} tile={tile} value={value} />
       ))}

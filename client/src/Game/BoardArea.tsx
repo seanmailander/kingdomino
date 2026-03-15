@@ -11,6 +11,7 @@ import Tile from "./Tile";
 import BoardOverlay from "./BoardOverlay";
 import { getEligiblePositions, getValidDirections } from "./gamelogic/board";
 import { up, down, left, right } from "./gamelogic/cards";
+import type { Direction } from "./types";
 import useKeypress from "./useKeyPress";
 
 function BoardSquare(props) {
@@ -18,7 +19,7 @@ function BoardSquare(props) {
   return <div onClick={handleClick}>{children}</div>;
 }
 
-const rotateLookup = {
+const rotateLookup: { [key: number]: Direction } = {
   [up]: right,
   [right]: down,
   [down]: left,
@@ -32,7 +33,7 @@ function BoardArea(props) {
   const isMyPlace = useSelector(getIsMyPlace);
   const dispatch = useDispatch();
 
-  const [direction, setDirection] = useState(right);
+  const [direction, setDirection] = useState<Direction>(right);
   const [flipped, setFlipped] = useState(false);
 
   const boardNode = useRef(null);
@@ -45,8 +46,7 @@ function BoardArea(props) {
   };
 
   const eligiblePositions = getEligiblePositions(myBoard, cardId);
-  const isValidTile = (x, y) =>
-    eligiblePositions.some((pos) => pos.x === x && pos.y === y);
+  const isValidTile = (x, y) => eligiblePositions.some((pos) => pos.x === x && pos.y === y);
 
   const isValidDirection = (x, y, direction) =>
     getValidDirections(myBoard, cardId, x, y).some((d) => d === direction);

@@ -1,8 +1,4 @@
-import {
-  getEligiblePositions,
-  getValidDirections,
-  placedCardsToBoard,
-} from "./board";
+import { getEligiblePositions, getValidDirections, placedCardsToBoard } from "./board";
 import {
   castle,
   down,
@@ -42,25 +38,25 @@ describe("Builds deck", () => {
         card: 19, // grain-water-onecrown
         x: 3,
         y: 5,
-        direction: 1, // up
+        direction: right,
       },
       {
         card: 32, // water-wood-onecrown
         x: 5,
         y: 8,
-        direction: 2, // right
+        direction: down,
       },
       {
         card: 34, // water-wood-onecrown
         x: 11,
         y: 11,
-        direction: 3, // down
+        direction: left,
       },
       {
         card: 42, // grain-marsh-null-twocrown
         x: 4,
         y: 11,
-        direction: 4, // left
+        direction: up,
       },
     ];
 
@@ -68,42 +64,42 @@ describe("Builds deck", () => {
     const board = placedCardsToBoard(placedCards);
 
     // Assert
-    // grain-water-onecrown - up
-    expect(board[3][5]).toStrictEqual({
+    // grain-water-onecrown - right
+    expect(board[5][3]).toStrictEqual({
       tile: grain,
       value: oneCrown,
     });
-    expect(board[2][5]).toStrictEqual({
+    expect(board[5][4]).toStrictEqual({
       tile: water,
-      value: noCrown,
-    });
-
-    // water-wood-onecrown - right
-    expect(board[5][8]).toStrictEqual({
-      tile: water,
-      value: oneCrown,
-    });
-    expect(board[5][9]).toStrictEqual({
-      tile: wood,
       value: noCrown,
     });
 
     // water-wood-onecrown - down
-    expect(board[11][11]).toStrictEqual({
+    expect(board[8][5]).toStrictEqual({
       tile: water,
       value: oneCrown,
     });
-    expect(board[12][11]).toStrictEqual({
+    expect(board[9][5]).toStrictEqual({
       tile: wood,
       value: noCrown,
     });
 
-    // grain-marsh-null-twocrown - left
-    expect(board[4][11]).toStrictEqual({
+    // water-wood-onecrown - left
+    expect(board[11][11]).toStrictEqual({
+      tile: water,
+      value: oneCrown,
+    });
+    expect(board[11][10]).toStrictEqual({
+      tile: wood,
+      value: noCrown,
+    });
+
+    // grain-marsh-null-twocrown - up
+    expect(board[11][4]).toStrictEqual({
       tile: grain,
       value: noCrown,
     });
-    expect(board[4][10]).toStrictEqual({
+    expect(board[10][4]).toStrictEqual({
       tile: marsh,
       value: twoCrown,
     });
@@ -125,10 +121,10 @@ describe("Checks moves", () => {
 
     // Assert
     expect(eligiblePositions).toStrictEqual([
-      { x: 5, y: 6 },
-      { x: 7, y: 6 },
-      { x: 6, y: 5 },
-      { x: 6, y: 7 },
+      { x: 7, y: 6, direction: right },
+      { x: 5, y: 6, direction: left },
+      { x: 6, y: 7, direction: down },
+      { x: 6, y: 5, direction: up },
     ]);
     expect(validDirections).toIncludeSameMembers([left, right, down]);
   });

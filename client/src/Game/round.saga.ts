@@ -18,12 +18,7 @@ import {
 import { buildTrustedSeed, moveMessage } from "./game.messages";
 
 function* trustedDeal(sendGameMessage, onCommit, onReveal, currentDeck) {
-  const trustedSeed = yield call(
-    buildTrustedSeed,
-    sendGameMessage,
-    onCommit,
-    onReveal,
-  );
+  const trustedSeed = yield call(buildTrustedSeed, sendGameMessage, onCommit, onReveal);
 
   // - each 4-draw, recommit and re-shuffle
   //   - important to re-randomize every turn, or future knowledge will help mis-behaving clients

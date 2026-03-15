@@ -1,3 +1,5 @@
+import type { CardInfo, CardValue } from "../types";
+
 // - 48 cards, each is unique (some repeats?)
 // - canonical identification (sort)
 // - both A and B calculate sorted deck using shared seed
@@ -10,16 +12,7 @@ export const grain = 2 ** 3;
 export const marsh = 2 ** 4;
 export const mine = 2 ** 5;
 
-export const validTiles = [
-  blank,
-  castle,
-  wood,
-  grass,
-  water,
-  grain,
-  marsh,
-  mine,
-];
+export const validTiles = [blank, castle, wood, grass, water, grain, marsh, mine];
 
 export const noCrown = 0;
 export const oneCrown = 1;
@@ -31,7 +24,12 @@ export const right = 1;
 export const down = 2;
 export const left = 3;
 
-const getTile = (tileA, tileB, crownsA = noCrown, crownsB = noCrown) => ({
+const getTile = (
+  tileA,
+  tileB,
+  crownsA: CardValue = noCrown,
+  crownsB: CardValue = noCrown,
+): CardInfo => ({
   type: tileA ^ tileB || tileA, // Either the XOR, or just the value itself
   tiles: [
     { tile: tileA, value: crownsA },
@@ -107,11 +105,15 @@ export const generateDeck = () => [...Array(48).keys()];
 
 const cardMap = generateCardMap();
 
-const blankCard = {
-  tiles: [{ tile: blank }, { tile: blank }],
+const blankCard: CardInfo = {
+  type: blank,
+  tiles: [
+    { tile: blank, value: noCrown },
+    { tile: blank, value: noCrown },
+  ],
 };
 
-export const getCard = (cardId) => ({
+export const getCard = (cardId: number): CardInfo & { id: number } => ({
   id: cardId,
-  ...(cardMap[cardId] || blankCard),
+  ...(cardMap[cardId] ?? blankCard),
 });

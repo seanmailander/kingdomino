@@ -1,14 +1,5 @@
 import React from "react";
-import {
-  blank,
-  castle,
-  grain,
-  grass,
-  marsh,
-  mine,
-  water,
-  wood,
-} from "./gamelogic/cards";
+import { blank, castle, grain, grass, marsh, mine, water, wood } from "./gamelogic/cards";
 
 const imageNamesByTile = {
   [blank]: "blank.png",
@@ -24,9 +15,7 @@ const imageNamesByTile = {
 function Tile(props) {
   const { tile, value, disabled = false, allowHighlight = false } = props;
 
-  const className = `tile${disabled ? " disabled" : ""}${
-    allowHighlight ? " highlight" : ""
-  }`;
+  const className = `tile${disabled ? " disabled" : ""}${allowHighlight ? " highlight" : ""}`;
 
   return (
     <div className={className}>
