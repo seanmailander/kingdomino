@@ -1,292 +1,92 @@
-import { computed, signal } from "alien-signals";
-import { getCard } from "../gamelogic/cards";
-import type { GameSelectorState } from "./Game";
-import { Game } from "./Game";
-import type { Card, GameAction, MovePayload, PlayerId } from "./types";
+import type { CardId, Direction } from "./types";
+import type { Player } from "./Player";
 
-export type RoundState = {
-  phase: string;
-  deal: Array<Card | undefined>;
-  pickOrderThisRound: Array<PlayerId | undefined>;
-  pickOrderNextRound: Array<PlayerId | undefined>;
-  cardToPlace: Card | undefined;
-};
+type PickSlot = { cardId: CardId; pickedBy: Player | null };
 
-// Round data events
-export const ORDER_CHOSEN = "game/orderChosen";
-export const DECK_SHUFFLED = "round/deckShuffled";
-export const CARD_PICKED = "round/cardPicked";
-export const CARD_PLACED = "round/cardPlaced";
+export type RoundPhase = "picking" | "placing" | "complete";
 
-export const ROUND_START = "round-phase/start";
-export const WHOSE_TURN = "round-phase/whoseTurn";
-export const MY_PICK = "round-phase/myPick";
-export const MY_PLACE = "round-phase/myPlace";
-export const THEIR_PICK = "round-phase/theirPick";
-export const THEIR_PLACE = "round-phase/theirPlace";
-export const ROUND_END = "round-phase/end";
+/**
+ * The four cards offered during a round.
+ * Slots are sorted by card id so low-id → high priority in next-round pick order.
+ */
+export class Deal {
+  private readonly _slots: PickSlot[];
 
-const EMPTY_PICK_ORDER: Array<PlayerId | undefined> = [undefined, undefined, undefined, undefined];
-
-const asPlayerIdArray = (value: unknown): Array<PlayerId | undefined> =>
-  (Array.isArray(value) ? [...value] : []) as Array<PlayerId | undefined>;
-
-const asDealArray = (value: unknown): Array<Card | undefined> =>
-  (Array.isArray(value) ? [...value] : []) as Array<Card | undefined>;
-
-export class Round {
-  private state: RoundState;
-
-  private static readonly defaultState: RoundState = Round.initialState();
-
-  private static readonly reducerByActionType: Partial<Record<string, RoundReducerSignal>> = {
-    [ROUND_START]: (round) => round.start(),
-    [WHOSE_TURN]: (round) => round.setWhoseTurn(),
-    [MY_PICK]: (round) => round.setMyPick(),
-    [MY_PLACE]: (round) => round.setMyPlace(),
-    [THEIR_PICK]: (round) => round.setTheirPick(),
-    [THEIR_PLACE]: (round) => round.setTheirPlace(),
-    [ORDER_CHOSEN]: (round, payload) => round.chooseOrder(payload),
-    [DECK_SHUFFLED]: (round, payload) => round.shuffleDeck(payload),
-    [CARD_PICKED]: (round, payload) => round.pickCard(payload),
-    [CARD_PLACED]: (round, payload) => round.placeCard(payload),
-    [ROUND_END]: (round) => round.end(),
-  };
-
-  private static readonly roundSignal = signal<Round | undefined>();
-  private static readonly payloadSignal = signal<unknown>(undefined);
-  private static readonly reducerSignal = signal<RoundReducerSignal | undefined>();
-
-  private static readonly reducedRoundState = computed<RoundState | undefined>(() => {
-    const reducer = Round.reducerSignal();
-    const round = Round.roundSignal();
-
-    if (!reducer || !round) {
-      return undefined;
-    }
-
-    return reducer(round, Round.payloadSignal()).stateSnapshot();
-  });
-
-  private constructor(state: RoundState) {
-    this.state = {
-      phase: state.phase,
-      deal: [...state.deal],
-      pickOrderThisRound: [...state.pickOrderThisRound],
-      pickOrderNextRound: [...state.pickOrderNextRound],
-      cardToPlace: state.cardToPlace,
-    };
+  constructor(cardIds: [CardId, CardId, CardId, CardId]) {
+    this._slots = [...cardIds]
+      .sort((a, b) => a - b)
+      .map(cardId => ({ cardId, pickedBy: null }));
   }
 
-  static initialState(): RoundState {
-    return {
-      phase: ROUND_START,
-      deal: [],
-      pickOrderThisRound: [],
-      pickOrderNextRound: [],
-      cardToPlace: undefined,
-    };
+  pickByCardId(player: Player, cardId: CardId): void {
+    const slot = this._slots.find(s => s.cardId === cardId);
+    if (!slot) throw new Error(`Card ${cardId} not in current deal`);
+    if (slot.pickedBy !== null) throw new Error(`Card ${cardId} already picked`);
+    slot.pickedBy = player;
   }
 
-  static fromState(state: RoundState = Round.initialState()): Round {
-    return new Round(state);
+  pickedCardFor(player: Player): CardId | null {
+    return this._slots.find(s => s.pickedBy?.id === player.id)?.cardId ?? null;
   }
 
-  static roundStart(): GameAction {
-    return { type: ROUND_START };
+  /** Players ordered by their picked card id (low → high = first pick order next round) */
+  nextRoundPickOrder(): Player[] {
+    return this._slots
+      .filter(s => s.pickedBy !== null)
+      .map(s => s.pickedBy!);
   }
 
-  static whoseTurn(): GameAction {
-    return { type: WHOSE_TURN };
-  }
-
-  static myPick(): GameAction {
-    return { type: MY_PICK };
-  }
-
-  static myPlace(): GameAction {
-    return { type: MY_PLACE };
-  }
-
-  static theirPick(): GameAction {
-    return { type: THEIR_PICK };
-  }
-
-  static theirPlace(): GameAction {
-    return { type: THEIR_PLACE };
-  }
-
-  static roundEnd(): GameAction {
-    return { type: ROUND_END };
-  }
-
-  static orderChosen(payload: PlayerId[]): GameAction {
-    return { type: ORDER_CHOSEN, payload };
-  }
-
-  static deckShuffled(payload: Card[]): GameAction {
-    return { type: DECK_SHUFFLED, payload };
-  }
-
-  static cardPicked(payload: Card): GameAction {
-    return { type: CARD_PICKED, payload };
-  }
-
-  static cardPlaced(payload: MovePayload): GameAction {
-    return { type: CARD_PLACED, payload };
-  }
-
-  static roundReducer(state: RoundState = Round.defaultState, action: GameAction): RoundState {
-    const reducer = Round.reducerByActionType[action.type];
-
-    if (!reducer) {
-      return state;
-    }
-
-    Round.roundSignal(Round.fromState(state));
-    Round.payloadSignal(action.payload);
-    Round.reducerSignal(reducer);
-
-    return Round.reducedRoundState() ?? state;
-  }
-
-  static fromSelectorState(state: GameSelectorState): Round | undefined {
-    return Game.fromSelectorState(state).round();
-  }
-
-  static pickOrder(state: GameSelectorState): Array<PlayerId | undefined> {
-    return Game.fromSelectorState(state).pickOrder();
-  }
-
-  static isMyTurn(state: GameSelectorState): boolean {
-    return Game.fromSelectorState(state).isMyTurn();
-  }
-
-  static isMyPlace(state: GameSelectorState): boolean {
-    return Game.fromSelectorState(state).isMyPlace();
-  }
-
-  static cardToPlace(state: GameSelectorState): Card | undefined {
-    return Game.fromSelectorState(state).cardToPlace();
-  }
-
-  static deal(state: GameSelectorState) {
-    return Game.fromSelectorState(state).deal();
-  }
-
-  stateSnapshot(): RoundState {
-    return {
-      phase: this.state.phase,
-      deal: [...this.state.deal],
-      pickOrderThisRound: [...this.state.pickOrderThisRound],
-      pickOrderNextRound: [...this.state.pickOrderNextRound],
-      cardToPlace: this.state.cardToPlace,
-    };
-  }
-
-  start(): Round {
-    this.state = {
-      phase: ROUND_START,
-      deal: [],
-      pickOrderThisRound: [...EMPTY_PICK_ORDER],
-      pickOrderNextRound: [...EMPTY_PICK_ORDER],
-      cardToPlace: undefined,
-    };
-    return this;
-  }
-
-  setWhoseTurn(): Round {
-    this.state.phase = WHOSE_TURN;
-    return this;
-  }
-
-  setMyPick(): Round {
-    this.state.phase = MY_PICK;
-    return this;
-  }
-
-  setMyPlace(): Round {
-    this.state.phase = MY_PLACE;
-    return this;
-  }
-
-  setTheirPick(): Round {
-    this.state.phase = THEIR_PICK;
-    return this;
-  }
-
-  setTheirPlace(): Round {
-    this.state.phase = THEIR_PLACE;
-    return this;
-  }
-
-  chooseOrder(payload: unknown): Round {
-    this.state.pickOrderThisRound = asPlayerIdArray(payload);
-    return this;
-  }
-
-  shuffleDeck(payload: unknown): Round {
-    this.state.deal = asDealArray(payload);
-    this.state.cardToPlace = undefined;
-    return this;
-  }
-
-  pickCard(payload: unknown): Round {
-    this.state.cardToPlace = payload as Card | undefined;
-    return this;
-  }
-
-  placeCard(payload: unknown): Round {
-    const card = (payload as { card?: Card } | undefined)?.card;
-    const placeInDeal = this.state.deal.findIndex((c) => c === card);
-
-    if (placeInDeal >= 0) {
-      this.state.deal[placeInDeal] = undefined;
-    }
-
-    const playerId = this.state.pickOrderThisRound.shift();
-    if (placeInDeal >= 0) {
-      this.state.pickOrderNextRound[placeInDeal] = playerId;
-    }
-
-    this.state.cardToPlace = undefined;
-    return this;
-  }
-
-  end(): Round {
-    this.state.phase = ROUND_END;
-    this.state.pickOrderThisRound = this.state.pickOrderNextRound.filter(
-      (playerId) => !!playerId,
-    );
-    this.state.pickOrderNextRound = [...EMPTY_PICK_ORDER];
-    return this;
-  }
-
-  pickOrder(): Array<PlayerId | undefined> {
-    return [...this.state.pickOrderThisRound];
-  }
-
-  cardToPlace(): Card | undefined {
-    return this.state.cardToPlace;
-  }
-
-  phase(): string {
-    return this.state.phase;
-  }
-
-  deal() {
-    return this.state.deal.map(getCard);
-  }
-
-  isMyTurn(playerId: PlayerId | undefined): boolean {
-    return this.state.pickOrderThisRound[0] === playerId;
-  }
-
-  isMyPlace(playerId: PlayerId | undefined): boolean {
-    return this.isMyTurn(playerId) && this.state.phase === MY_PLACE;
+  snapshot(): ReadonlyArray<Readonly<PickSlot>> {
+    return this._slots.map(s => ({ ...s }));
   }
 }
 
-type RoundReducerSignal = (round: Round, payload: unknown) => Round;
+/**
+ * One round: sequential pick-then-place per player.
+ * Phase machine: picking → placing → picking → … → complete.
+ * The _playerQueue drives order; after placement, the actor is dequeued.
+ * Invalid transitions throw immediately rather than producing silent bad state.
+ */
+export class Round {
+  private _phase: RoundPhase = "picking";
+  private readonly _playerQueue: Player[];
+  private readonly _deal: Deal;
 
-export default Round;
+  constructor(deal: Deal, pickOrder: ReadonlyArray<Player>) {
+    this._deal = deal;
+    this._playerQueue = [...pickOrder];
+  }
+
+  get phase(): RoundPhase { return this._phase; }
+  get deal(): Deal        { return this._deal; }
+
+  /** The player whose action is expected: pick if "picking", place if "placing". */
+  get currentActor(): Player | null {
+    return this._playerQueue[0] ?? null;
+  }
+
+  recordPick(player: Player, cardId: CardId): void {
+    if (this._phase !== "picking") {
+      throw new Error(`Round.recordPick() called in "${this._phase}" phase`);
+    }
+    if (player.id !== this.currentActor?.id) {
+      throw new Error(`Not ${player.id}'s turn to pick (expected ${this.currentActor?.id})`);
+    }
+    this._deal.pickByCardId(player, cardId);
+    this._phase = "placing";
+  }
+
+  recordPlacement(player: Player, x: number, y: number, direction: Direction): void {
+    if (this._phase !== "placing") {
+      throw new Error(`Round.recordPlacement() called in "${this._phase}" phase`);
+    }
+    if (player.id !== this.currentActor?.id) {
+      throw new Error(`Not ${player.id}'s turn to place`);
+    }
+    const cardId = this._deal.pickedCardFor(player);
+    if (cardId === null) throw new Error(`${player.id} has no picked card to place`);
+    player.applyPlacement(cardId, x, y, direction);
+    this._playerQueue.shift();
+    this._phase = this._playerQueue.length === 0 ? "complete" : "picking";
+  }
+}

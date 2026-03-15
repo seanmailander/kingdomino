@@ -3,27 +3,27 @@ import React from "react";
 import "./Game.css";
 import BoardArea from "./BoardArea";
 import Card from "./Card";
-import { Game as GameState } from "../state/Game";
+import type { GameSession } from "../state/GameSession";
 
 type GameProps = {
-  game: GameState;
+  session: GameSession;
 };
 
-function Game({ game }: GameProps) {
-  const players = game.players();
-  const deal = game.deal();
-  const isMyTurn = game.isMyTurn();
+function Game({ session }: GameProps) {
+  const players = session.players;
+  const deal = session.deal();
+  const isMyTurn = session.isMyTurn();
 
   return (
     <>
       <div className="deal">
-        {deal?.map((card) => (
-          <Card key={card.id} card={card} isMyTurn={isMyTurn} />
+        {deal.map((card) => (
+          <Card key={card.id} card={card} isMyTurn={isMyTurn} session={session} />
         ))}
       </div>
       <div className="boards">
-        {players.map(({ playerId, isMe }) => (
-          <BoardArea key={playerId} game={game} playerId={playerId} isMe={isMe} />
+        {players.map(player => (
+          <BoardArea key={player.id} session={session} playerId={player.id} isMe={player.isLocal} />
         ))}
       </div>
     </>

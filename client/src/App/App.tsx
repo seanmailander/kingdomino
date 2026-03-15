@@ -7,18 +7,15 @@ import GameComponent from "../game/visuals/Game";
 import { useApp } from "./store";
 
 function App() {
-  const app = useApp();
-  const game = app.game();
-  const room = app.room();
-  const hint = app.hint();
+  const { session, room, hint } = useApp();
 
   return (
     <div className="App">
       <h1>Kingdomino</h1>
       <h5>{hint}</h5>
       {room === "Splash" && <SplashComponent />}
-      {room === "Lobby" && <LobbyComponent game={game} />}
-      {room === "Game" && <GameComponent game={game} />}
+      {room === "Lobby" && <LobbyComponent session={session} />}
+      {room === "Game" && session && <GameComponent session={session} />}
     </div>
   );
 }

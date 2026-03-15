@@ -1,28 +1,24 @@
 import React from "react";
 
-import { App } from "../App/App";
-import { Game } from "../game/state/Game";
-import { useGameSignal } from "../App/store";
-
+import { triggerLobbyStart, triggerLobbyLeave } from "../App/store";
+import type { GameSession } from "../game/state/GameSession";
 
 type LobbyProps = {
-  game: Game;
+  session: GameSession | null;
 };
 
-function Lobby({ game }: LobbyProps) {
-  const players = game.players();
-  const hasEnoughPlayers = game.hasEnoughPlayers();
-  const signalGameStarted = useGameSignal(Game.gameStarted);
-  const signalConnectionReset = useGameSignal(App.connectionReset);
+function Lobby({ session }: LobbyProps) {
+  const players = session?.players ?? [];
+  const hasEnoughPlayers = session?.hasEnoughPlayers() ?? false;
 
   const startGame = hasEnoughPlayers && (
     <>
       Ready!
-      <button aria-label="Start game" onClick={() => signalGameStarted()}>
+      <button aria-label="Start game" onClick={triggerLobbyStart}>
         Start game
       </button>
       <br />
-      <button aria-label="Leave game" onClick={() => signalConnectionReset()}>
+      <button aria-label="Leave game" onClick={triggerLobbyLeave}>
         Leave game
       </button>
     </>
@@ -32,7 +28,7 @@ function Lobby({ game }: LobbyProps) {
 
   return (
     <>
-      Players: {JSON.stringify(players)}
+      Players: {JSON.stringify(players.map(p => ({ playerId: p.id, isMe: p.isLocal })))}
       <br />
       {waitingForPlayers}
       {startGame}

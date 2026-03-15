@@ -1,52 +1,104 @@
 import { computed, effect, signal } from "alien-signals";
 import { useEffect, useMemo, useState } from "react";
 
-import { App, type AppSelectorState, type AppState } from "./App";
-import type { GameAction } from "../game/state/types";
+import type { GameSession } from "../game/state/GameSession";
+import type { GameEventMap } from "../game/state/GameSession";
+import { type Room, Splash, computeHint } from "./App";
 
-const appState = signal<AppState>(App.initialState());
+// ── Session signal ────────────────────────────────────────────────────────────
 
-export const getAppState = (): AppState => appState();
+const sessionSignal = signal<GameSession | null>(null);
 
-export const emitGameAction = (action: GameAction) => {
-  appState(App.appReducer(appState(), action));
+/**
+ * Version counter — incremented on every game event and room change.
+ * React hooks track this to know when to re-render.
+ */
+const versionSignal = signal(0);
+const bumpVersion = () => versionSignal(versionSignal() + 1);
+
+const ALL_EVENTS: ReadonlyArray<keyof GameEventMap> = [
+  "player:joined",
+  "game:started",
+  "round:started",
+  "pick:made",
+  "place:made",
+  "round:complete",
+  "game:ended",
+];
+
+export const setCurrentSession = (session: GameSession | null): void => {
+  if (session) {
+    for (const event of ALL_EVENTS) {
+      session.events.on(event, bumpVersion);
+    }
+  }
+  sessionSignal(session);
+  bumpVersion();
 };
 
-export const createGameSignal = <TPayload>(actionCreator: (payload: TPayload) => GameAction) => {
-  return (payload: TPayload) => {
-    emitGameAction(actionCreator(payload));
-  };
+export const getCurrentSession = (): GameSession | null => sessionSignal();
+
+// ── Room signal ───────────────────────────────────────────────────────────────
+
+const roomSignal = signal<Room>(Splash);
+
+export const setRoom = (room: Room): void => {
+  roomSignal(room);
+  bumpVersion();
 };
 
-export const createGameSignalNoPayload = (actionCreator: () => GameAction) => {
-  return () => {
-    emitGameAction(actionCreator());
-  };
+export const getRoom = (): Room => roomSignal();
+
+// ── Lobby coordination ────────────────────────────────────────────────────────
+//
+// Replaces action dispatching for start/leave commands from the Lobby UI.
+// The game flow module calls await awaitLobbyStart() and the Lobby button
+// calls triggerLobbyStart() — no action types involved.
+
+let lobbyStartResolver: (() => void) | null = null;
+
+export const awaitLobbyStart = (): Promise<void> =>
+  new Promise(resolve => {
+    lobbyStartResolver = resolve;
+  });
+
+export const triggerLobbyStart = (): void => {
+  lobbyStartResolver?.();
+  lobbyStartResolver = null;
 };
 
-export function useGameSignal(actionCreator: () => GameAction): () => void;
-export function useGameSignal<TPayload>(
-  actionCreator: (payload: TPayload) => GameAction<TPayload>,
-): (payload: TPayload) => void;
-export function useGameSignal<TPayload>(actionCreator: (payload?: TPayload) => GameAction) {
-  return (payload?: TPayload) => {
-    emitGameAction(actionCreator(payload));
-  };
-}
+let lobbyLeaveResolver: (() => void) | null = null;
 
-export const selectComputed = <TSelected>(selector: (state: AppSelectorState) => TSelected) =>
-  computed(() => selector({ app: appState() }));
+export const awaitLobbyLeave = (): Promise<void> =>
+  new Promise(resolve => {
+    lobbyLeaveResolver = resolve;
+  });
 
-export const useApp = (): App => {
-  const appSignal = useMemo(() => computed(() => App.fromState(appState())), []);
-  const [app, setApp] = useState(() => appSignal());
+export const triggerLobbyLeave = (): void => {
+  lobbyLeaveResolver?.();
+  lobbyLeaveResolver = null;
+};
+
+// ── React hooks ──────────────────────────────────────────────────────────────
+
+/**
+ * Single composite hook for App.tsx. Re-renders on any game event or room change.
+ * Returns the live session (or null before the game starts) and the current room.
+ */
+export const useApp = () => {
+  const versionComputed = useMemo(() => computed(() => versionSignal()), []);
+  const [, setVersion] = useState(() => versionComputed());
 
   useEffect(() => {
     return effect(() => {
-      const next = appSignal();
-      setApp((previous) => (Object.is(previous, next) ? previous : next));
+      const v = versionComputed();
+      setVersion(prev => (prev === v ? prev : v));
     });
-  }, [appSignal]);
+  }, [versionComputed]);
 
-  return app;
+  const session = sessionSignal();
+  const room = roomSignal();
+  const hint = computeHint(session, room);
+
+  return { session, room, hint };
 };

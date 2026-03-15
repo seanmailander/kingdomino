@@ -1,165 +1,23 @@
-import type { GameAction } from "../game/state/types";
-import gameReducer, { Game as GameModel, type GameState, GAME_ENDED, GAME_STARTED, PLAYER_JOINED } from "../game/state/Game";
+import type { GameSession } from "../game/state/GameSession";
 
-// Kickoff events
-export const START_SOLO = "start/solo";
-export const START_MULTI = "start/multi";
-// Connection events
-export const CONNECTION_RESET = "connection/reset";
-export const CONNECTION_CONNECTED = "connection/connected";
-export const CONNECTION_ERRORED = "connection/errored";
-export const CONNECTION_TIMEOUT = "connection/timeout";
+// Room states
+export const Splash = "Splash" as const;
+export const Lobby = "Lobby" as const;
+export const Game = "Game" as const;
 
-// States that may occur
-export const Splash = "Splash";
-export const Lobby = "Lobby";
-export const Game = "Game";
-export const Shuffle = "Shuffle";
-export const Scoring = "Scoring";
+export type Room = typeof Splash | typeof Lobby | typeof Game;
 
-export type AppState = {
-  room: string;
-  game: GameState;
-};
-
-export type AppSelectorState = {
-  app: AppState;
-};
-
-const initialState: AppState = {
-  room: Splash,
-  game: GameModel.initialState(),
-};
-
-export class App {
-  private state: AppState;
-
-  private static readonly hintsByRoom: Record<string, string> = {
-    [Splash]: "Press any key to start",
-    [Lobby]: "Waiting for players",
-    [Game]: "Game",
-    [Shuffle]: "Shuffling",
-  };
-
-  private constructor(state: AppState) {
-    this.state = {
-      room: state.room,
-      game: GameModel.fromState(state.game).getState(),
-    };
-  }
-
-  static initialState(): AppState {
-    return {
-      room: Splash,
-      game: GameModel.initialState(),
-    };
-  }
-
-  static fromState(state: AppState = App.initialState()): App {
-    return new App(state);
-  }
-
-  static fromSelectorState(state: AppSelectorState): App {
-    return App.fromState(state.app);
-  }
-
-  static startSolo(): GameAction {
-    return { type: START_SOLO };
-  }
-
-  static startMulti(): GameAction {
-    return { type: START_MULTI };
-  }
-
-  static connectionReset(): GameAction {
-    return { type: CONNECTION_RESET };
-  }
-
-  static connectionConnected(): GameAction {
-    return { type: CONNECTION_CONNECTED };
-  }
-
-  static connectionErrored(): GameAction {
-    return { type: CONNECTION_ERRORED };
-  }
-
-  static connectionTimeout(): GameAction {
-    return { type: CONNECTION_TIMEOUT };
-  }
-
-  static appReducer(state: AppState = initialState, action: GameAction): AppState {
-    const app = App.fromState(state);
-    app.state.game = gameReducer(app.state.game, action);
-
-    switch (action.type) {
-      case PLAYER_JOINED:
-        return app.onPlayerJoined().stateSnapshot();
-      case GAME_STARTED:
-        return app.onGameStarted().stateSnapshot();
-      case GAME_ENDED:
-        return app.onGameEnded().stateSnapshot();
-      default:
-        return state;
+export function computeHint(session: GameSession | null, room: Room): string {
+  if (room === Lobby) {
+    if (session && session.hasEnoughPlayers()) {
+      return "Players connected, hit 'ready' to start game";
     }
+    return "Waiting for players";
   }
-
-  stateSnapshot(): AppState {
-    return {
-      room: this.state.room,
-      game: GameModel.fromState(this.state.game).getState(),
-    };
+  if (room === Game) {
+    if (session?.isMyTurn()) return "Pick your card";
+    if (session?.isMyPlace()) return "Place your card";
+    return "Waiting for Player 2";
   }
-
-  onPlayerJoined(): App {
-    if (this.state.room === Splash) {
-      this.state.room = Lobby;
-    }
-    return this;
-  }
-
-  onGameStarted(): App {
-    if (this.state.room === Lobby) {
-      this.state.room = Game;
-    }
-    return this;
-  }
-
-  onGameEnded(): App {
-    if (this.state.room === Game) {
-      this.state.room = Lobby;
-    }
-    return this;
-  }
-
-  game(): GameModel {
-    return GameModel.fromState(this.state.game);
-  }
-
-  room(): string {
-    return this.state.room;
-  }
-
-  hint(): string {
-    const game = this.game();
-    const room = this.room();
-    const hasEnoughPlayers = game.hasEnoughPlayers();
-    const isMyTurn = game.isMyTurn();
-
-    if (room === Lobby) {
-      if (hasEnoughPlayers) {
-        return "Players connected, hit 'ready' to start game";
-      }
-    }
-
-    if (room === Game) {
-      if (isMyTurn) {
-        return "Pick your card";
-      }
-      return "Waiting for Player 2 to pick their card";
-    }
-
-    return App.hintsByRoom[room];
-  }
+  return "Press any key to start";
 }
-
-export default App.appReducer;

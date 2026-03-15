@@ -1,174 +1,125 @@
-import { effect } from "alien-signals";
-
-import { createGameSignal, createGameSignalNoPayload, getAppState, selectComputed } from "../../App/store";
-import { App as AppState } from "../../App/App";
-
 import { chooseOrderFromSeed, getNextFourCards } from "../gamelogic/utils";
-import { Game } from "./Game";
 import { buildTrustedSeed, MOVE, moveMessage } from "./game.messages";
-import Round from "./Round";
+import { GameSession, Player } from "./GameSession";
+import type { GameEventBus, GameEventMap, CardId } from "./GameSession";
+import type { Direction } from "./types";
 import newSoloConnection from "./connection.solo";
-import type { MovePayload } from "./types";
+import { setCurrentSession, setRoom, awaitLobbyStart, awaitLobbyLeave } from "../../App/store";
+import { Lobby, Game } from "../../App/App";
 
-async function waitForComputed(predicate: () => boolean, timeoutMs = 0) {
-  return new Promise<void>((resolve, reject) => {
-    let settled = false;
+// ── Event-based waiting (replaces waitForComputed) ──────────────────────────────
 
-    const timeoutHandle =
-      timeoutMs > 0
-        ? setTimeout(() => {
-            if (settled) {
-              return;
-            }
-
-            settled = true;
-            cleanup?.();
-            reject(new Error("Timed out waiting for game state update"));
-          }, timeoutMs)
-        : undefined;
-
-    const cleanup = effect(() => {
-      if (settled) {
-        return;
-      }
-
-      if (predicate()) {
-        settled = true;
-        if (timeoutHandle) {
-          clearTimeout(timeoutHandle);
-        }
-        queueMicrotask(() => cleanup?.());
-        resolve();
+/**
+ * Resolves the next time the given event fires (optionally filtered by predicate).
+ * The listener is registered synchronously, so there is no race between
+ * an awaited operation completing and the next waitForEvent() call.
+ */
+function waitForEvent<K extends keyof GameEventMap>(
+  bus: GameEventBus,
+  event: K,
+  predicate?: (data: GameEventMap[K]) => boolean,
+): Promise<GameEventMap[K]> {
+  return new Promise(resolve => {
+    const off = bus.on(event, data => {
+      if (!predicate || predicate(data)) {
+        off();
+        resolve(data);
       }
     });
   });
 }
 
-function getMostRecentPlacement(playerId: string): Omit<MovePayload, "playerId"> {
-  const placements = getAppState().game.cardsPlacedByPlayer[playerId] ?? [];
-  return placements[placements.length - 1];
-}
-
-const signalRoundStart = createGameSignalNoPayload(Round.roundStart);
-const signalRoundWhoseTurn = createGameSignalNoPayload(Round.whoseTurn);
-const signalRoundEnd = createGameSignalNoPayload(Round.roundEnd);
-const signalRoundMyPick = createGameSignalNoPayload(Round.myPick);
-const signalRoundMyPlace = createGameSignalNoPayload(Round.myPlace);
-const signalRoundTheirPick = createGameSignalNoPayload(Round.theirPick);
-const signalRoundTheirPlace = createGameSignalNoPayload(Round.theirPlace);
-const signalDeckShuffled = createGameSignal(Round.deckShuffled);
-const signalCardPicked = createGameSignal(Round.cardPicked);
-const signalCardPlaced = createGameSignal(Round.cardPlaced);
-const signalStartSolo = createGameSignalNoPayload(AppState.startSolo);
-const signalPlayerJoined = createGameSignal(Game.playerJoined);
-const signalOrderChosen = createGameSignal(Round.orderChosen);
-const signalGameEnded = createGameSignalNoPayload(Game.gameEnded);
-const signalConnectionErrored = createGameSignalNoPayload(AppState.connectionErrored);
-const signalStartMulti = createGameSignalNoPayload(AppState.startMulti);
-
-const pickOrderComputed = selectComputed((state) => Game.fromSelectorState(state).pickOrder());
-const myPlayerIdComputed = selectComputed((state) => Game.fromSelectorState(state).myPlayerId());
-const roomComputed = selectComputed((state) => AppState.fromSelectorState(state).room());
-const cardToPlaceComputed = selectComputed((state) => Game.fromSelectorState(state).cardToPlace());
+// ── Round loop ─────────────────────────────────────────────────────────────────────
 
 async function playRound(
+  session: GameSession,
   sendGameMessage: (message: { type: string; content?: unknown }) => void,
   waitForGameMessage: <T = unknown>(messageType: string) => Promise<T>,
   currentDeck?: number[],
-) {
-  // Round started
-  signalRoundStart();
-
-  // Deal out some cards
+): Promise<number[]> {
   const trustedSeed = await buildTrustedSeed(sendGameMessage, waitForGameMessage);
-  // - each 4-draw, recommit and re-shuffle
-  //   - important to re-randomize every turn, or future knowledge will help mis-behaving clients
-  const { next, remaining } = getNextFourCards(trustedSeed, currentDeck);
+  const { next: cardIds, remaining } = getNextFourCards(trustedSeed, currentDeck);
 
-  // Put those cards on the screen
-  signalDeckShuffled(next);
-  signalRoundWhoseTurn();
+  session.beginRound(cardIds as [CardId, CardId, CardId, CardId]);
 
-  while (true) {
-    // Whose turn?
-    const pickOrder = pickOrderComputed();
-    if (pickOrder.length === 0) {
-      // No turns left
-      signalRoundEnd();
-      break;
-    }
+  // Process actors sequentially until the round is complete
+  while (session.currentRound !== null) {
+    const round = session.currentRound;
+    const actor = round.currentActor;
+    if (!actor) break;
 
-    const playerId = myPlayerIdComputed() as string;
-    const isMyTurn = pickOrder[0] === playerId;
+    if (actor.isLocal) {
+      // Wait for user to pick via Card.tsx (session.handleLocalPick)
+      await waitForEvent(session.events, "pick:made", e => e.player.id === actor.id);
 
-    if (isMyTurn) {
-      const turnCountBeforePlace = pickOrder.length;
-      signalRoundMyPick();
+      // Wait for user to place via BoardArea.tsx (session.handleLocalPlacement)
+      const placeEvent = await waitForEvent(session.events, "place:made", e => e.player.id === actor.id);
 
-      await waitForComputed(() => cardToPlaceComputed() !== undefined);
-      signalRoundMyPlace();
-
-      await waitForComputed(() => pickOrderComputed().length < turnCountBeforePlace);
-
-      const placed = getMostRecentPlacement(playerId);
-      if (placed) {
-        sendGameMessage(
-          moveMessage({
-            playerId,
-            card: placed.card,
-            x: placed.x,
-            y: placed.y,
-            direction: placed.direction,
-          }),
-        );
-      }
+      // Send move to peer
+      sendGameMessage(
+        moveMessage({
+          playerId: actor.id,
+          card: placeEvent.cardId,
+          x: placeEvent.x,
+          y: placeEvent.y,
+          direction: placeEvent.direction,
+        }),
+      );
     } else {
-      signalRoundTheirPick();
-      const { move } = await waitForGameMessage<{ move: MovePayload }>(MOVE);
+      // Wait for opponent's move from peer
+      const { move } = await waitForGameMessage<{
+        move: { playerId: string; card: number; x: number; y: number; direction: number };
+      }>(MOVE);
 
-      signalCardPicked(move.card);
-      signalRoundTheirPlace();
-      signalCardPlaced(move);
+      session.handlePick(move.playerId, move.card);
+      session.handlePlacement(move.playerId, move.x, move.y, move.direction as Direction);
     }
   }
 
   return remaining;
 }
 
+// ── Solo game flow ─────────────────────────────────────────────────────────────────
+
 let isSoloGameRunning = false;
 
 export const startSoloGameFlow = async () => {
-  if (isSoloGameRunning) {
-    return;
-  }
-
+  if (isSoloGameRunning) return;
   isSoloGameRunning = true;
+
   const { destroy, peerIdentifiers, sendGameMessage, waitForGameMessage } = newSoloConnection();
+  const session = new GameSession();
 
   try {
-    signalStartSolo();
-    signalPlayerJoined({ playerId: peerIdentifiers.me, isMe: true });
-    signalPlayerJoined({ playerId: peerIdentifiers.them, isMe: false });
+    session.addPlayer(new Player(peerIdentifiers.me, true));
+    session.addPlayer(new Player(peerIdentifiers.them, false));
+    setCurrentSession(session);
+    setRoom(Lobby);
 
-    await waitForComputed(() => roomComputed() === "Game");
+    // Wait for "Start game" button in Lobby UI (triggerLobbyStart)
+    await awaitLobbyStart();
+    setRoom(Game);
 
-    // Work out who goes first
-    // Get a shared seed so its random who goes first
+    // Determine first-round pick order from a shared cryptographic seed
     const firstSeed = await buildTrustedSeed(sendGameMessage, waitForGameMessage);
-    // Now use that seed to sort the peer identifiers
-    signalOrderChosen(chooseOrderFromSeed(firstSeed, peerIdentifiers));
+    const orderedIds: string[] = chooseOrderFromSeed(firstSeed, peerIdentifiers);
+    const pickOrder = orderedIds.map(id => session.playerById(id)!);
 
-    // First round!
-    let remainingDeck = await playRound(sendGameMessage, waitForGameMessage);
+    session.startGame(pickOrder);
+
+    // First round
+    let remainingDeck = await playRound(session, sendGameMessage, waitForGameMessage);
 
     // Subsequent rounds
     while (remainingDeck.length > 0) {
-      remainingDeck = await playRound(sendGameMessage, waitForGameMessage, remainingDeck);
+      remainingDeck = await playRound(session, sendGameMessage, waitForGameMessage, remainingDeck);
     }
 
-    signalGameEnded();
+    session.endGame();
   } catch {
-    signalConnectionErrored();
+    // Connection error — reset to Splash
+    setCurrentSession(null);
+    setRoom("Splash");
   } finally {
     destroy();
     isSoloGameRunning = false;
@@ -176,5 +127,7 @@ export const startSoloGameFlow = async () => {
 };
 
 export const startMultiplayerGameFlow = () => {
-  signalStartMulti();
+  // Multiplayer P2P not yet implemented — placeholder
+  setRoom(Lobby);
 };
+

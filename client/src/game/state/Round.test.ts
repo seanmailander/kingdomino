@@ -1,52 +1,148 @@
-import Round, { MY_PLACE, ROUND_END, ROUND_START } from "./Round";
+import { Deal, GameSession, Player, Round } from "./GameSession";
 
-describe("Round POJO", () => {
-  it("starts a fresh round with pick slots", () => {
-    const round = Round.fromState().start().stateSnapshot();
-
-    expect(round.phase).toBe(ROUND_START);
-    expect(round.deal).toEqual([]);
-    expect(round.pickOrderThisRound).toEqual([undefined, undefined, undefined, undefined]);
-    expect(round.pickOrderNextRound).toEqual([undefined, undefined, undefined, undefined]);
-    expect(round.cardToPlace).toBeUndefined();
+describe("Deal", () => {
+  it("sorts slots by card id ascending", () => {
+    const deal = new Deal([34, 3, 32, 26]);
+    const ids = deal.snapshot().map(s => s.cardId);
+    expect(ids).toEqual([3, 26, 32, 34]);
   });
 
-  it("advances pick order and next-round order when a card is placed", () => {
-    const round = Round.fromState()
-      .start()
-      .chooseOrder(["me", "them"])
-      .shuffleDeck([3, 26, 34, 32])
-      .pickCard(26)
-      .placeCard({ card: 26 });
-
-    const state = round.stateSnapshot();
-    expect(state.deal).toEqual([3, undefined, 34, 32]);
-    expect(state.pickOrderThisRound).toEqual(["them"]);
-    expect(state.pickOrderNextRound).toEqual([undefined, "me", undefined, undefined]);
-    expect(state.cardToPlace).toBeUndefined();
+  it("records a pick and returns the card for that player", () => {
+    const deal = new Deal([3, 26, 32, 34]);
+    const alice = new Player("alice", true);
+    deal.pickByCardId(alice, 26);
+    expect(deal.pickedCardFor(alice)).toBe(26);
   });
 
-  it("moves to place phase and reports whether it is my placement turn", () => {
-    const round = Round.fromState().start().chooseOrder(["me", "them"]).setMyPlace();
-
-    expect(round.phase()).toBe(MY_PLACE);
-    expect(round.isMyTurn("me")).toBe(true);
-    expect(round.isMyPlace("me")).toBe(true);
-    expect(round.isMyPlace("them")).toBe(false);
+  it("throws when picking an already-claimed card", () => {
+    const deal = new Deal([3, 26, 32, 34]);
+    const alice = new Player("alice", true);
+    const bob = new Player("bob", false);
+    deal.pickByCardId(alice, 26);
+    expect(() => deal.pickByCardId(bob, 26)).toThrow();
   });
 
-  it("promotes next-round order when the round ends", () => {
-    const round = Round.fromState().start().chooseOrder(["me", "them"]);
+  it("derives next-round pick order by slot position (low card id first)", () => {
+    const deal = new Deal([3, 26, 32, 34]);
+    const alice = new Player("alice", true);
+    const bob = new Player("bob", false);
+    deal.pickByCardId(alice, 32);
+    deal.pickByCardId(bob, 3);
+    const order = deal.nextRoundPickOrder().map(p => p.id);
+    expect(order).toEqual(["bob", "alice"]);
+  });
+});
 
-    round
-      .shuffleDeck([3, 26, 34, 32])
-      .placeCard({ card: 26 })
-      .placeCard({ card: 32 })
-      .end();
+describe("Round", () => {
+  const makeRound = () => {
+    const alice = new Player("alice", true);
+    const bob = new Player("bob", false);
+    const deal = new Deal([3, 26, 32, 34]);
+    const round = new Round(deal, [alice, bob]);
+    return { round, alice, bob, deal };
+  };
 
-    const state = round.stateSnapshot();
-    expect(state.phase).toBe(ROUND_END);
-    expect(state.pickOrderThisRound).toEqual(["me", "them"]);
-    expect(state.pickOrderNextRound).toEqual([undefined, undefined, undefined, undefined]);
+  it("starts in picking phase with alice as the current actor", () => {
+    const { round, alice } = makeRound();
+    expect(round.phase).toBe("picking");
+    expect(round.currentActor?.id).toBe(alice.id);
+  });
+
+  it("moves to placing after alice picks", () => {
+    const { round, alice } = makeRound();
+    round.recordPick(alice, 26);
+    expect(round.phase).toBe("placing");
+    expect(round.currentActor?.id).toBe(alice.id);
+  });
+
+  it("moves to next picker after alice places", () => {
+    const { round, alice, bob } = makeRound();
+    round.recordPick(alice, 26);
+    round.recordPlacement(alice, 7, 6, 1);
+    expect(round.phase).toBe("picking");
+    expect(round.currentActor?.id).toBe(bob.id);
+  });
+
+  it("reaches complete after all players pick and place", () => {
+    const { round, alice, bob } = makeRound();
+    round.recordPick(alice, 26);
+    round.recordPlacement(alice, 7, 6, 1);
+    round.recordPick(bob, 32);
+    round.recordPlacement(bob, 5, 6, 3);
+    expect(round.phase).toBe("complete");
+  });
+
+  it("throws when picking out of turn", () => {
+    const { round, bob } = makeRound();
+    expect(() => round.recordPick(bob, 26)).toThrow();
+  });
+
+  it("throws when placing in picking phase", () => {
+    const { round, alice } = makeRound();
+    expect(() => round.recordPlacement(alice, 7, 6, 1)).toThrow();
+  });
+});
+
+describe("GameSession", () => {
+  const makeSession = () => {
+    const session = new GameSession();
+    const alice = new Player("alice", true);
+    const bob = new Player("bob", false);
+    session.addPlayer(alice);
+    session.addPlayer(bob);
+    session.startGame([alice, bob]);
+    return { session, alice, bob };
+  };
+
+  it("reports isMyTurn for the local player when it is their pick turn", () => {
+    const { session } = makeSession();
+    session.beginRound([3, 26, 32, 34]);
+    expect(session.isMyTurn()).toBe(true);
+    expect(session.isMyPlace()).toBe(false);
+  });
+
+  it("reports isMyPlace after local player picks", () => {
+    const { session } = makeSession();
+    session.beginRound([3, 26, 32, 34]);
+    session.handleLocalPick(26);
+    expect(session.isMyTurn()).toBe(false);
+    expect(session.isMyPlace()).toBe(true);
+    expect(session.localCardToPlace()).toBe(26);
+  });
+
+  it("fires pick:made event when local player picks", () => {
+    const { session } = makeSession();
+    session.beginRound([3, 26, 32, 34]);
+    const events: number[] = [];
+    session.events.on("pick:made", e => events.push(e.cardId));
+    session.handleLocalPick(26);
+    expect(events).toEqual([26]);
+  });
+
+  it("fires round:complete and clears currentRound when all players finish", () => {
+    const { session, bob } = makeSession();
+    session.beginRound([3, 26, 32, 34]);
+    let roundCompleteCount = 0;
+    session.events.on("round:complete", () => roundCompleteCount++);
+
+    session.handleLocalPick(26);
+    session.handleLocalPlacement(7, 6, 1);
+    session.handlePick(bob.id, 32);
+    session.handlePlacement(bob.id, 5, 6, 3);
+
+    expect(roundCompleteCount).toBe(1);
+    expect(session.currentRound).toBeNull();
+  });
+
+  it("accumulates placements on player boards", () => {
+    const { session, alice, bob } = makeSession();
+    session.beginRound([3, 26, 32, 34]);
+    session.handleLocalPick(26);
+    session.handleLocalPlacement(7, 6, 1);
+    session.handlePick(bob.id, 32);
+    session.handlePlacement(bob.id, 5, 6, 3);
+
+    expect(alice.board.placements).toHaveLength(1);
+    expect(bob.board.placements).toHaveLength(1);
   });
 });

@@ -1,9 +1,7 @@
 import React, { useState, useRef } from "react";
 
 import "./board.css";
-import { useGameSignal } from "../../App/store";
-
-import Round from "../state/Round";
+import type { GameSession } from "../state/GameSession";
 
 import Tile from "./Tile";
 import BoardOverlay from "./BoardOverlay";
@@ -25,11 +23,10 @@ const rotateLookup: { [key: number]: Direction } = {
 };
 
 function BoardArea(props) {
-  const { game, playerId, isMe } = props;
-  const myBoard = game.boardFor(playerId);
-  const cardId = game.cardToPlace();
-  const isMyPlace = game.isMyPlace();
-  const signalCardPlaced = useGameSignal(Round.cardPlaced);
+  const { session, playerId, isMe }: { session: GameSession; playerId: string; isMe: boolean } = props;
+  const myBoard = session.boardFor(playerId);
+  const cardId = session.localCardToPlace();
+  const isMyPlace = session.isMyPlace();
 
   const [direction, setDirection] = useState<Direction>(right);
   const [flipped, setFlipped] = useState(false);
@@ -39,7 +36,7 @@ function BoardArea(props) {
 
   const handleClick = (x, y) => () => {
     if (isMyPlace && isValidTile(x, y) && isValidDirection(x, y, direction)) {
-      signalCardPlaced({ playerId, card: cardId, x, y, direction });
+      session.handleLocalPlacement(x, y, direction);
     }
   };
 
