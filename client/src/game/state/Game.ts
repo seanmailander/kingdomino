@@ -1,14 +1,3 @@
-import {
-  CARD_PICKED,
-  CARD_PLACED,
-  DECK_SHUFFLED,
-  GAME_ENDED,
-  GAME_STARTED,
-  ORDER_CHOSEN,
-  PLAYER_JOINED,
-  PLAYER_LEFT,
-  type GameAction,
-} from "./events";
 import { placedCardsToBoard } from "../gamelogic/board";
 import Round, {
   MY_PICK,
@@ -18,9 +7,20 @@ import Round, {
   THEIR_PICK,
   THEIR_PLACE,
   WHOSE_TURN,
+  ORDER_CHOSEN,
+  DECK_SHUFFLED,
+  CARD_PICKED,
+  CARD_PLACED,
   type RoundState,
 } from "./Round";
-import type { Card, Direction, PlayerId } from "./types";
+import type { Card, Direction, GameAction, PlayerId } from "./types";
+
+// Player events
+export const PLAYER_JOINED = "lobby/playerJoined";
+export const PLAYER_LEFT = "lobby/playerLeft";
+// Game lifecycle events
+export const GAME_STARTED = "game/started";
+export const GAME_ENDED = "game/ended";
 
 type Players = Array<{ playerId: PlayerId; isMe: boolean }>;
 type PlacedCard = {
@@ -86,6 +86,22 @@ export class Game {
 
   static fromSelectorState(state: GameSelectorState): Game {
     return Game.fromState(state.app.game);
+  }
+
+  static playerJoined(payload: { playerId: PlayerId; isMe: boolean }): GameAction {
+    return { type: PLAYER_JOINED, payload };
+  }
+
+  static playerLeft(payload: { playerId: PlayerId }): GameAction {
+    return { type: PLAYER_LEFT, payload };
+  }
+
+  static gameStarted(): GameAction {
+    return { type: GAME_STARTED };
+  }
+
+  static gameEnded(): GameAction {
+    return { type: GAME_ENDED };
   }
 
   static gameReducer(state: GameState = initialState, action: GameAction): GameState {

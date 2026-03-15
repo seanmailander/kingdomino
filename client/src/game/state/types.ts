@@ -46,3 +46,8 @@ export type CardInfo = {
 };
 
 export type Board = { tile?: CardType; value?: CardValue }[][];
+
+export type GameAction<T = unknown> = {
+  type: string;
+  payload?: T;
+};

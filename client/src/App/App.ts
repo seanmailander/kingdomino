@@ -1,5 +1,14 @@
-import { type GameAction, GAME_ENDED, GAME_STARTED, PLAYER_JOINED } from "../game/state/events";
-import gameReducer, { Game as GameModel, type GameState } from "../game/state/Game";
+import type { GameAction } from "../game/state/types";
+import gameReducer, { Game as GameModel, type GameState, GAME_ENDED, GAME_STARTED, PLAYER_JOINED } from "../game/state/Game";
+
+// Kickoff events
+export const START_SOLO = "start/solo";
+export const START_MULTI = "start/multi";
+// Connection events
+export const CONNECTION_RESET = "connection/reset";
+export const CONNECTION_CONNECTED = "connection/connected";
+export const CONNECTION_ERRORED = "connection/errored";
+export const CONNECTION_TIMEOUT = "connection/timeout";
 
 // States that may occur
 export const Splash = "Splash";
@@ -52,6 +61,30 @@ export class App {
 
   static fromSelectorState(state: AppSelectorState): App {
     return App.fromState(state.app);
+  }
+
+  static startSolo(): GameAction {
+    return { type: START_SOLO };
+  }
+
+  static startMulti(): GameAction {
+    return { type: START_MULTI };
+  }
+
+  static connectionReset(): GameAction {
+    return { type: CONNECTION_RESET };
+  }
+
+  static connectionConnected(): GameAction {
+    return { type: CONNECTION_CONNECTED };
+  }
+
+  static connectionErrored(): GameAction {
+    return { type: CONNECTION_ERRORED };
+  }
+
+  static connectionTimeout(): GameAction {
+    return { type: CONNECTION_TIMEOUT };
   }
 
   static appReducer(state: AppState = initialState, action: GameAction): AppState {

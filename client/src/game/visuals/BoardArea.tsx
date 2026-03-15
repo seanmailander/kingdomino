@@ -3,7 +3,7 @@ import React, { useState, useRef } from "react";
 import "./board.css";
 import { useGameSignal } from "../../App/store";
 
-import { cardPlaced } from "../state/events";
+import Round from "../state/Round";
 
 import Tile from "./Tile";
 import BoardOverlay from "./BoardOverlay";
@@ -29,7 +29,7 @@ function BoardArea(props) {
   const myBoard = game.boardFor(playerId);
   const cardId = game.cardToPlace();
   const isMyPlace = game.isMyPlace();
-  const signalCardPlaced = useGameSignal(cardPlaced);
+  const signalCardPlaced = useGameSignal(Round.cardPlaced);
 
   const [direction, setDirection] = useState<Direction>(right);
   const [flipped, setFlipped] = useState(false);

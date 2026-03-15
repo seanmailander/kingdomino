@@ -3,17 +3,6 @@ import { effect } from "alien-signals";
 import { createGameSignal, createGameSignalNoPayload, getAppState, selectComputed } from "../../App/store";
 import { App as AppState } from "../../App/App";
 
-import {
-  cardPicked,
-  cardPlaced,
-  connectionErrored,
-  deckShuffled,
-  gameEnded,
-  orderChosen,
-  playerJoined,
-  startMulti,
-  startSolo,
-} from "./events";
 import { chooseOrderFromSeed, getNextFourCards } from "../gamelogic/utils";
 import { Game } from "./Game";
 import { buildTrustedSeed, MOVE, moveMessage } from "./game.messages";
@@ -67,15 +56,15 @@ const signalRoundMyPick = createGameSignalNoPayload(Round.myPick);
 const signalRoundMyPlace = createGameSignalNoPayload(Round.myPlace);
 const signalRoundTheirPick = createGameSignalNoPayload(Round.theirPick);
 const signalRoundTheirPlace = createGameSignalNoPayload(Round.theirPlace);
-const signalDeckShuffled = createGameSignal(deckShuffled);
-const signalCardPicked = createGameSignal(cardPicked);
-const signalCardPlaced = createGameSignal(cardPlaced);
-const signalStartSolo = createGameSignalNoPayload(startSolo);
-const signalPlayerJoined = createGameSignal(playerJoined);
-const signalOrderChosen = createGameSignal(orderChosen);
-const signalGameEnded = createGameSignalNoPayload(gameEnded);
-const signalConnectionErrored = createGameSignalNoPayload(connectionErrored);
-const signalStartMulti = createGameSignalNoPayload(startMulti);
+const signalDeckShuffled = createGameSignal(Round.deckShuffled);
+const signalCardPicked = createGameSignal(Round.cardPicked);
+const signalCardPlaced = createGameSignal(Round.cardPlaced);
+const signalStartSolo = createGameSignalNoPayload(AppState.startSolo);
+const signalPlayerJoined = createGameSignal(Game.playerJoined);
+const signalOrderChosen = createGameSignal(Round.orderChosen);
+const signalGameEnded = createGameSignalNoPayload(Game.gameEnded);
+const signalConnectionErrored = createGameSignalNoPayload(AppState.connectionErrored);
+const signalStartMulti = createGameSignalNoPayload(AppState.startMulti);
 
 const pickOrderComputed = selectComputed((state) => Game.fromSelectorState(state).pickOrder());
 const myPlayerIdComputed = selectComputed((state) => Game.fromSelectorState(state).myPlayerId());

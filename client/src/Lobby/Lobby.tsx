@@ -1,9 +1,9 @@
 import React from "react";
 
+import { App } from "../App/App";
 import { Game } from "../game/state/Game";
 import { useGameSignal } from "../App/store";
 
-import { connectionReset, gameStarted } from "../game/state/events";
 
 type LobbyProps = {
   game: Game;
@@ -12,8 +12,8 @@ type LobbyProps = {
 function Lobby({ game }: LobbyProps) {
   const players = game.players();
   const hasEnoughPlayers = game.hasEnoughPlayers();
-  const signalGameStarted = useGameSignal(gameStarted);
-  const signalConnectionReset = useGameSignal(connectionReset);
+  const signalGameStarted = useGameSignal(Game.gameStarted);
+  const signalConnectionReset = useGameSignal(App.connectionReset);
 
   const startGame = hasEnoughPlayers && (
     <>

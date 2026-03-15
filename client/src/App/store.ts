@@ -2,7 +2,7 @@ import { computed, effect, signal } from "alien-signals";
 import { useEffect, useMemo, useState } from "react";
 
 import { App, type AppSelectorState, type AppState } from "./App";
-import type { GameAction } from "../game/state/events";
+import type { GameAction } from "../game/state/types";
 
 const appState = signal<AppState>(App.initialState());
 

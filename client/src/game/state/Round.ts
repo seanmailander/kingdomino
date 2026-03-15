@@ -1,15 +1,8 @@
-import {
-  CARD_PICKED,
-  CARD_PLACED,
-  DECK_SHUFFLED,
-  ORDER_CHOSEN,
-  type GameAction,
-} from "./events";
 import { computed, signal } from "alien-signals";
 import { getCard } from "../gamelogic/cards";
 import type { GameSelectorState } from "./Game";
 import { Game } from "./Game";
-import type { Card, PlayerId } from "./types";
+import type { Card, GameAction, MovePayload, PlayerId } from "./types";
 
 export type RoundState = {
   phase: string;
@@ -18,6 +11,12 @@ export type RoundState = {
   pickOrderNextRound: Array<PlayerId | undefined>;
   cardToPlace: Card | undefined;
 };
+
+// Round data events
+export const ORDER_CHOSEN = "game/orderChosen";
+export const DECK_SHUFFLED = "round/deckShuffled";
+export const CARD_PICKED = "round/cardPicked";
+export const CARD_PLACED = "round/cardPlaced";
 
 export const ROUND_START = "round-phase/start";
 export const WHOSE_TURN = "round-phase/whoseTurn";
@@ -119,6 +118,22 @@ export class Round {
 
   static roundEnd(): GameAction {
     return { type: ROUND_END };
+  }
+
+  static orderChosen(payload: PlayerId[]): GameAction {
+    return { type: ORDER_CHOSEN, payload };
+  }
+
+  static deckShuffled(payload: Card[]): GameAction {
+    return { type: DECK_SHUFFLED, payload };
+  }
+
+  static cardPicked(payload: Card): GameAction {
+    return { type: CARD_PICKED, payload };
+  }
+
+  static cardPlaced(payload: MovePayload): GameAction {
+    return { type: CARD_PLACED, payload };
   }
 
   static roundReducer(state: RoundState = Round.defaultState, action: GameAction): RoundState {
