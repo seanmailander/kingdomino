@@ -1,6 +1,6 @@
 import React from "react";
 
-import { startMultiplayerGameFlow, startSoloGameFlow } from "../game/game.flow";
+import { startMultiplayerGameFlow, startSoloGameFlow } from "../game/state/game.flow";
 
 function Splash() {
   return (

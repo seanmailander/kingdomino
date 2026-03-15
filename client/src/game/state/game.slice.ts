@@ -8,7 +8,7 @@ import {
   PLAYER_JOINED,
   PLAYER_LEFT,
   type GameAction,
-} from "../game.actions";
+} from "./game.actions";
 import { placedCardsToBoard } from "../gamelogic/board";
 import Round, {
   MY_PICK,
@@ -20,7 +20,7 @@ import Round, {
   WHOSE_TURN,
   type RoundState,
 } from "./Round";
-import type { Card, Direction, PlayerId } from "../types";
+import type { Card, Direction, PlayerId } from "./types";
 
 type Players = Array<{ playerId: PlayerId; isMe: boolean }>;
 type PlacedCard = {

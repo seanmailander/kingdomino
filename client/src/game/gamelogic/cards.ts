@@ -1,4 +1,4 @@
-import type { CardInfo, CardValue } from "../types";
+import type { CardInfo, CardValue } from "../state/types";
 
 // - 48 cards, each is unique (some repeats?)
 // - canonical identification (sort)

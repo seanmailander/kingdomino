@@ -1,7 +1,7 @@
 import { effect } from "alien-signals";
 
-import { createGameSignal, createGameSignalNoPayload, gameStore, selectComputed } from "../App/store";
-import { App as AppState } from "../App/app.slice";
+import { createGameSignal, createGameSignalNoPayload, gameStore, selectComputed } from "../../App/store";
+import { App as AppState } from "../../App/app.slice";
 
 import {
   cardPicked,
@@ -14,10 +14,10 @@ import {
   startMulti,
   startSolo,
 } from "./game.actions";
-import { chooseOrderFromSeed, getNextFourCards } from "./gamelogic/utils";
-import { Game } from "./state/game.slice";
+import { chooseOrderFromSeed, getNextFourCards } from "../gamelogic/utils";
+import { Game } from "./game.slice";
 import { buildTrustedSeed, MOVE, moveMessage } from "./game.messages";
-import Round from "./state/Round";
+import Round from "./Round";
 import newSoloConnection from "./connection.solo";
 import type { MovePayload } from "./types";
 

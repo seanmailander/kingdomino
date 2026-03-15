@@ -8,7 +8,7 @@ import {
   twoCrown,
   up,
   validTiles,
-} from "./gamelogic/cards";
+} from "../gamelogic/cards";
 
 export type PlayerId = string;
 

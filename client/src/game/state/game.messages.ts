@@ -1,4 +1,4 @@
-import { commit, verify, combine } from "./gamelogic/utils";
+import { commit, verify, combine } from "../gamelogic/utils";
 
 export const START = "START";
 export const COMMITTMENT = "COMMITTMENT";

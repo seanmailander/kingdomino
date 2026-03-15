@@ -1,4 +1,4 @@
-import { type GameAction, GAME_ENDED, GAME_STARTED, PLAYER_JOINED } from "../game/game.actions";
+import { type GameAction, GAME_ENDED, GAME_STARTED, PLAYER_JOINED } from "../game/state/game.actions";
 import gameReducer, { Game as GameModel, type GameState } from "../game/state/game.slice";
 
 // States that may occur

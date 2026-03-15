@@ -3,13 +3,13 @@ import React, { useState, useRef } from "react";
 import "./board.css";
 import { useGameSignal } from "../../App/store";
 
-import { cardPlaced } from "../game.actions";
+import { cardPlaced } from "../state/game.actions";
 
 import Tile from "./Tile";
 import BoardOverlay from "./BoardOverlay";
 import { getEligiblePositions, getValidDirections } from "../gamelogic/board";
 import { up, down, left, right } from "../gamelogic/cards";
-import type { Direction } from "../types";
+import type { Direction } from "../state/types";
 import useKeypress from "./useKeyPress";
 
 function BoardSquare(props) {

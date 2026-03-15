@@ -3,7 +3,7 @@ import React from "react";
 import { Game } from "../game/state/game.slice";
 import { useGameSignal } from "../App/store";
 
-import { connectionReset, gameStarted } from "../game/game.actions";
+import { connectionReset, gameStarted } from "../game/state/game.actions";
 
 type LobbyProps = {
   game: Game;
