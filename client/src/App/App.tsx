@@ -4,13 +4,10 @@ import "./App.css";
 import SplashComponent from "../Splash/Splash";
 import LobbyComponent from "../Lobby/Lobby";
 import GameComponent from "../game/visuals/Game";
-import { useGameSelector } from "./store";
-
-import { Root } from "./reducer";
+import { useApp } from "./store";
 
 function App() {
-  const root = useGameSelector((state) => Root.fromState(state));
-  const app = root.app();
+  const app = useApp();
   const game = app.game();
   const room = app.room();
   const hint = app.hint();

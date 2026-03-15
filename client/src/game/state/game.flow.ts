@@ -1,6 +1,6 @@
 import { effect } from "alien-signals";
 
-import { createGameSignal, createGameSignalNoPayload, gameStore, selectComputed } from "../../App/store";
+import { createGameSignal, createGameSignalNoPayload, getAppState, selectComputed } from "../../App/store";
 import { App as AppState } from "../../App/App";
 
 import {
@@ -56,7 +56,7 @@ async function waitForComputed(predicate: () => boolean, timeoutMs = 0) {
 }
 
 function getMostRecentPlacement(playerId: string): Omit<MovePayload, "playerId"> {
-  const placements = gameStore.state().app.game.cardsPlacedByPlayer[playerId] ?? [];
+  const placements = getAppState().game.cardsPlacedByPlayer[playerId] ?? [];
   return placements[placements.length - 1];
 }
 

@@ -1,45 +1,16 @@
 import { computed, effect, signal } from "alien-signals";
 import { useEffect, useMemo, useState } from "react";
 
-import reducer from "./reducer";
-import type { RootState } from "./reducer";
+import { App, type AppSelectorState, type AppState } from "./App";
 import type { GameAction } from "../game/state/events";
 
-export type GameStore = {
-  state: {
-    (): RootState;
-    (value: RootState): void;
-  };
-  emit: (action: GameAction) => void;
+const appState = signal<AppState>(App.initialState());
+
+export const getAppState = (): AppState => appState();
+
+export const emitGameAction = (action: GameAction) => {
+  appState(App.appReducer(appState(), action));
 };
-
-const configureAppStore = (preloadedState?: RootState): GameStore => {
-  let currentState = reducer(preloadedState, { type: "@@init" });
-  const state = signal(currentState);
-  const action = signal<GameAction | undefined>(undefined);
-
-  effect(() => {
-    const nextAction = action();
-
-    if (!nextAction) {
-      return;
-    }
-
-    currentState = reducer(currentState, nextAction);
-    state(currentState);
-  });
-
-  return {
-    state,
-    emit: (nextAction) => {
-      action(nextAction);
-    },
-  };
-};
-
-export const gameStore = configureAppStore();
-
-export const emitGameAction = (action: GameAction) => gameStore.emit(action);
 
 export const createGameSignal = <TPayload>(actionCreator: (payload: TPayload) => GameAction) => {
   return (payload: TPayload) => {
@@ -63,21 +34,19 @@ export function useGameSignal<TPayload>(actionCreator: (payload?: TPayload) => G
   };
 }
 
-export const selectComputed = <TSelected>(selector: (state: RootState) => TSelected) =>
-  computed(() => selector(gameStore.state()));
+export const selectComputed = <TSelected>(selector: (state: AppSelectorState) => TSelected) =>
+  computed(() => selector({ app: appState() }));
 
-export const useGameSelector = <TSelected>(selector: (state: RootState) => TSelected): TSelected => {
-  const selectedSignal = useMemo(() => selectComputed(selector), [selector]);
-  const [selected, setSelected] = useState(() => selectedSignal());
+export const useApp = (): App => {
+  const appSignal = useMemo(() => computed(() => App.fromState(appState())), []);
+  const [app, setApp] = useState(() => appSignal());
 
   useEffect(() => {
     return effect(() => {
-      const next = selectedSignal();
-      setSelected((previous) => (Object.is(previous, next) ? previous : next));
+      const next = appSignal();
+      setApp((previous) => (Object.is(previous, next) ? previous : next));
     });
-  }, [selectedSignal]);
+  }, [appSignal]);
 
-  return selected;
+  return app;
 };
-
-export default configureAppStore;
