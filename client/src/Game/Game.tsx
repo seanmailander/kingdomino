@@ -1,16 +1,15 @@
 import React from "react";
 
-import { useSelector } from "react-redux";
-
 import "./Game.css";
 import BoardArea from "./BoardArea";
 import Card from "./Card";
 import { getPlayers } from "./game.slice";
 import { getDeal } from "./round.slice";
+import { useGameSelector } from "../App/store";
 
 function Game() {
-  const players = useSelector(getPlayers);
-  const deal = useSelector(getDeal);
+  const players = useGameSelector(getPlayers);
+  const deal = useGameSelector(getDeal);
 
   return (
     <>

@@ -1,11 +1,22 @@
-import { createSlice } from "@reduxjs/toolkit";
-import { createSelector } from "reselect";
-import { playerJoined, playerLeft, gameStarted, gameEnded, cardPlaced } from "./game.actions";
+import {
+  CARD_PLACED,
+  GAME_ENDED,
+  GAME_STARTED,
+  PLAYER_JOINED,
+  PLAYER_LEFT,
+  type GameAction,
+} from "./game.actions";
 import { placedCardsToBoard } from "./gamelogic/board";
-import type { PlayerId } from "./types";
+import type { Card, Direction, PlayerId } from "./types";
 
 type Players = Array<{ playerId: PlayerId; isMe: boolean }>;
-type PlacedCard = ReturnType<typeof cardPlaced>["payload"];
+type PlacedCard = {
+  playerId: PlayerId;
+  card: Card;
+  x: number;
+  y: number;
+  direction: Direction;
+};
 type CardsPlaced = {
   [playerId: string]: Array<Omit<PlacedCard, "playerId">>;
 };
@@ -15,51 +26,87 @@ const initialState = {
   cardsPlacedByPlayer: {} as CardsPlaced,
 };
 
-type GameSelectorState = {
+export type GameSelectorState = {
   game: typeof initialState;
 };
 
-export const gameSlice = createSlice({
-  name: "game",
-  initialState,
-  reducers: {},
-  extraReducers: (builder) => {
-    builder.addCase(playerJoined, (state, action) => {
-      const { playerId, isMe } = action.payload;
-      state.players.push({ playerId, isMe });
-    });
-    builder.addCase(playerLeft, (state, action) => {
-      const { playerId } = action.payload;
-      state.players = state.players.filter((p) => p.playerId !== playerId);
-    });
-    builder.addCase(gameStarted, (state) => {
-      state.cardsPlacedByPlayer = {};
-      state.players.forEach(({ playerId }) => (state.cardsPlacedByPlayer[playerId] = []));
-    });
-    builder.addCase(cardPlaced, (state, action) => {
-      const {
-        payload: { playerId, card, x, y, direction },
-      } = action;
-      state.cardsPlacedByPlayer[playerId].push({
-        card,
-        x,
-        y,
-        direction,
-      });
-    });
-    builder.addCase(gameEnded, (state, action) => {
-      // TODO: capture current board and score
-      state.cardsPlacedByPlayer = {};
-    });
-  },
-});
+type CardPlacedPayload = {
+  playerId: PlayerId;
+  card: Card;
+  x: number;
+  y: number;
+  direction: Direction;
+};
+
+export const gameReducer = (state = initialState, action: GameAction) => {
+  switch (action.type) {
+    case PLAYER_JOINED: {
+      const payload = action.payload as { playerId: PlayerId; isMe: boolean } | undefined;
+      if (!payload) {
+        return state;
+      }
+      return {
+        ...state,
+        players: [...state.players, { playerId: payload.playerId, isMe: payload.isMe }],
+      };
+    }
+    case PLAYER_LEFT: {
+      const payload = action.payload as { playerId: PlayerId } | undefined;
+      if (!payload) {
+        return state;
+      }
+      return {
+        ...state,
+        players: state.players.filter((p) => p.playerId !== payload.playerId),
+      };
+    }
+    case GAME_STARTED: {
+      const cardsPlacedByPlayer = state.players.reduce((acc, { playerId }) => {
+        acc[playerId] = [];
+        return acc;
+      }, {} as CardsPlaced);
+
+      return {
+        ...state,
+        cardsPlacedByPlayer,
+      };
+    }
+    case CARD_PLACED: {
+      const payload = action.payload as CardPlacedPayload | undefined;
+      if (!payload) {
+        return state;
+      }
+      const previousPlacements = state.cardsPlacedByPlayer[payload.playerId] ?? [];
+      return {
+        ...state,
+        cardsPlacedByPlayer: {
+          ...state.cardsPlacedByPlayer,
+          [payload.playerId]: [
+            ...previousPlacements,
+            {
+              card: payload.card,
+              x: payload.x,
+              y: payload.y,
+              direction: payload.direction,
+            },
+          ],
+        },
+      };
+    }
+    case GAME_ENDED:
+      return {
+        ...state,
+        cardsPlacedByPlayer: {},
+      };
+    default:
+      return state;
+  }
+};
 
 export const getPlayers = (state: GameSelectorState) => state.game.players;
-export const getMyPlayerId = createSelector(
-  [getPlayers],
-  (players) => players?.find((p) => p.isMe)?.playerId,
-);
-export const getHasEnoughPlayers = createSelector([getPlayers], (players) => players.length >= 2);
+export const getMyPlayerId = (state: GameSelectorState) =>
+  getPlayers(state)?.find((p) => p.isMe)?.playerId;
+export const getHasEnoughPlayers = (state: GameSelectorState) => getPlayers(state).length >= 2;
 
 export const getPlayerBoards = (state: GameSelectorState) =>
   placedCardsToBoard(state.game.cardsPlacedByPlayer);
@@ -67,4 +114,4 @@ export const getPlayerBoards = (state: GameSelectorState) =>
 export const getPlayerBoard = (playerId: PlayerId) => (state: GameSelectorState) =>
   placedCardsToBoard(state.game.cardsPlacedByPlayer[playerId]);
 
-export default gameSlice.reducer;
+export default gameReducer;

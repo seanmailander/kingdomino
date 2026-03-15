@@ -1,8 +1,12 @@
-import { createAction, createSlice } from "@reduxjs/toolkit";
-import { createSelector } from "reselect";
-
+import {
+  CARD_PICKED,
+  CARD_PLACED,
+  DECK_SHUFFLED,
+  ORDER_CHOSEN,
+  type GameAction,
+} from "./game.actions";
 import { getCard } from "./gamelogic/cards";
-import { cardPicked, cardPlaced, deckShuffled, orderChosen } from "./game.actions";
+import type { GameSelectorState } from "./game.slice";
 import { getMyPlayerId } from "./game.slice";
 import type { Card, PlayerId } from "./types";
 
@@ -15,104 +19,129 @@ type RoundState = {
 };
 
 // Round phases
-export const roundStart = createAction("round-phase/start");
-export const whoseTurn = createAction("round-phase/whoseTurn");
-export const myPick = createAction("round-phase/myPick");
-export const myPlace = createAction("round-phase/myPlace");
-export const theirPick = createAction("round-phase/theirPick");
-export const theirPlace = createAction("round-phase/theirPlace");
-export const roundEnd = createAction("round-phase/end");
+export const ROUND_START = "round-phase/start";
+export const WHOSE_TURN = "round-phase/whoseTurn";
+export const MY_PICK = "round-phase/myPick";
+export const MY_PLACE = "round-phase/myPlace";
+export const THEIR_PICK = "round-phase/theirPick";
+export const THEIR_PLACE = "round-phase/theirPlace";
+export const ROUND_END = "round-phase/end";
+
+export const roundStart = (): GameAction => ({ type: ROUND_START });
+export const whoseTurn = (): GameAction => ({ type: WHOSE_TURN });
+export const myPick = (): GameAction => ({ type: MY_PICK });
+export const myPlace = (): GameAction => ({ type: MY_PLACE });
+export const theirPick = (): GameAction => ({ type: THEIR_PICK });
+export const theirPlace = (): GameAction => ({ type: THEIR_PLACE });
+export const roundEnd = (): GameAction => ({ type: ROUND_END });
 
 const initialState: RoundState = {
-  phase: `${roundStart}`,
+  phase: ROUND_START,
   deal: [],
   pickOrderThisRound: [],
   pickOrderNextRound: [],
   cardToPlace: undefined,
 };
 
-type RoundSelectorState = {
-  game: { players: Array<{ playerId: PlayerId; isMe: boolean }> };
+type RoundSelectorState = GameSelectorState & {
   round: RoundState;
 };
 
-export const roundSlice = createSlice({
-  name: "round",
-  initialState,
-  reducers: {},
-  extraReducers: (builder) => {
-    builder.addCase(roundStart, (state) => {
-      state.phase = `${roundStart}`;
-      state.deal = [];
-      state.pickOrderThisRound = [undefined, undefined, undefined, undefined];
-      state.pickOrderNextRound = [undefined, undefined, undefined, undefined];
-      state.cardToPlace = undefined;
-    });
-    builder.addCase(whoseTurn, (state) => {
-      state.phase = `${whoseTurn}`;
-    });
-    builder.addCase(myPick, (state) => {
-      state.phase = `${myPick}`;
-    });
-    builder.addCase(myPlace, (state) => {
-      state.phase = `${myPlace}`;
-    });
-    builder.addCase(theirPick, (state) => {
-      state.phase = `${theirPick}`;
-    });
-    builder.addCase(theirPlace, (state) => {
-      state.phase = `${theirPlace}`;
-    });
-    builder.addCase(orderChosen, (state, action) => {
-      const { payload: order } = action;
-      state.pickOrderThisRound = order;
-    });
-    builder.addCase(deckShuffled, (state, action) => {
-      state.deal = action.payload;
-      state.cardToPlace = undefined;
-    });
-    builder.addCase(cardPicked, (state, action) => {
-      const card = action.payload;
-      state.cardToPlace = card;
-    });
-    builder.addCase(cardPlaced, (state, action) => {
-      state.cardToPlace = undefined;
-      const {
-        payload: { card },
-      } = action;
-
-      const placeInDeal = state.deal.findIndex((c) => c === card);
-      // Remove this card from cards that can be played this round
-      state.deal[placeInDeal] = undefined;
-      // Mark this player as finished
-      const playerId = state.pickOrderThisRound.shift();
-      // Mark this player in order for next round
-      state.pickOrderNextRound[placeInDeal] = playerId;
-    });
-    builder.addCase(roundEnd, (state) => {
-      state.phase = `${roundEnd}`;
-      // Strip empty slots, and set that as the order for next round
-      state.pickOrderThisRound = state.pickOrderNextRound.filter((p) => !!p);
-      state.pickOrderNextRound = [undefined, undefined, undefined, undefined];
-    });
-  },
+const buildFreshRound = (): RoundState => ({
+  phase: ROUND_START,
+  deal: [],
+  pickOrderThisRound: [undefined, undefined, undefined, undefined],
+  pickOrderNextRound: [undefined, undefined, undefined, undefined],
+  cardToPlace: undefined,
 });
+
+const asPlayerIdArray = (value: unknown): Array<PlayerId | undefined> =>
+  (Array.isArray(value) ? value : []) as Array<PlayerId | undefined>;
+
+export const roundReducer = (state: RoundState = initialState, action: GameAction): RoundState => {
+  switch (action.type) {
+    case ROUND_START:
+      return buildFreshRound();
+    case WHOSE_TURN:
+      return { ...state, phase: WHOSE_TURN };
+    case MY_PICK:
+      return { ...state, phase: MY_PICK };
+    case MY_PLACE:
+      return { ...state, phase: MY_PLACE };
+    case THEIR_PICK:
+      return { ...state, phase: THEIR_PICK };
+    case THEIR_PLACE:
+      return { ...state, phase: THEIR_PLACE };
+    case ORDER_CHOSEN:
+      return {
+        ...state,
+        pickOrderThisRound: asPlayerIdArray(action.payload),
+      };
+    case DECK_SHUFFLED:
+      return {
+        ...state,
+        deal: (Array.isArray(action.payload) ? action.payload : []) as Array<Card | undefined>,
+        cardToPlace: undefined,
+      };
+    case CARD_PICKED:
+      return {
+        ...state,
+        cardToPlace: action.payload as Card | undefined,
+      };
+    case CARD_PLACED: {
+      const payload = action.payload as { card?: Card } | undefined;
+      const card = payload?.card;
+      const placeInDeal = state.deal.findIndex((c) => c === card);
+      const nextDeal = [...state.deal];
+      const nextPickOrderThisRound = [...state.pickOrderThisRound];
+      const nextPickOrderNextRound = [...state.pickOrderNextRound];
+
+      if (placeInDeal >= 0) {
+        nextDeal[placeInDeal] = undefined;
+      }
+
+      const playerId = nextPickOrderThisRound.shift();
+      if (placeInDeal >= 0) {
+        nextPickOrderNextRound[placeInDeal] = playerId;
+      }
+
+      return {
+        ...state,
+        cardToPlace: undefined,
+        deal: nextDeal,
+        pickOrderThisRound: nextPickOrderThisRound,
+        pickOrderNextRound: nextPickOrderNextRound,
+      };
+    }
+    case ROUND_END:
+      return {
+        ...state,
+        phase: ROUND_END,
+        pickOrderThisRound: state.pickOrderNextRound.filter((p) => !!p),
+        pickOrderNextRound: [undefined, undefined, undefined, undefined],
+      };
+    default:
+      return state;
+  }
+};
 
 export const getPickOrder = (state: RoundSelectorState) => state.round.pickOrderThisRound;
 
 const getPhase = (state: RoundSelectorState) => state.round.phase;
-export const getIsMyTurn = createSelector(
-  [getPickOrder, getMyPlayerId],
-  (pickOrder, myPlayerId) => pickOrder[0] === myPlayerId,
-);
+export const getIsMyTurn = (state: RoundSelectorState) => {
+  const pickOrder = getPickOrder(state);
+  const myPlayerId = getMyPlayerId(state);
+  return pickOrder[0] === myPlayerId;
+};
 
-export const getIsMyPlace = createSelector(
-  [getIsMyTurn, getPhase],
-  (isMyTurn, phase) => isMyTurn && phase === `${myPlace}`,
-);
+export const getIsMyPlace = (state: RoundSelectorState) => {
+  const isMyTurn = getIsMyTurn(state);
+  const phase = getPhase(state);
+  return isMyTurn && phase === MY_PLACE;
+};
 
 export const getCardToPlace = (state: RoundSelectorState) => state.round.cardToPlace;
 
 export const getDeal = (state: RoundSelectorState) => state.round.deal.map(getCard);
 
-export default roundSlice.reducer;
+export default roundReducer;

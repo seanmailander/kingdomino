@@ -37,11 +37,13 @@ export async function buildTrustedSeed(
   const { secret: mySecret, committment: myCommittment } = await commit();
   sendGameMessage(committmentMessage(myCommittment));
 
-  const { committment: theirCommittment } = await waitForGameMessage(COMMITTMENT);
+  const { committment: theirCommittment } = await waitForGameMessage<{ committment: string }>(
+    COMMITTMENT,
+  );
 
   sendGameMessage(revealMessage(mySecret));
 
-  const { secret: theirSecret } = await waitForGameMessage(REVEAL);
+  const { secret: theirSecret } = await waitForGameMessage<{ secret: string }>(REVEAL);
 
   await verify(theirSecret, theirCommittment);
   console.debug("done building trusted seed");

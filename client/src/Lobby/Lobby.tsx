@@ -1,14 +1,14 @@
 import React from "react";
 
-import { useSelector, useDispatch } from "react-redux";
 import { getPlayers, getHasEnoughPlayers } from "../Game/game.slice";
+import { useGameDispatch, useGameSelector } from "../App/store";
 
 import { connectionReset, gameStarted } from "../Game/game.actions";
 
 function Lobby() {
-  const players = useSelector(getPlayers);
-  const hasEnoughPlayers = useSelector(getHasEnoughPlayers);
-  const dispatch = useDispatch();
+  const players = useGameSelector(getPlayers);
+  const hasEnoughPlayers = useGameSelector(getHasEnoughPlayers);
+  const dispatch = useGameDispatch();
 
   const startGame = hasEnoughPlayers && (
     <>

@@ -1,16 +1,16 @@
 import React from "react";
-import { useSelector } from "react-redux";
 
 import "./App.css";
 import SplashComponent from "../Splash/Splash";
 import LobbyComponent from "../Lobby/Lobby";
 import GameComponent from "../Game/Game";
+import { useGameSelector } from "./store";
 
 import { getRoom, getHint } from "./app.slice";
 
 function App() {
-  const room = useSelector(getRoom);
-  const hint = useSelector(getHint);
+  const room = useGameSelector(getRoom);
+  const hint = useGameSelector(getHint);
   return (
     <div className="App">
       <h1>Kingdomino</h1>

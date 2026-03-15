@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
-import { useSelector, useDispatch } from "react-redux";
 
 import "./board.css";
+import { useGameDispatch, useGameSelector } from "../App/store";
 
 import { getPlayerBoard } from "./game.slice";
 import { cardPlaced } from "./game.actions";
@@ -28,10 +28,10 @@ const rotateLookup: { [key: number]: Direction } = {
 
 function BoardArea(props) {
   const { playerId, isMe } = props;
-  const myBoard = useSelector(getPlayerBoard(playerId));
-  const cardId = useSelector(getCardToPlace);
-  const isMyPlace = useSelector(getIsMyPlace);
-  const dispatch = useDispatch();
+  const myBoard = useGameSelector(getPlayerBoard(playerId));
+  const cardId = useGameSelector(getCardToPlace);
+  const isMyPlace = useGameSelector(getIsMyPlace);
+  const dispatch = useGameDispatch();
 
   const [direction, setDirection] = useState<Direction>(right);
   const [flipped, setFlipped] = useState(false);

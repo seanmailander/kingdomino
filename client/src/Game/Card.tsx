@@ -1,7 +1,7 @@
 import React from "react";
-import { useSelector, useDispatch } from "react-redux";
 
 import "./Card.css";
+import { useGameDispatch, useGameSelector } from "../App/store";
 
 import { cardPicked } from "./game.actions";
 import { getIsMyTurn } from "./round.slice";
@@ -10,9 +10,9 @@ import Tile from "./Tile";
 
 function Card(props) {
   const { card } = props;
-  const { id, type, tiles } = card;
-  const isMyTurn = useSelector(getIsMyTurn);
-  const dispatch = useDispatch();
+  const { id, tiles } = card;
+  const isMyTurn = useGameSelector(getIsMyTurn);
+  const dispatch = useGameDispatch();
 
   const className = `card${isMyTurn ? "" : " disabled"}`;
 

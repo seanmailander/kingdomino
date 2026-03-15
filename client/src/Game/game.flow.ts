@@ -1,5 +1,5 @@
-import type { AnyAction } from "@reduxjs/toolkit";
 import type { RootState } from "../App/reducer";
+import { gameStore } from "../App/store";
 
 import {
   cardPicked,
@@ -28,7 +28,7 @@ import {
 import newSoloConnection from "./connection.solo";
 import type { MovePayload } from "./types";
 
-type AppDispatch = (action: AnyAction | ((dispatch: AppDispatch, getState: AppGetState) => unknown)) => unknown;
+type AppDispatch = (action: { type: string; payload?: unknown }) => void;
 type AppGetState = () => RootState;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -129,11 +129,13 @@ async function playRound(
 
 let isSoloGameRunning = false;
 
-export const startSoloGameFlow = () => async (dispatch: AppDispatch, getState: AppGetState) => {
+export const startSoloGameFlow = async () => {
   if (isSoloGameRunning) {
     return;
   }
 
+  const dispatch = gameStore.dispatch;
+  const getState = gameStore.getState;
   isSoloGameRunning = true;
   const { destroy, peerIdentifiers, sendGameMessage, waitForGameMessage } = newSoloConnection();
 
@@ -165,7 +167,7 @@ export const startSoloGameFlow = () => async (dispatch: AppDispatch, getState: A
     }
 
     dispatch(gameEnded());
-  } catch (error) {
+  } catch {
     dispatch(connectionErrored());
   } finally {
     destroy();
@@ -173,6 +175,6 @@ export const startSoloGameFlow = () => async (dispatch: AppDispatch, getState: A
   }
 };
 
-export const startMultiplayerGameFlow = () => (dispatch: AppDispatch) => {
-  dispatch(startMulti());
+export const startMultiplayerGameFlow = () => {
+  gameStore.dispatch(startMulti());
 };
