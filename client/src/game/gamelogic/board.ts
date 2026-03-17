@@ -1,4 +1,4 @@
-import type { BoardCell } from "../state/Board";
+import type { BoardCell, BoardPlacement } from "../state/Board";
 import { castle, validTiles, getCard, up, down, left, right } from "./cards";
 import type { Direction } from "../state/types";
 import type { CardId } from "../state/types";
@@ -7,7 +7,6 @@ type Board = ReadonlyArray<ReadonlyArray<BoardCell>>;
 type MutableBoard = BoardCell[][];
 type Position = { x: number; y: number };
 type Neighbor = Position & { direction: Direction };
-type Placement = { card: CardId; x: number; y: number; direction: Direction };
 
 const range = (len: number): number[] => [...Array(len).keys()];
 
@@ -59,61 +58,6 @@ export const getFlippedPosition = (
   };
 };
 
-const deepCopy = (a1: Board): MutableBoard => [...a1.map((a2) => [...a2])];
-
-const placeCardOnBoard =
-  (board: MutableBoard) =>
-  ({ card, x, y, direction }: Placement): MutableBoard => {
-    const xB = x + xDirection[direction];
-    const yB = y + yDirection[direction];
-
-    if (!isWithinBounds({ x: xB, y: yB })) {
-      return board;
-    }
-
-    const {
-      tiles: [{ tile: tileA, value: valueA }, { tile: tileB, value: valueB }],
-    } = getCard(card);
-
-    board[y][x] = {
-      tile: tileA,
-      value: valueA,
-    };
-
-    board[yB][xB] = {
-      tile: tileB,
-      value: valueB,
-    };
-    return board;
-  };
-
-export const placedCardsToBoard = (placedCards?: ReadonlyArray<Placement>): Board => {
-  const thisBoard = getEmptyBoard();
-  thisBoard[6][6] = {
-    tile: castle,
-  };
-
-  // Modify the board in-place
-  placedCards?.forEach(placeCardOnBoard(thisBoard));
-  return thisBoard;
-};
-
-export const enrichBoardWithCard = (
-  board: Board,
-  card: CardId,
-  x: number | null,
-  y: number | null,
-  direction: Direction,
-): Board => {
-  if (x === null || y === null || !board) {
-    return board;
-  }
-
-  const boardCopy = deepCopy(board);
-
-  return placeCardOnBoard(boardCopy)({ card, x, y, direction });
-};
-
 const tileIsValid = (board: Board, x: number, y: number): boolean =>
   validTiles.some((d) => d === board[y][x]?.tile);
 const isWithinBounds = ({ x, y }: Position): boolean => x >= 0 && x <= 12 && y >= 0 && y <= 12;
@@ -160,3 +104,63 @@ export const getValidDirections = (
     .filter(({ x, y }) => !tileIsValid(board, x, y))
     .filter(({ x, y }) => !tileIsValid(board, x, y))
     .map(({ x, y, direction }) => direction);
+
+type PlacedDomino = { x: number; y: number; direction: Direction };
+
+const directionDelta: Record<Direction, { dx: number; dy: number }> = {
+  [up]: { dx: 0, dy: -1 },
+  [right]: { dx: 1, dy: 0 },
+  [down]: { dx: 0, dy: 1 },
+  [left]: { dx: -1, dy: 0 },
+};
+
+const directionPriority: Direction[] = [up, right, down, left];
+
+const staysWithin5x5 = (
+  placements: ReadonlyArray<PlacedDomino>,
+  x: number,
+  y: number,
+  direction: Direction,
+): boolean => {
+  const occupied: Array<{ x: number; y: number }> = [{ x: 6, y: 6 }];
+
+  for (const placement of placements) {
+    const delta = directionDelta[placement.direction];
+    occupied.push({ x: placement.x, y: placement.y });
+    occupied.push({ x: placement.x + delta.dx, y: placement.y + delta.dy });
+  }
+
+  const nextDelta = directionDelta[direction];
+  occupied.push({ x, y });
+  occupied.push({ x: x + nextDelta.dx, y: y + nextDelta.dy });
+
+  const xs = occupied.map((p) => p.x);
+  const ys = occupied.map((p) => p.y);
+  const width = Math.max(...xs) - Math.min(...xs) + 1;
+  const height = Math.max(...ys) - Math.min(...ys) + 1;
+
+  return width <= 5 && height <= 5;
+};
+
+export const findPlacementWithin5x5 = (
+  board: Board,
+  cardId: CardId,
+): { x: number; y: number; direction: Direction } | null => {
+  const candidateAnchors = getEligiblePositions(board, cardId).sort(
+    (a, b) => (a.y - b.y) || (a.x - b.x),
+  );
+
+  for (const { x, y } of candidateAnchors) {
+    const directions = (getValidDirections(board, cardId, x, y) as Direction[]).sort(
+      (a, b) => directionPriority.indexOf(a) - directionPriority.indexOf(b),
+    );
+    const validDirection = directions.find((direction) =>
+      staysWithin5x5(board.placements, x, y, direction)
+    );
+    if (validDirection !== undefined) {
+      return { x, y, direction: validDirection };
+    }
+  }
+
+  return null;
+};

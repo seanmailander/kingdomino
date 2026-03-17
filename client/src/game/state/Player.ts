@@ -18,6 +18,6 @@ export class Player {
   }
 
   applyPlacement(cardId: CardId, x: number, y: number, direction: Direction): void {
-    this._board = this._board.place(cardId, x, y, direction);
+    this._board.place(cardId, x, y, direction);
   }
 }

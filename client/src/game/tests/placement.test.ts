@@ -10,8 +10,11 @@
 //   3  wood/wood    — no crowns
 //   6  water/water  — no crowns
 import { describe, expect, it } from "vitest";
-import { placedCardsToBoard, getEligiblePositions, getValidDirections } from "../gamelogic/board";
+import { getEligiblePositions, getValidDirections } from "../gamelogic/board";
 import { right, left } from "../gamelogic/cards";
+import { Board } from "../state/Board";
+
+const placedCardsToBoard = (placements = []) => new Board(placements).placedCardsToBoard();
 
 describe("Card placement", () => {
   it("a fresh kingdom accepts a card adjacent to the castle in all four directions", () => {

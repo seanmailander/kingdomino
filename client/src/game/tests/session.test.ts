@@ -10,8 +10,8 @@
 // bob's lower slot means bob leads pick order in the next round.
 import { describe, expect, it } from "vitest";
 import { GameSession, Player } from "../state/GameSession";
-import { right, left, up, down } from "../gamelogic/cards";
-import { getEligiblePositions, getValidDirections } from "../gamelogic/board";
+import { right, left } from "../gamelogic/cards";
+import { findPlacementWithin5x5 } from "../gamelogic/placement";
 import { getNextFourCards } from "../gamelogic/utils";
 import type { Direction } from "../state/types";
 
@@ -33,63 +33,6 @@ const completeRound = (session: GameSession, alice: Player, bob: Player) => {
   session.handlePlacement(bob.id, 5, 6, left); // wood+1cr at (5,6), grain at (4,6)
 };
 
-const directionDelta = {
-  [up]: { dx: 0, dy: -1 },
-  [right]: { dx: 1, dy: 0 },
-  [down]: { dx: 0, dy: 1 },
-  [left]: { dx: -1, dy: 0 },
-};
-
-const directionPriority: Direction[] = [up, right, down, left];
-
-const staysWithin5x5 = (
-  player: Player,
-  x: number,
-  y: number,
-  direction: Direction,
-): boolean => {
-  const occupied: Array<{ x: number; y: number }> = [{ x: 6, y: 6 }];
-
-  for (const placement of player.board.placements) {
-    const delta = directionDelta[placement.direction];
-    occupied.push({ x: placement.x, y: placement.y });
-    occupied.push({ x: placement.x + delta.dx, y: placement.y + delta.dy });
-  }
-
-  const nextDelta = directionDelta[direction];
-  occupied.push({ x, y });
-  occupied.push({ x: x + nextDelta.dx, y: y + nextDelta.dy });
-
-  const xs = occupied.map((p) => p.x);
-  const ys = occupied.map((p) => p.y);
-  const width = Math.max(...xs) - Math.min(...xs) + 1;
-  const height = Math.max(...ys) - Math.min(...ys) + 1;
-
-  return width <= 5 && height <= 5;
-};
-
-const findPlacementWithin5x5 = (
-  player: Player,
-  cardId: number,
-): { x: number; y: number; direction: Direction } | null => {
-  const board = player.board.snapshot();
-  const candidateAnchors = getEligiblePositions(board, cardId).sort(
-    (a, b) => (a.y - b.y) || (a.x - b.x),
-  );
-
-  for (const { x, y } of candidateAnchors) {
-    const directions = (getValidDirections(board, cardId, x, y) as Direction[]).sort(
-      (a, b) => directionPriority.indexOf(a) - directionPriority.indexOf(b),
-    );
-    const validDirection = directions.find((direction) => staysWithin5x5(player, x, y, direction));
-    if (validDirection !== undefined) {
-      return { x, y, direction: validDirection };
-    }
-  }
-
-  return null;
-};
-
 const playOutRound = (session: GameSession) => {
   while (session.currentRound) {
     const actor = session.currentRound.currentActor;
@@ -104,7 +47,7 @@ const playOutRound = (session: GameSession) => {
     let cardToPick: number | null = null;
     let chosenPlacement: { x: number; y: number; direction: Direction } | null = null;
     for (const candidate of pickCandidates) {
-      const placement = findPlacementWithin5x5(actor!, candidate);
+      const placement = findPlacementWithin5x5(actor!.board, candidate);
       if (placement) {
         cardToPick = candidate;
         chosenPlacement = placement;
