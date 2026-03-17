@@ -15,7 +15,7 @@ function BoardSquare(props) {
   return <div onClick={handleClick}>{children}</div>;
 }
 
-const rotateLookup: { [key: number]: Direction } = {
+const rotateLookup: Record<Direction, Direction> = {
   [up]: right,
   [right]: down,
   [down]: left,

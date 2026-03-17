@@ -68,11 +68,11 @@ async function playRound(
     } else {
       // Wait for opponent's move from peer
       const { move } = await waitForGameMessage<{
-        move: { playerId: string; card: number; x: number; y: number; direction: number };
+        move: { playerId: string; card: number; x: number; y: number; direction: Direction };
       }>(MOVE);
 
       session.handlePick(move.playerId, move.card);
-      session.handlePlacement(move.playerId, move.x, move.y, move.direction as Direction);
+      session.handlePlacement(move.playerId, move.x, move.y, move.direction);
     }
   }
 
@@ -102,7 +102,7 @@ export const startSoloGameFlow = async () => {
 
     // Determine first-round pick order from a shared cryptographic seed
     const firstSeed = await buildTrustedSeed(sendGameMessage, waitForGameMessage);
-    const orderedIds: string[] = chooseOrderFromSeed(firstSeed, peerIdentifiers);
+    const orderedIds = chooseOrderFromSeed(firstSeed, peerIdentifiers);
     const pickOrder = orderedIds.map(id => session.playerById(id)!);
 
     session.startGame(pickOrder);

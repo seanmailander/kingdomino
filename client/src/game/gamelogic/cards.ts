@@ -7,30 +7,30 @@ type CardInfo = {
 // - 48 cards, each is unique (some repeats?)
 // - canonical identification (sort)
 // - both A and B calculate sorted deck using shared seed
-export const blank = -1;
-export const castle = 0;
-export const wood = 2 ** 0;
-export const grass = 2 ** 1;
-export const water = 2 ** 2;
-export const grain = 2 ** 3;
-export const marsh = 2 ** 4;
-export const mine = 2 ** 5;
+export const blank = -1 as const;
+export const castle = 0 as const;
+export const wood = 1 as const;
+export const grass = 2 as const;
+export const water = 4 as const;
+export const grain = 8 as const;
+export const marsh = 16 as const;
+export const mine = 32 as const;
 
-export const validTiles = [blank, castle, wood, grass, water, grain, marsh, mine];
+export const validTiles = [blank, castle, wood, grass, water, grain, marsh, mine] as const;
 
 export const noCrown = 0;
 export const oneCrown = 1;
 export const twoCrown = 2;
 export const threeCrown = 3;
 
-export const up = 0;
-export const right = 1;
-export const down = 2;
-export const left = 3;
+export const up = "up" as const;
+export const right = "right" as const;
+export const down = "down" as const;
+export const left = "left" as const;
 
 const getTile = (
-  tileA,
-  tileB,
+  tileA: number,
+  tileB: number,
   crownsA: CardValue = noCrown,
   crownsB: CardValue = noCrown,
 ): CardInfo => ({
@@ -41,7 +41,7 @@ const getTile = (
   ],
 });
 
-export const generateCardMap = () => {
+export const generateCardMap = (): CardInfo[] => {
   // 48 cards
   const firstTwelve = [
     getTile(grain, grain), // Two double-grain
@@ -105,7 +105,7 @@ export const generateCardMap = () => {
   return [...firstTwelve, ...secondTwelve, ...thirdTwelve, ...fourthTwelve];
 };
 
-export const generateDeck = () => [...Array(48).keys()];
+export const generateDeck = () => [...Array(48).keys()] as const;
 
 const cardMap = generateCardMap();
 

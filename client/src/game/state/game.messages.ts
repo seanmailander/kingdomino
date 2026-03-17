@@ -46,6 +46,10 @@ export async function buildTrustedSeed(
   const { secret: theirSecret } = await waitForGameMessage<{ secret: string }>(REVEAL);
 
   await verify(theirSecret, theirCommittment);
+  const theirSecretAsNumber = Number(theirSecret);
+  if (isNaN(theirSecretAsNumber)) {
+    throw new Error("Their secret is not a valid number");
+  }
   console.debug("done building trusted seed");
-  return combine(mySecret, theirSecret);
+  return combine(mySecret, theirSecretAsNumber);
 }

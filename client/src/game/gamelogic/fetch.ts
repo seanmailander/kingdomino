@@ -1,5 +1,8 @@
 // Example POST method implementation:
-export async function getData(url = "", data = {}) {
+export async function getData<T = unknown>(
+  url: string = "",
+  _data: Record<string, unknown> = {},
+): Promise<T> {
   // Default options are marked with *
   const response = await fetch(url, {
     method: "GET", // *GET, POST, PUT, DELETE, etc.
@@ -13,11 +16,14 @@ export async function getData(url = "", data = {}) {
     redirect: "follow", // manual, *follow, error
     referrerPolicy: "no-referrer", // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
   });
-  return response.json(); // parses JSON response into native JavaScript objects
+  return response.json() as Promise<T>; // parses JSON response into native JavaScript objects
 }
 
 // Example POST method implementation:
-export async function postData(url = "", data = {}) {
+export async function postData<T = unknown>(
+  url: string = "",
+  data: Record<string, unknown> = {},
+): Promise<T> {
   // Default options are marked with *
   const response = await fetch(url, {
     method: "POST", // *GET, POST, PUT, DELETE, etc.
@@ -32,5 +38,5 @@ export async function postData(url = "", data = {}) {
     referrerPolicy: "no-referrer", // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
     body: JSON.stringify(data), // body data type must match "Content-Type" header
   });
-  return response.json(); // parses JSON response into native JavaScript objects
+  return response.json() as Promise<T>; // parses JSON response into native JavaScript objects
 }

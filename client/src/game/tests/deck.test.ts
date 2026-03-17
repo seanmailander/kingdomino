@@ -19,19 +19,19 @@ describe("Deck", () => {
   });
 
   it("dealing with the same seed yields the same four cards", () => {
-    const { next: hand1 } = getNextFourCards(42);
-    const { next: hand2 } = getNextFourCards(42);
+    const { next: hand1 } = getNextFourCards("42");
+    const { next: hand2 } = getNextFourCards("42");
     expect(hand1).toEqual(hand2);
   });
 
   it("dealing with different seeds yields different four cards", () => {
-    const { next: hand1 } = getNextFourCards(1);
-    const { next: hand2 } = getNextFourCards(2);
+    const { next: hand1 } = getNextFourCards("1");
+    const { next: hand2 } = getNextFourCards("2");
     expect(hand1).not.toEqual(hand2);
   });
 
   it("a dealt hand excludes cards already drawn from the deck", () => {
-    const { next: first, remaining } = getNextFourCards(1, generateDeck());
+    const { next: first, remaining } = getNextFourCards("1", generateDeck());
     first.forEach((id) => expect(remaining).not.toContain(id));
   });
 });

@@ -1,5 +1,6 @@
 import { Deal, GameSession, Player, Round } from "./GameSession";
 import { describe, expect, it } from "vitest";
+import { left, right } from "../gamelogic/cards";
 
 describe("Deal", () => {
   it("sorts slots by card id ascending", () => {
@@ -59,7 +60,7 @@ describe("Round", () => {
   it("moves to next picker after alice places", () => {
     const { round, alice, bob } = makeRound();
     round.recordPick(alice, 26);
-    round.recordPlacement(alice, 7, 6, 1);
+    round.recordPlacement(alice, 7, 6, right);
     expect(round.phase).toBe("picking");
     expect(round.currentActor?.id).toBe(bob.id);
   });
@@ -67,9 +68,9 @@ describe("Round", () => {
   it("reaches complete after all players pick and place", () => {
     const { round, alice, bob } = makeRound();
     round.recordPick(alice, 26);
-    round.recordPlacement(alice, 7, 6, 1);
+    round.recordPlacement(alice, 7, 6, right);
     round.recordPick(bob, 32);
-    round.recordPlacement(bob, 5, 6, 3);
+    round.recordPlacement(bob, 5, 6, left);
     expect(round.phase).toBe("complete");
   });
 
@@ -80,7 +81,7 @@ describe("Round", () => {
 
   it("throws when placing in picking phase", () => {
     const { round, alice } = makeRound();
-    expect(() => round.recordPlacement(alice, 7, 6, 1)).toThrow();
+    expect(() => round.recordPlacement(alice, 7, 6, right)).toThrow();
   });
 });
 
@@ -127,9 +128,9 @@ describe("GameSession", () => {
     session.events.on("round:complete", () => roundCompleteCount++);
 
     session.handleLocalPick(26);
-    session.handleLocalPlacement(7, 6, 1);
+    session.handleLocalPlacement(7, 6, right);
     session.handlePick(bob.id, 32);
-    session.handlePlacement(bob.id, 5, 6, 3);
+    session.handlePlacement(bob.id, 5, 6, left);
 
     expect(roundCompleteCount).toBe(1);
     expect(session.currentRound).toBeNull();
@@ -139,9 +140,9 @@ describe("GameSession", () => {
     const { session, alice, bob } = makeSession();
     session.beginRound([3, 26, 32, 34]);
     session.handleLocalPick(26);
-    session.handleLocalPlacement(7, 6, 1);
+    session.handleLocalPlacement(7, 6, right);
     session.handlePick(bob.id, 32);
-    session.handlePlacement(bob.id, 5, 6, 3);
+    session.handlePlacement(bob.id, 5, 6, left);
 
     expect(alice.board.placements).toHaveLength(1);
     expect(bob.board.placements).toHaveLength(1);
