@@ -11,7 +11,7 @@
 import { describe, expect, it } from "vitest";
 import { GameSession, Player } from "../state/GameSession";
 import { right, left } from "../gamelogic/cards";
-import { findPlacementWithin5x5 } from "../gamelogic/placement";
+import { findPlacementWithin5x5 } from "../gamelogic/board";
 import { getNextFourCards } from "../gamelogic/utils";
 import type { Direction } from "../state/types";
 

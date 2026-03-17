@@ -121,18 +121,21 @@ const directionDelta: Record<Direction, { dx: number; dy: number }> = {
 const directionPriority: Direction[] = [up, right, down, left];
 
 const staysWithin5x5 = (
-  placements: ReadonlyArray<PlacedDomino>,
+  board: Board,
   x: number,
   y: number,
   direction: Direction,
 ): boolean => {
-  const occupied: Array<{ x: number; y: number }> = [{ x: 6, y: 6 }];
-
-  for (const placement of placements) {
-    const delta = directionDelta[placement.direction];
-    occupied.push({ x: placement.x, y: placement.y });
-    occupied.push({ x: placement.x + delta.dx, y: placement.y + delta.dy });
-  }
+  const occupied: Array<{ x: number; y: number }> = board.reduce(
+    (all, row, rowY) => [
+      ...all,
+      ...row
+        .map((cell, rowX) => ({ cell, rowX }))
+        .filter(({ cell }) => cell?.tile !== undefined && cell.tile !== null)
+        .map(({ rowX }) => ({ x: rowX, y: rowY })),
+    ],
+    [] as Array<{ x: number; y: number }>,
+  );
 
   const nextDelta = directionDelta[direction];
   occupied.push({ x, y });
@@ -159,7 +162,7 @@ export const findPlacementWithin5x5 = (
       (a, b) => directionPriority.indexOf(a) - directionPriority.indexOf(b),
     );
     const validDirection = directions.find((direction) =>
-      staysWithin5x5(board.placements, x, y, direction),
+      staysWithin5x5(board, x, y, direction),
     );
     if (validDirection !== undefined) {
       return { x, y, direction: validDirection };
