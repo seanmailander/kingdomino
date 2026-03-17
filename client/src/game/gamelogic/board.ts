@@ -1,5 +1,7 @@
-import type { Board } from "../state/types";
+import type { BoardCell } from "../state/Board";
 import { castle, validTiles, getCard, up, down, left, right } from "./cards";
+
+type Board = BoardCell[][];
 
 const range = (len) => [...Array(len).keys()];
 

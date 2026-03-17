@@ -1,4 +1,5 @@
 import { getNextFourCards } from "./utils";
+import { describe, expect, it } from "vitest";
 
 import { generateDeck } from "./cards";
 

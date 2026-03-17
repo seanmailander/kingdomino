@@ -1,4 +1,8 @@
-import type { CardInfo, CardValue } from "../state/types";
+type CardValue = number;
+type CardInfo = {
+  type: number;
+  tiles: [{ tile: number; value: CardValue }, { tile: number; value: CardValue }];
+};
 
 // - 48 cards, each is unique (some repeats?)
 // - canonical identification (sort)

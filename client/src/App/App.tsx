@@ -6,7 +6,7 @@ import LobbyComponent from "../Lobby/Lobby";
 import GameComponent from "../game/visuals/Game";
 import { useApp } from "./store";
 
-function App() {
+export function App() {
   const { session, room, hint } = useApp();
 
   return (
@@ -19,5 +19,3 @@ function App() {
     </div>
   );
 }
-
-export default App;

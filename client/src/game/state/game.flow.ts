@@ -5,7 +5,7 @@ import type { GameEventBus, GameEventMap, CardId } from "./GameSession";
 import type { Direction } from "./types";
 import newSoloConnection from "./connection.solo";
 import { setCurrentSession, setRoom, awaitLobbyStart, awaitLobbyLeave } from "../../App/store";
-import { Lobby, Game } from "../../App/App";
+import { Lobby, Game } from "../../App/AppExtras";
 
 // ── Event-based waiting (replaces waitForComputed) ──────────────────────────────
 

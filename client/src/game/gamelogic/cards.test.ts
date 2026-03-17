@@ -12,6 +12,7 @@ import {
   twoCrown,
   threeCrown,
 } from "./cards";
+import { describe, expect, it } from "vitest";
 
 function bitCount(n) {
   n = n - ((n >> 1) & 0x55555555);

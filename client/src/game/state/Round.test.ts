@@ -1,4 +1,5 @@
 import { Deal, GameSession, Player, Round } from "./GameSession";
+import { describe, expect, it } from "vitest";
 
 describe("Deal", () => {
   it("sorts slots by card id ascending", () => {

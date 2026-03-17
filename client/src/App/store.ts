@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { GameSession } from "../game/state/GameSession";
 import type { GameEventMap } from "../game/state/GameSession";
-import { type Room, Splash, computeHint } from "./App";
+import { type Room, Splash, computeHint } from "./AppExtras";
 
 // ── Session signal ────────────────────────────────────────────────────────────
 

@@ -1,4 +1,5 @@
 import { getEligiblePositions, getValidDirections, placedCardsToBoard } from "./board";
+import { describe, expect, it } from "vitest";
 import {
   castle,
   down,

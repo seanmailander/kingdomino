@@ -10,6 +10,7 @@
     "build": "vite build --outDir build",
     "preview": "vite preview --host",
     "test": "vitest run",
+    "tscheck": "tsc --noEmit",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check"
   },

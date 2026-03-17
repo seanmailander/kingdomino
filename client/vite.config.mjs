@@ -33,7 +33,7 @@ export default defineConfig(() => {
     },
     test: {
       environment: "node",
-      globals: true,
+      globals: false,
       setupFiles: ["./src/setupTests.ts"],
     },
   };
