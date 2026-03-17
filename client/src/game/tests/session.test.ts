@@ -47,7 +47,7 @@ const playOutRound = (session: GameSession) => {
     let cardToPick: number | null = null;
     let chosenPlacement: { x: number; y: number; direction: Direction } | null = null;
     for (const candidate of pickCandidates) {
-      const placement = findPlacementWithin5x5(actor!.board, candidate);
+      const placement = findPlacementWithin5x5(actor!.board.snapshot(), candidate);
       if (placement) {
         cardToPick = candidate;
         chosenPlacement = placement;
