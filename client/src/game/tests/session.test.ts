@@ -11,6 +11,7 @@
 import { describe, expect, it } from "vitest";
 import { GameSession, Player } from "../state/GameSession";
 import { right, left } from "../gamelogic/cards";
+import { getNextFourCards } from "../gamelogic/utils";
 
 const makeSession = () => {
   const session = new GameSession();
@@ -28,6 +29,31 @@ const completeRound = (session: GameSession, alice: Player, bob: Player) => {
   session.handleLocalPlacement(7, 6, right); //   mine+2cr at (7,6), grain at (8,6)
   session.handlePick(bob.id, 26);            // bob: wood(1cr)/grain
   session.handlePlacement(bob.id, 5, 6, left); // wood+1cr at (5,6), grain at (4,6)
+};
+
+const playOutRound = (
+  session: GameSession,
+  placementsByPlayer = new Map<string, number>(),
+) => {
+  while (session.currentRound) {
+    const actor = session.currentRound.currentActor;
+    expect(actor).toBeTruthy();
+
+    const openSlots = session.currentRound.deal
+      .snapshot()
+      .filter((slot) => slot.pickedBy === null)
+      .map((slot) => slot.cardId);
+
+    const cardToPick = Math.max(...openSlots);
+    session.handlePick(actor!.id, cardToPick);
+
+    const n = placementsByPlayer.get(actor!.id) ?? 0;
+    const x = actor!.isLocal ? 7 + (n % 3) : 5 - (n % 3);
+    const y = 6 + Math.floor(n / 3);
+    const direction = actor!.isLocal ? right : left;
+    session.handlePlacement(actor!.id, x, y, direction);
+    placementsByPlayer.set(actor!.id, n + 1);
+  }
 };
 
 // ── Section 6: Turn flow ─────────────────────────────────────────────────────
@@ -167,5 +193,43 @@ describe("GameSession — end of game", () => {
     });
     session.endGame();
     expect(topPlayerId).toBe(alice.id);
+  });
+
+  it("simulates a full game end to end and emits sorted final scores", () => {
+    const { session, alice, bob } = makeSession();
+
+    let remainingDeck: number[] | undefined;
+    let completedRounds = 0;
+    let endedEvents = 0;
+    let finalScores: Array<{ playerId: string; score: number }> = [];
+
+    session.events.on("round:complete", () => {
+      completedRounds++;
+    });
+
+    session.events.on("game:ended", ({ scores }) => {
+      endedEvents++;
+      finalScores = scores.map(({ player, score }) => ({ playerId: player.id, score }));
+    });
+
+    for (let roundIndex = 0; ; roundIndex++) {
+      const { next, remaining } = getNextFourCards(`full-game-seed-${roundIndex}`, remainingDeck);
+      session.beginRound(next as [number, number, number, number]);
+      playOutRound(session);
+      remainingDeck = remaining;
+      if (remainingDeck.length === 0) break;
+    }
+
+    session.endGame();
+
+    expect(session.phase).toBe("finished");
+    expect(session.roundNumber).toBe(12);
+    expect(completedRounds).toBe(12);
+    expect(alice.board.placements).toHaveLength(12);
+    expect(bob.board.placements).toHaveLength(12);
+    expect(endedEvents).toBe(1);
+    expect(finalScores).toHaveLength(2);
+    expect(finalScores[0].score).toBeGreaterThanOrEqual(finalScores[1].score);
+    expect(finalScores.map((s) => s.playerId).sort()).toEqual([alice.id, bob.id].sort());
   });
 });
