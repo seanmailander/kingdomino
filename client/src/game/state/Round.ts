@@ -13,31 +13,27 @@ export class Deal {
   private readonly _slots: PickSlot[];
 
   constructor(cardIds: [CardId, CardId, CardId, CardId]) {
-    this._slots = [...cardIds]
-      .sort((a, b) => a - b)
-      .map(cardId => ({ cardId, pickedBy: null }));
+    this._slots = [...cardIds].sort((a, b) => a - b).map((cardId) => ({ cardId, pickedBy: null }));
   }
 
   pickByCardId(player: Player, cardId: CardId): void {
-    const slot = this._slots.find(s => s.cardId === cardId);
+    const slot = this._slots.find((s) => s.cardId === cardId);
     if (!slot) throw new Error(`Card ${cardId} not in current deal`);
     if (slot.pickedBy !== null) throw new Error(`Card ${cardId} already picked`);
     slot.pickedBy = player;
   }
 
   pickedCardFor(player: Player): CardId | null {
-    return this._slots.find(s => s.pickedBy?.id === player.id)?.cardId ?? null;
+    return this._slots.find((s) => s.pickedBy?.id === player.id)?.cardId ?? null;
   }
 
   /** Players ordered by their picked card id (low → high = first pick order next round) */
   nextRoundPickOrder(): Player[] {
-    return this._slots
-      .filter(s => s.pickedBy !== null)
-      .map(s => s.pickedBy!);
+    return this._slots.filter((s) => s.pickedBy !== null).map((s) => s.pickedBy!);
   }
 
   snapshot(): ReadonlyArray<Readonly<PickSlot>> {
-    return this._slots.map(s => ({ ...s }));
+    return this._slots.map((s) => ({ ...s }));
   }
 }
 
@@ -57,8 +53,12 @@ export class Round {
     this._playerQueue = [...pickOrder];
   }
 
-  get phase(): RoundPhase { return this._phase; }
-  get deal(): Deal        { return this._deal; }
+  get phase(): RoundPhase {
+    return this._phase;
+  }
+  get deal(): Deal {
+    return this._deal;
+  }
 
   /** The player whose action is expected: pick if "picking", place if "placing". */
   get currentActor(): Player | null {

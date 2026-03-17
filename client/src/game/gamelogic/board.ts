@@ -73,13 +73,17 @@ export const getEligiblePositions = (board: Board, cardId?: CardId | null): Neig
   if (!cardId) {
     return [];
   }
-  const allPositions = board.reduce<Array<{ card: BoardCell; x: number; y: number }>>((prev, curr, y) => {
-    return [...prev, ...curr.map((card, x) => ({ card, x, y }))];
-  }, []);
+  const allPositions = board.reduce<Array<{ card: BoardCell; x: number; y: number }>>(
+    (prev, curr, y) => {
+      return [...prev, ...curr.map((card, x) => ({ card, x, y }))];
+    },
+    [],
+  );
 
   const { type } = getCard(cardId);
   const onlyPlayedSpots = ({ card }: { card: BoardCell }) => card?.tile !== null;
-  const onlyMatchingTiles = ({ card }: { card: BoardCell }) => card.tile === 0 || !!(card.tile & type);
+  const onlyMatchingTiles = ({ card }: { card: BoardCell }) =>
+    card.tile === 0 || !!(card.tile & type);
 
   const playedSpots = allPositions.filter(onlyPlayedSpots).filter(onlyMatchingTiles);
 
@@ -147,7 +151,7 @@ export const findPlacementWithin5x5 = (
   cardId: CardId,
 ): { x: number; y: number; direction: Direction } | null => {
   const candidateAnchors = getEligiblePositions(board, cardId).sort(
-    (a, b) => (a.y - b.y) || (a.x - b.x),
+    (a, b) => a.y - b.y || a.x - b.x,
   );
 
   for (const { x, y } of candidateAnchors) {
@@ -155,7 +159,7 @@ export const findPlacementWithin5x5 = (
       (a, b) => directionPriority.indexOf(a) - directionPriority.indexOf(b),
     );
     const validDirection = directions.find((direction) =>
-      staysWithin5x5(board.placements, x, y, direction)
+      staysWithin5x5(board.placements, x, y, direction),
     );
     if (validDirection !== undefined) {
       return { x, y, direction: validDirection };

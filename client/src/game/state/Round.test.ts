@@ -5,7 +5,7 @@ import { left, right } from "../gamelogic/cards";
 describe("Deal", () => {
   it("sorts slots by card id ascending", () => {
     const deal = new Deal([34, 3, 32, 26]);
-    const ids = deal.snapshot().map(s => s.cardId);
+    const ids = deal.snapshot().map((s) => s.cardId);
     expect(ids).toEqual([3, 26, 32, 34]);
   });
 
@@ -30,7 +30,7 @@ describe("Deal", () => {
     const bob = new Player("bob", false);
     deal.pickByCardId(alice, 32);
     deal.pickByCardId(bob, 3);
-    const order = deal.nextRoundPickOrder().map(p => p.id);
+    const order = deal.nextRoundPickOrder().map((p) => p.id);
     expect(order).toEqual(["bob", "alice"]);
   });
 });
@@ -116,7 +116,7 @@ describe("GameSession", () => {
     const { session } = makeSession();
     session.beginRound([3, 26, 32, 34]);
     const events: number[] = [];
-    session.events.on("pick:made", e => events.push(e.cardId));
+    session.events.on("pick:made", (e) => events.push(e.cardId));
     session.handleLocalPick(26);
     expect(events).toEqual([26]);
   });

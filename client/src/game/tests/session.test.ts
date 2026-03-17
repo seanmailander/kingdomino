@@ -27,9 +27,9 @@ const makeSession = () => {
 
 const completeRound = (session: GameSession, alice: Player, bob: Player) => {
   session.beginRound([2, 18, 26, 44]);
-  session.handleLocalPick(44);               // alice: mine(2cr)/grain
+  session.handleLocalPick(44); // alice: mine(2cr)/grain
   session.handleLocalPlacement(7, 6, right); //   mine+2cr at (7,6), grain at (8,6)
-  session.handlePick(bob.id, 26);            // bob: wood(1cr)/grain
+  session.handlePick(bob.id, 26); // bob: wood(1cr)/grain
   session.handlePlacement(bob.id, 5, 6, left); // wood+1cr at (5,6), grain at (4,6)
 };
 

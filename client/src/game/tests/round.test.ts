@@ -21,7 +21,9 @@ const makeRound = () => {
 
 describe("Deal", () => {
   it("slots are sorted by card id ascending after construction", () => {
-    const ids = makeDeal().snapshot().map((s) => s.cardId);
+    const ids = makeDeal()
+      .snapshot()
+      .map((s) => s.cardId);
     expect(ids).toEqual([3, 26, 32, 34]);
   });
 
@@ -43,7 +45,7 @@ describe("Deal", () => {
     const a = alice();
     const b = bob();
     deal.pickByCardId(a, 32); // alice: slot 2
-    deal.pickByCardId(b, 3);  // bob:   slot 0  → bob goes before alice
+    deal.pickByCardId(b, 3); // bob:   slot 0  → bob goes before alice
     const order = deal.nextRoundPickOrder().map((p) => p.id);
     expect(order).toEqual(["bob", "alice"]);
   });

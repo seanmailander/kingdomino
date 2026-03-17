@@ -58,7 +58,7 @@ export const getRoom = (): Room => roomSignal();
 let lobbyStartResolver: (() => void) | null = null;
 
 export const awaitLobbyStart = (): Promise<void> =>
-  new Promise(resolve => {
+  new Promise((resolve) => {
     lobbyStartResolver = resolve;
   });
 
@@ -70,7 +70,7 @@ export const triggerLobbyStart = (): void => {
 let lobbyLeaveResolver: (() => void) | null = null;
 
 export const awaitLobbyLeave = (): Promise<void> =>
-  new Promise(resolve => {
+  new Promise((resolve) => {
     lobbyLeaveResolver = resolve;
   });
 
@@ -92,7 +92,7 @@ export const useApp = () => {
   useEffect(() => {
     return effect(() => {
       const v = versionComputed();
-      setVersion(prev => (prev === v ? prev : v));
+      setVersion((prev) => (prev === v ? prev : v));
     });
   }, [versionComputed]);
 

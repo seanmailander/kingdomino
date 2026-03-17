@@ -1,12 +1,7 @@
 import { findPlacementWithin5x5, getEligiblePositions, getValidDirections } from "./board";
 import { describe, expect, it } from "vitest";
 import { Board } from "../state/Board";
-import {
-  down,
-  right,
-  up,
-  left,
-} from "./cards";
+import { down, right, up, left } from "./cards";
 
 describe("Checks moves", () => {
   it("Allows any move off castle", () => {
@@ -15,7 +10,7 @@ describe("Checks moves", () => {
     const card = 1;
     const x = 6;
     const y = 7;
-    const board = (new Board(placedCards)).snapshot();
+    const board = new Board(placedCards).snapshot();
 
     // Act
     const eligiblePositions = getEligiblePositions(board, card);
@@ -34,15 +29,15 @@ describe("Checks moves", () => {
   describe("findPlacementWithin5x5", () => {
     it("picks a deterministic first valid anchor and direction on an empty board", () => {
       // Arrange
-    const board = (new Board([])).snapshot();
-  
+      const board = new Board([]).snapshot();
+
       // Act
       const placement = findPlacementWithin5x5(board, 1);
-  
+
       // Assert
       expect(placement).toStrictEqual({ x: 6, y: 5, direction: up });
     });
-  
+
     it("returns null when the kingdom is already fully packed at 5x5", () => {
       // Arrange
       const placements = [];
@@ -51,11 +46,11 @@ describe("Checks moves", () => {
         placements.push({ card: 1, x: 6, y, direction: right });
         placements.push({ card: 1, x: 8, y, direction: left });
       }
-    const board = (new Board(placements)).snapshot();
-  
+      const board = new Board(placements).snapshot();
+
       // Act
       const placement = findPlacementWithin5x5(board, 1);
-  
+
       // Assert
       expect(placement).toBeNull();
     });

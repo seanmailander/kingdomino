@@ -114,11 +114,20 @@ export class Board {
           regionCrowns += grid[cy][cx]?.value ?? 0;
 
           const neighbors: [number, number][] = [
-            [cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1],
+            [cx + 1, cy],
+            [cx - 1, cy],
+            [cx, cy + 1],
+            [cx, cy - 1],
           ];
           for (const [nx, ny] of neighbors) {
-            if (nx >= 0 && nx < size && ny >= 0 && ny < size
-              && !visited[ny][nx] && grid[ny][nx]?.tile === terrain) {
+            if (
+              nx >= 0 &&
+              nx < size &&
+              ny >= 0 &&
+              ny < size &&
+              !visited[ny][nx] &&
+              grid[ny][nx]?.tile === terrain
+            ) {
               queue.push([nx, ny]);
             }
           }

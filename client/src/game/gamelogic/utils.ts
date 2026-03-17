@@ -66,5 +66,5 @@ export const chooseOrderFromSeed = (seed: string, peerIdentifiers: PeerIdentifie
   const invertOrder = seededRandom() < 0.5;
   const [first, second] = me < them ? [me, them] : [them, me];
 
-  return invertOrder ? [second, first] as const : [first, second] as const;
+  return invertOrder ? ([second, first] as const) : ([first, second] as const);
 };

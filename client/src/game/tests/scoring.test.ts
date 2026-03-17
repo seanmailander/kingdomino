@@ -27,9 +27,7 @@ describe("Scoring", () => {
     // card 0: grain/grain at (7,6)right → grain at (7,6),(8,6), 0 crowns
     // card 18: grain(1cr)/wood at (9,6)right → grain+1crown at (9,6), wood at (10,6)
     // grain region: (7,6)+(8,6)+(9,6) = 3 cells × 1 crown = 3
-    const board = new Board()
-      .place(0, 7, 6, right)
-      .place(18, 9, 6, right);
+    const board = new Board().place(0, 7, 6, right).place(18, 9, 6, right);
     expect(board.score()).toBe(3);
   });
 
@@ -37,9 +35,7 @@ describe("Scoring", () => {
     // East: card 18 — grain(1cr) at (7,6), wood at (8,6)    → grain 1×1=1
     // West: card 44 — mine(2cr) at (5,6), grain at (4,6)   → mine  1×2=2
     // Total: 3
-    const board = new Board()
-      .place(18, 7, 6, right)
-      .place(44, 5, 6, left);
+    const board = new Board().place(18, 7, 6, right).place(44, 5, 6, left);
     expect(board.score()).toBe(3);
   });
 
@@ -47,9 +43,7 @@ describe("Scoring", () => {
     // card 18: grain(1cr)/wood — grain+1crown at (7,6), wood at (8,6)
     // card  3: wood/wood 0cr  — wood at (9,6), wood at (10,6) connected to wood at (8,6)
     // wood region (3 cells, 0 crowns) scores 0; grain region (1 cell, 1 crown) scores 1
-    const board = new Board()
-      .place(18, 7, 6, right)
-      .place(3, 9, 6, right);
+    const board = new Board().place(18, 7, 6, right).place(3, 9, 6, right);
     expect(board.score()).toBe(1);
   });
 });

@@ -23,7 +23,8 @@ const rotateLookup: Record<Direction, Direction> = {
 };
 
 function BoardArea(props) {
-  const { session, playerId, isMe }: { session: GameSession; playerId: string; isMe: boolean } = props;
+  const { session, playerId, isMe }: { session: GameSession; playerId: string; isMe: boolean } =
+    props;
   const myBoard = session.boardFor(playerId);
   const cardId = session.localCardToPlace();
   const isMyPlace = session.isMyPlace();

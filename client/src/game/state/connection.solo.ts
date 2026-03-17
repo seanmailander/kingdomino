@@ -100,8 +100,7 @@ function newSoloConnection() {
   const { waitForGameMessage, dispose } = createMessageWaiter(inprocEmitter);
 
   const sendGameMessage = ({ type, content }: { type: string; content?: unknown }) => {
-    const message =
-      typeof content === "object" && content ? { type, ...content } : { type };
+    const message = typeof content === "object" && content ? { type, ...content } : { type };
 
     responseToPlayerMove(message as GameMessage, (reply) => inprocEmitter.emit("incoming", reply));
   };

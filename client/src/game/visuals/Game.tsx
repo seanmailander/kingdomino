@@ -22,7 +22,7 @@ function Game({ session }: GameProps) {
         ))}
       </div>
       <div className="boards">
-        {players.map(player => (
+        {players.map((player) => (
           <BoardArea key={player.id} session={session} playerId={player.id} isMe={player.isLocal} />
         ))}
       </div>

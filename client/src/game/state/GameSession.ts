@@ -23,13 +23,20 @@ export type { PlayerId, CardId } from "./types";
 // ── GameEventBus ──────────────────────────────────────────────────────────────
 
 export type GameEventMap = {
-  "player:joined":  { player: Player };
-  "game:started":   { players: ReadonlyArray<Player>; pickOrder: ReadonlyArray<Player> };
-  "round:started":  { round: Round; roundNumber: number };
-  "pick:made":      { player: Player; cardId: CardId; roundNumber: number };
-  "place:made":     { player: Player; cardId: CardId; x: number; y: number; direction: Direction; roundNumber: number };
+  "player:joined": { player: Player };
+  "game:started": { players: ReadonlyArray<Player>; pickOrder: ReadonlyArray<Player> };
+  "round:started": { round: Round; roundNumber: number };
+  "pick:made": { player: Player; cardId: CardId; roundNumber: number };
+  "place:made": {
+    player: Player;
+    cardId: CardId;
+    x: number;
+    y: number;
+    direction: Direction;
+    roundNumber: number;
+  };
   "round:complete": { nextPickOrder: ReadonlyArray<Player>; roundNumber: number };
-  "game:ended":     { scores: Array<{ player: Player; score: number }> };
+  "game:ended": { scores: Array<{ player: Player; score: number }> };
 };
 
 type Listener<K extends keyof GameEventMap> = (event: GameEventMap[K]) => void;
@@ -48,7 +55,7 @@ export class GameEventBus {
   }
 
   emit<K extends keyof GameEventMap>(event: K, data: GameEventMap[K]): void {
-    this.listeners.get(event)?.forEach(fn => fn(data as never));
+    this.listeners.get(event)?.forEach((fn) => fn(data as never));
   }
 }
 
@@ -82,7 +89,7 @@ export class GameSession {
   // ── Player management ──
 
   addPlayer(player: Player): void {
-    if (this._players.some(p => p.id === player.id)) return; // idempotent
+    if (this._players.some((p) => p.id === player.id)) return; // idempotent
     this._players.push(player);
     this.events.emit("player:joined", { player });
   }
@@ -108,7 +115,10 @@ export class GameSession {
     const deal = new Deal(cardIds);
     this._currentRound = new Round(deal, this._pickOrder);
     this._roundNumber++;
-    this.events.emit("round:started", { round: this._currentRound, roundNumber: this._roundNumber });
+    this.events.emit("round:started", {
+      round: this._currentRound,
+      roundNumber: this._roundNumber,
+    });
   }
 
   /** Record a pick by any player (local or remote). */
@@ -133,7 +143,14 @@ export class GameSession {
     if (cardId === null) throw new Error(`${playerId} has no picked card to place`);
 
     round.recordPlacement(player, x, y, direction);
-    this.events.emit("place:made", { player, cardId, x, y, direction, roundNumber: this._roundNumber });
+    this.events.emit("place:made", {
+      player,
+      cardId,
+      x,
+      y,
+      direction,
+      roundNumber: this._roundNumber,
+    });
 
     if (round.phase === "complete") {
       const nextPickOrder = round.deal.nextRoundPickOrder();
@@ -152,25 +169,35 @@ export class GameSession {
   endGame(): void {
     this._phase = "finished";
     const scores = this._players
-      .map(p => ({ player: p, score: p.score() }))
+      .map((p) => ({ player: p, score: p.score() }))
       .sort((a, b) => b.score - a.score);
     this.events.emit("game:ended", { scores });
   }
 
   // ── Read-only accessors ──
 
-  get phase(): GamePhase                    { return this._phase; }
-  get players(): ReadonlyArray<Player>      { return this._players; }
-  get currentRound(): Round | null          { return this._currentRound; }
-  get pickOrder(): ReadonlyArray<Player>    { return this._pickOrder; }
-  get roundNumber(): number                 { return this._roundNumber; }
+  get phase(): GamePhase {
+    return this._phase;
+  }
+  get players(): ReadonlyArray<Player> {
+    return this._players;
+  }
+  get currentRound(): Round | null {
+    return this._currentRound;
+  }
+  get pickOrder(): ReadonlyArray<Player> {
+    return this._pickOrder;
+  }
+  get roundNumber(): number {
+    return this._roundNumber;
+  }
 
   myPlayer(): Player | undefined {
-    return this._players.find(p => p.isLocal);
+    return this._players.find((p) => p.isLocal);
   }
 
   playerById(id: PlayerId): Player | undefined {
-    return this._players.find(p => p.id === id);
+    return this._players.find((p) => p.id === id);
   }
 
   hasEnoughPlayers(): boolean {
@@ -180,15 +207,13 @@ export class GameSession {
   isMyTurn(): boolean {
     const me = this.myPlayer();
     if (!me || !this._currentRound) return false;
-    return this._currentRound.phase === "picking"
-      && this._currentRound.currentActor?.id === me.id;
+    return this._currentRound.phase === "picking" && this._currentRound.currentActor?.id === me.id;
   }
 
   isMyPlace(): boolean {
     const me = this.myPlayer();
     if (!me || !this._currentRound) return false;
-    return this._currentRound.phase === "placing"
-      && this._currentRound.currentActor?.id === me.id;
+    return this._currentRound.phase === "placing" && this._currentRound.currentActor?.id === me.id;
   }
 
   /** Card the local player has picked this round and must place (placing phase only). */
@@ -206,18 +231,18 @@ export class GameSession {
   deal(): ReturnType<typeof getCard>[] {
     const snap = this._currentRound?.deal.snapshot();
     if (!snap) return [];
-    return snap.map(s => getCard(s.cardId));
+    return snap.map((s) => getCard(s.cardId));
   }
 
   /** Board grid for a player — compatible with board.ts utility functions. */
   boardFor(playerId: PlayerId): BoardGrid {
-    return this._players.find(p => p.id === playerId)?.board.snapshot() ?? [];
+    return this._players.find((p) => p.id === playerId)?.board.snapshot() ?? [];
   }
 
   // ── Private helpers ──
 
   private _requirePlayer(id: PlayerId): Player {
-    const player = this._players.find(p => p.id === id);
+    const player = this._players.find((p) => p.id === id);
     if (!player) throw new Error(`Unknown player: "${id}"`);
     return player;
   }
@@ -233,4 +258,3 @@ export class GameSession {
     return this._currentRound;
   }
 }
-

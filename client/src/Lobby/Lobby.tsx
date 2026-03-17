@@ -28,7 +28,7 @@ function Lobby({ session }: LobbyProps) {
 
   return (
     <>
-      Players: {JSON.stringify(players.map(p => ({ playerId: p.id, isMe: p.isLocal })))}
+      Players: {JSON.stringify(players.map((p) => ({ playerId: p.id, isMe: p.isLocal })))}
       <br />
       {waitingForPlayers}
       {startGame}

@@ -6,7 +6,15 @@ import type { GameSession } from "../state/GameSession";
 import Tile from "./Tile";
 
 function Card(props) {
-  const { card, isMyTurn, session }: { card: { id: number; tiles: { tile: number; value: number }[] }; isMyTurn: boolean; session: GameSession } = props;
+  const {
+    card,
+    isMyTurn,
+    session,
+  }: {
+    card: { id: number; tiles: { tile: number; value: number }[] };
+    isMyTurn: boolean;
+    session: GameSession;
+  } = props;
   const { id, tiles } = card;
 
   const className = `card${isMyTurn ? "" : " disabled"}`;

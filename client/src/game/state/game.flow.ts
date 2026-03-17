@@ -19,8 +19,8 @@ function waitForEvent<K extends keyof GameEventMap>(
   event: K,
   predicate?: (data: GameEventMap[K]) => boolean,
 ): Promise<GameEventMap[K]> {
-  return new Promise(resolve => {
-    const off = bus.on(event, data => {
+  return new Promise((resolve) => {
+    const off = bus.on(event, (data) => {
       if (!predicate || predicate(data)) {
         off();
         resolve(data);
@@ -50,10 +50,14 @@ async function playRound(
 
     if (actor.isLocal) {
       // Wait for user to pick via Card.tsx (session.handleLocalPick)
-      await waitForEvent(session.events, "pick:made", e => e.player.id === actor.id);
+      await waitForEvent(session.events, "pick:made", (e) => e.player.id === actor.id);
 
       // Wait for user to place via BoardArea.tsx (session.handleLocalPlacement)
-      const placeEvent = await waitForEvent(session.events, "place:made", e => e.player.id === actor.id);
+      const placeEvent = await waitForEvent(
+        session.events,
+        "place:made",
+        (e) => e.player.id === actor.id,
+      );
 
       // Send move to peer
       sendGameMessage(
@@ -103,7 +107,7 @@ export const startSoloGameFlow = async () => {
     // Determine first-round pick order from a shared cryptographic seed
     const firstSeed = await buildTrustedSeed(sendGameMessage, waitForGameMessage);
     const orderedIds = chooseOrderFromSeed(firstSeed, peerIdentifiers);
-    const pickOrder = orderedIds.map(id => session.playerById(id)!);
+    const pickOrder = orderedIds.map((id) => session.playerById(id)!);
 
     session.startGame(pickOrder);
 
@@ -130,4 +134,3 @@ export const startMultiplayerGameFlow = () => {
   // Multiplayer P2P not yet implemented — placeholder
   setRoom(Lobby);
 };
-

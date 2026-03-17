@@ -30,16 +30,16 @@ See [research](./RESEARCH.md) for more info
 
 ### Simplify DevX
 
- - create a workflow for client-only development
-   - play without competition
-   - HMR
-   - typesafety
-   - linting
-   - tests
- - create a workflow for game state testing
-   - reload game state
-   - admin panel to select state
-   
+- create a workflow for client-only development
+  - play without competition
+  - HMR
+  - typesafety
+  - linting
+  - tests
+- create a workflow for game state testing
+  - reload game state
+  - admin panel to select state
+
 ## NOW
 
 1. Calculate only eligible places by neighbors
