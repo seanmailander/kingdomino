@@ -2,9 +2,20 @@ import { chooseOrderFromSeed, getNextFourCards } from "../gamelogic/utils";
 import { ConnectionManager } from "./ConnectionManager";
 import { GameSession, Player } from "./GameSession";
 import type { GameEventBus, GameEventMap, CardId } from "./GameSession";
+import type { GameMessage, GameMessagePayload, GameMessageType } from "./game.messages";
 import SoloConnection from "./connection.solo";
+import { MultiplayerConnection } from "./connection.multiplayer";
 import { setCurrentSession, setRoom, awaitLobbyStart } from "../../App/store";
 import { Lobby, Game } from "../../App/AppExtras";
+
+// ── Connection interface ───────────────────────────────────────────────────────
+
+interface IGameConnection {
+  readonly peerIdentifiers: { me: string; them: string };
+  send: (message: GameMessage) => void;
+  waitFor: <T extends GameMessageType>(messageType: T) => Promise<GameMessagePayload<T>>;
+  destroy: () => void;
+}
 
 // ── Event-based waiting (replaces waitForComputed) ──────────────────────────────
 
@@ -28,104 +39,113 @@ function waitForEvent<K extends keyof GameEventMap>(
   });
 }
 
-// ── Round loop ─────────────────────────────────────────────────────────────────────
+// ── LobbyFlow class ───────────────────────────────────────────────────────────
 
-async function playRound(
-  session: GameSession,
-  connectionManager: ConnectionManager,
-  currentDeck?: number[],
-): Promise<number[]> {
-  const trustedSeed = await connectionManager.buildTrustedSeed();
-  const { next: cardIds, remaining } = getNextFourCards(trustedSeed, currentDeck);
+export class LobbyFlow {
+  private isRunning = false;
+  private session: GameSession | null = null;
+  private connectionManager: ConnectionManager | null = null;
+  private remainingDeck?: number[];
 
-  session.beginRound(cardIds as [CardId, CardId, CardId, CardId]);
+  ReadySolo() {
+    if (this.isRunning) return;
+    this.isRunning = true;
+    void this.runFlow(new SoloConnection());
+  }
 
-  // Process actors sequentially until the round is complete
-  while (session.currentRound !== null) {
-    const round = session.currentRound;
-    const actor = round.currentActor;
-    if (!actor) break;
+  ReadyMultiplayer() {
+    if (this.isRunning) return;
+    this.isRunning = true;
+    void this.runFlow(new MultiplayerConnection());
+  }
 
-    if (actor.isLocal) {
-      // Wait for user to pick via Card.tsx (session.handleLocalPick)
-      await waitForEvent(session.events, "pick:made", (e) => e.player.id === actor.id);
+  private async playRound() {
+    const { session, connectionManager } = this;
+    if (!session || !connectionManager) throw new Error("LobbyFlow: no active game");
 
-      // Wait for user to place via BoardArea.tsx (session.handleLocalPlacement)
-      const placeEvent = await waitForEvent(
-        session.events,
-        "place:made",
-        (e) => e.player.id === actor.id,
-      );
+    const trustedSeed = await connectionManager.buildTrustedSeed();
+    const { next: cardIds, remaining } = getNextFourCards(
+      trustedSeed,
+      this.remainingDeck ? this.remainingDeck : undefined,
+    );
+    this.remainingDeck = remaining;
 
-      // Send move to peer
-      connectionManager.sendMove({
-        playerId: actor.id,
-        card: placeEvent.cardId,
-        x: placeEvent.x,
-        y: placeEvent.y,
-        direction: placeEvent.direction,
-      });
-    } else {
-      // Wait for opponent's move from peer
-      const { move } = await connectionManager.waitForMove();
+    session.beginRound(cardIds as [CardId, CardId, CardId, CardId]);
 
-      session.handlePick(move.playerId, move.card);
-      session.handlePlacement(move.playerId, move.x, move.y, move.direction);
+    // Process actors sequentially until the round is complete
+    while (session.currentRound !== null) {
+      const round = session.currentRound;
+      const actor = round.currentActor;
+      if (!actor) break;
+
+      if (actor.isLocal) {
+        // Wait for user to pick via Card.tsx (session.handleLocalPick)
+        await waitForEvent(session.events, "pick:made", (e) => e.player.id === actor.id);
+
+        // Wait for user to place via BoardArea.tsx (session.handleLocalPlacement)
+        const placeEvent = await waitForEvent(
+          session.events,
+          "place:made",
+          (e) => e.player.id === actor.id,
+        );
+
+        // Send move to peer
+        connectionManager.sendMove({
+          playerId: actor.id,
+          card: placeEvent.cardId,
+          x: placeEvent.x,
+          y: placeEvent.y,
+          direction: placeEvent.direction,
+        });
+      } else {
+        // Wait for opponent's move from peer
+        const { move } = await connectionManager.waitForMove();
+
+        session.handlePick(move.playerId, move.card);
+        session.handlePlacement(move.playerId, move.x, move.y, move.direction);
+      }
     }
   }
 
-  return remaining;
+  private async runFlow(connection: IGameConnection) {
+    this.session = new GameSession();
+    this.connectionManager = new ConnectionManager(connection.send, connection.waitFor);
+
+    try {
+      this.session.addPlayer(new Player(connection.peerIdentifiers.me, true));
+      this.session.addPlayer(new Player(connection.peerIdentifiers.them, false));
+      setCurrentSession(this.session);
+      setRoom(Lobby);
+
+      // Wait for "Start game" button in Lobby UI (triggerLobbyStart)
+      await awaitLobbyStart();
+      setRoom(Game);
+
+      // Determine first-round pick order from a shared cryptographic seed
+      const firstSeed = await this.connectionManager.buildTrustedSeed();
+      const orderedIds = chooseOrderFromSeed(firstSeed, connection.peerIdentifiers);
+      const pickOrder = orderedIds.map((id) => this.session!.playerById(id)!);
+
+      this.session.startGame(pickOrder);
+
+      // Play all rounds until the deck is exhausted
+      do {
+        await this.playRound();
+      } while (this.remainingDeck?.length);
+
+      this.session.endGame();
+    } catch {
+      // Connection error — reset to Splash
+      setCurrentSession(null);
+      setRoom("Splash");
+    } finally {
+      connection.destroy();
+      this.session = null;
+      this.connectionManager = null;
+      this.remainingDeck = [];
+      this.isRunning = false;
+    }
+  }
 }
 
-// ── Solo game flow ─────────────────────────────────────────────────────────────────
-
-let isSoloGameRunning = false;
-
-export const startSoloGameFlow = async () => {
-  if (isSoloGameRunning) return;
-  isSoloGameRunning = true;
-
-  const connection = new SoloConnection();
-  const connectionManager = new ConnectionManager(connection.send, connection.waitFor);
-  const session = new GameSession();
-
-  try {
-    session.addPlayer(new Player(connection.peerIdentifiers.me, true));
-    session.addPlayer(new Player(connection.peerIdentifiers.them, false));
-    setCurrentSession(session);
-    setRoom(Lobby);
-
-    // Wait for "Start game" button in Lobby UI (triggerLobbyStart)
-    await awaitLobbyStart();
-    setRoom(Game);
-
-    // Determine first-round pick order from a shared cryptographic seed
-    const firstSeed = await connectionManager.buildTrustedSeed();
-    const orderedIds = chooseOrderFromSeed(firstSeed, connection.peerIdentifiers);
-    const pickOrder = orderedIds.map((id) => session.playerById(id)!);
-
-    session.startGame(pickOrder);
-
-    // First round
-    let remainingDeck = await playRound(session, connectionManager);
-
-    // Subsequent rounds
-    while (remainingDeck.length > 0) {
-      remainingDeck = await playRound(session, connectionManager, remainingDeck);
-    }
-
-    session.endGame();
-  } catch {
-    // Connection error — reset to Splash
-    setCurrentSession(null);
-    setRoom("Splash");
-  } finally {
-    connection.destroy();
-    isSoloGameRunning = false;
-  }
-};
-
-export const startMultiplayerGameFlow = () => {
-  // Multiplayer P2P not yet implemented — placeholder
-  setRoom(Lobby);
-};
+export const gameLobby = new LobbyFlow();

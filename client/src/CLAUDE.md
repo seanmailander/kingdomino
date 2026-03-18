@@ -7,3 +7,5 @@
 - Do not use default exports.
 - Keep one primary responsibility per file.
 - Multiple exports are fine when they support the same job, theme, or focus, but avoid files that mix unrelated concerns.
+- Prefer OOP (classes) for game state: sessions, rounds, players, connections, and flow orchestration.
+- Prefer pure functions for game logic: card manipulation, board scoring, deck operations, and seed/order calculations.
