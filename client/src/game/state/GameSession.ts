@@ -10,13 +10,15 @@ import { getCard } from "../gamelogic/cards";
 import type { PlayerId, CardId, Direction } from "./types";
 import type { BoardGrid } from "./Board";
 import { Player } from "./Player";
-import { Deal, Round } from "./Round";
+import { Deal } from "./Deal";
+import { Round } from "./Round";
 
 // Re-export sub-module classes and types for backward compatibility
 export type { BoardCell, BoardGrid } from "./Board";
 export { Board } from "./Board";
 export { Player } from "./Player";
-export { Deal, Round } from "./Round";
+export { Deal } from "./Deal";
+export { Round } from "./Round";
 export type { RoundPhase } from "./Round";
 export type { PlayerId, CardId } from "./types";
 
@@ -25,17 +27,16 @@ export type { PlayerId, CardId } from "./types";
 export type GameEventMap = {
   "player:joined": { player: Player };
   "game:started": { players: ReadonlyArray<Player>; pickOrder: ReadonlyArray<Player> };
-  "round:started": { round: Round; roundNumber: number };
-  "pick:made": { player: Player; cardId: CardId; roundNumber: number };
+  "round:started": { round: Round };
+  "pick:made": { player: Player; cardId: CardId };
   "place:made": {
     player: Player;
     cardId: CardId;
     x: number;
     y: number;
     direction: Direction;
-    roundNumber: number;
   };
-  "round:complete": { nextPickOrder: ReadonlyArray<Player>; roundNumber: number };
+  "round:complete": { nextPickOrder: ReadonlyArray<Player> };
   "game:ended": { scores: Array<{ player: Player; score: number }> };
 };
 
@@ -84,7 +85,6 @@ export class GameSession {
   private _players: Player[] = [];
   private _pickOrder: Player[] = [];
   private _currentRound: Round | null = null;
-  private _roundNumber = 0;
 
   // ── Player management ──
 
@@ -114,11 +114,7 @@ export class GameSession {
     if (this._phase !== "playing") throw new Error("Game not in playing phase");
     const deal = new Deal(cardIds);
     this._currentRound = new Round(deal, this._pickOrder);
-    this._roundNumber++;
-    this.events.emit("round:started", {
-      round: this._currentRound,
-      roundNumber: this._roundNumber,
-    });
+    this.events.emit("round:started", { round: this._currentRound });
   }
 
   /** Record a pick by any player (local or remote). */
@@ -126,7 +122,7 @@ export class GameSession {
     const round = this._requireActiveRound();
     const player = this._requirePlayer(playerId);
     round.recordPick(player, cardId);
-    this.events.emit("pick:made", { player, cardId, roundNumber: this._roundNumber });
+    this.events.emit("pick:made", { player, cardId });
   }
 
   /** Convenience: pick for the local player. */
@@ -149,14 +145,13 @@ export class GameSession {
       x,
       y,
       direction,
-      roundNumber: this._roundNumber,
     });
 
     if (round.phase === "complete") {
       const nextPickOrder = round.deal.nextRoundPickOrder();
       this._pickOrder = nextPickOrder;
       this._currentRound = null;
-      this.events.emit("round:complete", { nextPickOrder, roundNumber: this._roundNumber });
+      this.events.emit("round:complete", { nextPickOrder });
     }
   }
 
@@ -187,9 +182,6 @@ export class GameSession {
   }
   get pickOrder(): ReadonlyArray<Player> {
     return this._pickOrder;
-  }
-  get roundNumber(): number {
-    return this._roundNumber;
   }
 
   myPlayer(): Player | undefined {

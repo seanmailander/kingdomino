@@ -234,7 +234,6 @@ describe("GameSession — end of game", () => {
     session.endGame();
 
     expect(session.phase).toBe("finished");
-    expect(session.roundNumber).toBe(12);
     expect(completedRounds).toBe(12);
     expect(alice.board.placements).toHaveLength(12);
     expect(bob.board.placements).toHaveLength(12);

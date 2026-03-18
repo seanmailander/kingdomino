@@ -1,6 +1,7 @@
 // Sections 4+5 — Deal and Round
 import { describe, expect, it } from "vitest";
-import { Deal, Round } from "../state/Round";
+import { Deal } from "../state/Deal";
+import { Round } from "../state/Round";
 import { Player } from "../state/Player";
 import { right, left } from "../gamelogic/cards";
 
