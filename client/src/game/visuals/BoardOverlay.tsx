@@ -24,7 +24,6 @@ function BoardOverlay({
   cardId,
   isMyPlace,
 }: BoardOverlayProps) {
-
   const { x, y } = useBoardPosition(getBoardPosition());
 
   const boardWithCurrentCard = useMemo(() => {

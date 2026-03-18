@@ -54,7 +54,8 @@ function BoardArea({ session, playerId, isMe }: BoardAreaProps) {
     eligiblePositions.some((pos) => pos.x === x && pos.y === y);
 
   const isValidDirection = (x: number, y: number, nextDirection: Direction) =>
-    cardId !== undefined && getValidDirections(myBoard, cardId, x, y).some((d) => d === nextDirection);
+    cardId !== undefined &&
+    getValidDirections(myBoard, cardId, x, y).some((d) => d === nextDirection);
 
   // TODO: this is forcing keypress to re-add listeners on ever change of direction
   // is there an easier way?

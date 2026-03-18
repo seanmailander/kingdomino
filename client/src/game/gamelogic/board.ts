@@ -118,12 +118,7 @@ const directionDelta: Record<Direction, { dx: number; dy: number }> = {
 
 const directionPriority: Direction[] = [up, right, down, left];
 
-const staysWithin5x5 = (
-  board: Board,
-  x: number,
-  y: number,
-  direction: Direction,
-): boolean => {
+const staysWithin5x5 = (board: Board, x: number, y: number, direction: Direction): boolean => {
   const occupied: Array<{ x: number; y: number }> = board.reduce(
     (all, row, rowY) => [
       ...all,
@@ -159,9 +154,7 @@ export const findPlacementWithin5x5 = (
     const directions = (getValidDirections(board, cardId, x, y) as Direction[]).sort(
       (a, b) => directionPriority.indexOf(a) - directionPriority.indexOf(b),
     );
-    const validDirection = directions.find((direction) =>
-      staysWithin5x5(board, x, y, direction),
-    );
+    const validDirection = directions.find((direction) => staysWithin5x5(board, x, y, direction));
     if (validDirection !== undefined) {
       return { x, y, direction: validDirection };
     }
