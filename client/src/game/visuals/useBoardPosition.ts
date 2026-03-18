@@ -1,19 +1,27 @@
 import { useState, useEffect } from "react";
 
-function throttle(callback, wait = 50, immediate = false) {
-  let timeout = null;
+type BoardPosition = { x: number | null; y: number | null };
+type BoardRect = Pick<DOMRect, "top" | "left" | "right" | "bottom">;
+
+function throttle<Args extends unknown[]>(
+  callback: (...args: Args) => void,
+  wait = 50,
+  immediate = false,
+) {
+  let timeout: ReturnType<typeof setTimeout> | null = null;
   let initialCall = true;
 
-  return function throttle() {
+  return (...args: Args) => {
     const callNow = immediate && initialCall;
     const next = () => {
-      callback.apply(this, arguments);
+      callback(...args);
       timeout = null;
     };
 
     if (callNow) {
       initialCall = false;
       next();
+      return;
     }
 
     if (!timeout) {
@@ -22,11 +30,20 @@ function throttle(callback, wait = 50, immediate = false) {
   };
 }
 
-const convertMouseToBoard = ({ x, y, top, left, right, bottom }) => {
+const convertMouseToBoard = ({
+  x,
+  y,
+  top,
+  left,
+  right,
+  bottom,
+}: { x: number; y: number } & Partial<BoardRect>): BoardPosition => {
+  if (top === undefined || left === undefined || right === undefined || bottom === undefined) {
+    return { x: null, y: null };
+  }
+
   const isWithinX = left <= x && x <= right;
   const isWithinY = top <= y && y <= bottom;
-
-  // console.debug(x, y);
 
   if (isWithinX && isWithinY) {
     const thirteenX = (right - left) / 13;
@@ -42,14 +59,13 @@ const convertMouseToBoard = ({ x, y, top, left, right, bottom }) => {
   return { x: null, y: null };
 };
 
-const useBoardPosition = (boardNodePosition) => {
-  const [boardPosition, setBoardPosition] = useState({ x: null, y: null });
+const useBoardPosition = (boardNodePosition?: BoardRect | null) => {
+  const [boardPosition, setBoardPosition] = useState<BoardPosition>({ x: null, y: null });
 
   const { top, left, right, bottom } = boardNodePosition || {};
 
-  const updateMousePosition = (ev) => {
+  const updateMousePosition = (ev: MouseEvent) => {
     const { clientX: mouseX, clientY: mouseY } = ev;
-    // Convert mouse coords to board coords
     const converted = convertMouseToBoard({
       x: mouseX,
       y: mouseY,
@@ -62,7 +78,6 @@ const useBoardPosition = (boardNodePosition) => {
   };
 
   useEffect(() => {
-    console.debug("remount handlers");
     const throttledMouseMove = throttle(updateMousePosition);
     window.addEventListener("mousemove", throttledMouseMove);
 

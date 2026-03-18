@@ -14,11 +14,13 @@ import {
 } from "./cards";
 import { describe, expect, it } from "vitest";
 
-function bitCount(n) {
+function bitCount(n: number) {
   n = n - ((n >> 1) & 0x55555555);
   n = (n & 0x33333333) + ((n >> 2) & 0x33333333);
   return (((n + (n >> 4)) & 0xf0f0f0f) * 0x1010101) >> 24;
 }
+
+type Deck = ReturnType<typeof generateCardMap>;
 
 describe("Builds deck", () => {
   it("Creates a deck with 48 cards", () => {
@@ -85,7 +87,7 @@ describe("Builds deck", () => {
   });
   it("Total counts are correct", () => {
     // Arrange
-    const countTiles = (deck, typeToMatch) =>
+    const countTiles = (deck: Deck, typeToMatch: number) =>
       deck.reduce((prev, { type }) => {
         const numBits = bitCount(type ^ typeToMatch);
         if (numBits === 0) {
@@ -97,7 +99,7 @@ describe("Builds deck", () => {
         return prev;
       }, 0);
 
-    const countCrowns = (deck, typeToMatch) =>
+    const countCrowns = (deck: Deck, typeToMatch: number) =>
       deck.reduce(
         (prev, { tiles }) => prev + (tiles.find((t) => t.tile === typeToMatch)?.value || 0),
         0,

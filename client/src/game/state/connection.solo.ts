@@ -13,8 +13,12 @@ import {
 } from "./game.messages";
 import { up } from "../gamelogic/cards";
 
+type AnyGameMessagePayload = {
+  [MessageType in GameMessageType]: GameMessagePayload<MessageType>;
+}[GameMessageType];
+
 type MessageResolver = {
-  resolve: (payload: unknown) => void;
+  resolve: (payload: AnyGameMessagePayload) => void;
   reject: (error: Error) => void;
 };
 
@@ -45,7 +49,7 @@ export default class SoloConnection {
     return new Promise<GameMessagePayload<T>>((resolve, reject) => {
       const resolvers = this.messageResolvers.get(messageType) ?? [];
       resolvers.push({
-        resolve: resolve as (payload: GameMessagePayload<GameMessageType>) => void,
+        resolve: (payload) => resolve(payload as GameMessagePayload<T>),
         reject,
       });
       this.messageResolvers.set(messageType, resolvers);
@@ -107,7 +111,7 @@ export default class SoloConnection {
     const resolver = resolvers?.shift();
 
     if (resolver) {
-      resolver.resolve(payload);
+      resolver.resolve(payload as AnyGameMessagePayload);
       if (resolvers && resolvers.length === 0) {
         this.messageResolvers.delete(messageType);
       }

@@ -12,16 +12,24 @@ const imageNamesByTile = {
   [marsh]: "marsh.png",
 };
 
-function Tile(props) {
-  const { tile, value, disabled = false, allowHighlight = false } = props;
+type TileProps = {
+  tile?: number | null;
+  value?: number;
+  disabled?: boolean;
+  allowHighlight?: boolean;
+};
+
+function Tile({ tile, value: _value, disabled = false, allowHighlight = false }: TileProps) {
+  const imageName =
+    tile !== undefined && tile !== null && tile in imageNamesByTile
+      ? imageNamesByTile[tile as keyof typeof imageNamesByTile]
+      : null;
 
   const className = `tile${disabled ? " disabled" : ""}${allowHighlight ? " highlight" : ""}`;
 
   return (
     <div className={className}>
-      {tile !== undefined && tile !== null ? (
-        <img src={imageNamesByTile[tile]} alt={imageNamesByTile[tile]}></img>
-      ) : null}
+      {imageName ? <img src={imageName} alt={imageName}></img> : null}
     </div>
   );
 }

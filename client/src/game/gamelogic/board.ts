@@ -1,5 +1,5 @@
-import type { BoardCell, BoardPlacement } from "../state/Board";
-import { castle, validTiles, getCard, up, down, left, right } from "./cards";
+import type { BoardCell } from "../state/Board";
+import { validTiles, getCard, up, down, left, right } from "./cards";
 import type { Direction } from "../state/types";
 import type { CardId } from "../state/types";
 
@@ -12,7 +12,7 @@ const range = (len: number): number[] => [...Array(len).keys()];
 
 // Max board size is 13 x 13
 export const getEmptyBoard: () => MutableBoard = () =>
-  range(13).map((r) => range(13).map((x) => ({ tile: undefined })));
+  range(13).map((_r) => range(13).map((_x) => ({ tile: undefined })));
 
 const xDirection = {
   [up]: 0,
@@ -83,7 +83,7 @@ export const getEligiblePositions = (board: Board, cardId?: CardId | null): Neig
   const { type } = getCard(cardId);
   const onlyPlayedSpots = ({ card }: { card: BoardCell }) => card?.tile !== null;
   const onlyMatchingTiles = ({ card }: { card: BoardCell }) =>
-    card.tile === 0 || !!(card.tile & type);
+    card.tile === 0 || (card.tile !== undefined && !!(card.tile & type));
 
   const playedSpots = allPositions.filter(onlyPlayedSpots).filter(onlyMatchingTiles);
 
@@ -107,9 +107,7 @@ export const getValidDirections = (
   getNeighbors(tileX, tileY)
     .filter(({ x, y }) => !tileIsValid(board, x, y))
     .filter(({ x, y }) => !tileIsValid(board, x, y))
-    .map(({ x, y, direction }) => direction);
-
-type PlacedDomino = { x: number; y: number; direction: Direction };
+    .map(({ x: _x, y: _y, direction }) => direction);
 
 const directionDelta: Record<Direction, { dx: number; dy: number }> = {
   [up]: { dx: 0, dy: -1 },

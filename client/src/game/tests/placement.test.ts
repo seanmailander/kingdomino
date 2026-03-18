@@ -12,9 +12,10 @@
 import { describe, expect, it } from "vitest";
 import { getEligiblePositions, getValidDirections } from "../gamelogic/board";
 import { right, left } from "../gamelogic/cards";
-import { Board } from "../state/Board";
+import { Board, type BoardPlacement } from "../state/Board";
 
-const placedCardsToBoard = (placements = []) => new Board(placements).placedCardsToBoard();
+const placedCardsToBoard = (placements: BoardPlacement[] = []) =>
+  new Board(placements).placedCardsToBoard();
 
 describe("Card placement", () => {
   it("a fresh kingdom accepts a card adjacent to the castle in all four directions", () => {

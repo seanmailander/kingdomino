@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { Board } from "../state/Board";
+import { Board, type BoardPlacement } from "../state/Board";
 import {
   castle,
   down,
@@ -16,12 +16,13 @@ import {
   wood,
 } from "../gamelogic/cards";
 
-const placedCardsToBoard = (placements = []) => new Board(placements).placedCardsToBoard();
+const placedCardsToBoard = (placements: BoardPlacement[] = []) =>
+  new Board(placements).placedCardsToBoard();
 
 describe("Builds deck", () => {
   it("Creates a deck with 48 cards and castle in the center", () => {
     // Arrange
-    const placedCards = [];
+    const placedCards: BoardPlacement[] = [];
 
     // Act
     const board = placedCardsToBoard(placedCards);

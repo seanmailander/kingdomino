@@ -57,12 +57,16 @@ const playOutRound = (session: GameSession) => {
 
     expect(cardToPick).not.toBeNull();
     expect(chosenPlacement).toBeTruthy();
+    if (cardToPick === null || chosenPlacement === null) {
+      throw new Error("Expected to find a valid pick and placement");
+    }
+
     session.handlePick(actor!.id, cardToPick);
     session.handlePlacement(
       actor!.id,
-      chosenPlacement!.x,
-      chosenPlacement!.y,
-      chosenPlacement!.direction,
+      chosenPlacement.x,
+      chosenPlacement.y,
+      chosenPlacement.direction,
     );
   }
 };

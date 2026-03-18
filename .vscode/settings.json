@@ -5,6 +5,7 @@
     "npx tsc": true,
     "npx vitest": true,
     "npm run tscheck": true,
+    "npm run -s tscheck": true,
   },
   "editor.codeActionsOnSave": {
     "source.fixAll.oxc": "always",
