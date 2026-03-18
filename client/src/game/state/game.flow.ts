@@ -1,10 +1,9 @@
 import { chooseOrderFromSeed, getNextFourCards } from "../gamelogic/utils";
-import { buildTrustedSeed, MOVE, moveMessage } from "./game.messages";
+import { ConnectionManager } from "./ConnectionManager";
 import { GameSession, Player } from "./GameSession";
 import type { GameEventBus, GameEventMap, CardId } from "./GameSession";
-import type { Direction } from "./types";
 import newSoloConnection from "./connection.solo";
-import { setCurrentSession, setRoom, awaitLobbyStart, awaitLobbyLeave } from "../../App/store";
+import { setCurrentSession, setRoom, awaitLobbyStart } from "../../App/store";
 import { Lobby, Game } from "../../App/AppExtras";
 
 // ── Event-based waiting (replaces waitForComputed) ──────────────────────────────
@@ -33,11 +32,10 @@ function waitForEvent<K extends keyof GameEventMap>(
 
 async function playRound(
   session: GameSession,
-  sendGameMessage: (message: { type: string; content?: unknown }) => void,
-  waitForGameMessage: <T = unknown>(messageType: string) => Promise<T>,
+  connectionManager: ConnectionManager,
   currentDeck?: number[],
 ): Promise<number[]> {
-  const trustedSeed = await buildTrustedSeed(sendGameMessage, waitForGameMessage);
+  const trustedSeed = await connectionManager.buildTrustedSeed();
   const { next: cardIds, remaining } = getNextFourCards(trustedSeed, currentDeck);
 
   session.beginRound(cardIds as [CardId, CardId, CardId, CardId]);
@@ -60,20 +58,16 @@ async function playRound(
       );
 
       // Send move to peer
-      sendGameMessage(
-        moveMessage({
-          playerId: actor.id,
-          card: placeEvent.cardId,
-          x: placeEvent.x,
-          y: placeEvent.y,
-          direction: placeEvent.direction,
-        }),
-      );
+      connectionManager.sendMove({
+        playerId: actor.id,
+        card: placeEvent.cardId,
+        x: placeEvent.x,
+        y: placeEvent.y,
+        direction: placeEvent.direction,
+      });
     } else {
       // Wait for opponent's move from peer
-      const { move } = await waitForGameMessage<{
-        move: { playerId: string; card: number; x: number; y: number; direction: Direction };
-      }>(MOVE);
+      const { move } = await connectionManager.waitForMove();
 
       session.handlePick(move.playerId, move.card);
       session.handlePlacement(move.playerId, move.x, move.y, move.direction);
@@ -92,6 +86,7 @@ export const startSoloGameFlow = async () => {
   isSoloGameRunning = true;
 
   const { destroy, peerIdentifiers, sendGameMessage, waitForGameMessage } = newSoloConnection();
+  const connectionManager = new ConnectionManager(sendGameMessage, waitForGameMessage);
   const session = new GameSession();
 
   try {
@@ -105,18 +100,18 @@ export const startSoloGameFlow = async () => {
     setRoom(Game);
 
     // Determine first-round pick order from a shared cryptographic seed
-    const firstSeed = await buildTrustedSeed(sendGameMessage, waitForGameMessage);
+    const firstSeed = await connectionManager.buildTrustedSeed();
     const orderedIds = chooseOrderFromSeed(firstSeed, peerIdentifiers);
     const pickOrder = orderedIds.map((id) => session.playerById(id)!);
 
     session.startGame(pickOrder);
 
     // First round
-    let remainingDeck = await playRound(session, sendGameMessage, waitForGameMessage);
+    let remainingDeck = await playRound(session, connectionManager);
 
     // Subsequent rounds
     while (remainingDeck.length > 0) {
-      remainingDeck = await playRound(session, sendGameMessage, waitForGameMessage, remainingDeck);
+      remainingDeck = await playRound(session, connectionManager, remainingDeck);
     }
 
     session.endGame();
