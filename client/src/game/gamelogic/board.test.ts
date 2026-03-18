@@ -1,12 +1,13 @@
 import { findPlacementWithin5x5, getEligiblePositions, getValidDirections } from "./board";
 import { describe, expect, it } from "vitest";
 import { Board } from "../state/Board";
+import type { BoardPlacement } from "../state/Board";
 import { down, right, up, left } from "./cards";
 
 describe("Checks moves", () => {
   it("Allows any move off castle", () => {
     // Arrange
-    const placedCards = [];
+    const placedCards: BoardPlacement[] = [];
     const card = 1;
     const x = 6;
     const y = 7;
@@ -40,7 +41,7 @@ describe("Checks moves", () => {
 
     it("returns null when the kingdom is already fully packed at 5x5", () => {
       // Arrange
-      const placements = [];
+      const placements: BoardPlacement[] = [];
       for (let y = 4; y <= 8; y++) {
         placements.push({ card: 1, x: 4, y, direction: right });
         placements.push({ card: 1, x: 6, y, direction: right });
