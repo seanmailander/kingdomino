@@ -2,7 +2,7 @@ import { chooseOrderFromSeed, getNextFourCards } from "../gamelogic/utils";
 import { ConnectionManager } from "./ConnectionManager";
 import { GameSession, Player } from "./GameSession";
 import type { GameEventBus, GameEventMap, CardId } from "./GameSession";
-import newSoloConnection from "./connection.solo";
+import SoloConnection from "./connection.solo";
 import { setCurrentSession, setRoom, awaitLobbyStart } from "../../App/store";
 import { Lobby, Game } from "../../App/AppExtras";
 
@@ -85,13 +85,13 @@ export const startSoloGameFlow = async () => {
   if (isSoloGameRunning) return;
   isSoloGameRunning = true;
 
-  const { destroy, peerIdentifiers, sendGameMessage, waitForGameMessage } = newSoloConnection();
-  const connectionManager = new ConnectionManager(sendGameMessage, waitForGameMessage);
+  const connection = new SoloConnection();
+  const connectionManager = new ConnectionManager(connection.send, connection.waitFor);
   const session = new GameSession();
 
   try {
-    session.addPlayer(new Player(peerIdentifiers.me, true));
-    session.addPlayer(new Player(peerIdentifiers.them, false));
+    session.addPlayer(new Player(connection.peerIdentifiers.me, true));
+    session.addPlayer(new Player(connection.peerIdentifiers.them, false));
     setCurrentSession(session);
     setRoom(Lobby);
 
@@ -101,7 +101,7 @@ export const startSoloGameFlow = async () => {
 
     // Determine first-round pick order from a shared cryptographic seed
     const firstSeed = await connectionManager.buildTrustedSeed();
-    const orderedIds = chooseOrderFromSeed(firstSeed, peerIdentifiers);
+    const orderedIds = chooseOrderFromSeed(firstSeed, connection.peerIdentifiers);
     const pickOrder = orderedIds.map((id) => session.playerById(id)!);
 
     session.startGame(pickOrder);
@@ -120,7 +120,7 @@ export const startSoloGameFlow = async () => {
     setCurrentSession(null);
     setRoom("Splash");
   } finally {
-    destroy();
+    connection.destroy();
     isSoloGameRunning = false;
   }
 };

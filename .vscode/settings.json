@@ -3,10 +3,11 @@
     "npm run -s build": true,
     "npm install": true,
     "npx tsc": true,
-    "npx vitest": true
+    "npx vitest": true,
+    "npm run tscheck": true,
   },
   "editor.codeActionsOnSave": {
-    "source.fixAll.oxc": "always"
+    "source.fixAll.oxc": "always",
   },
   "oxc.fmt.configPath": ".oxfmtrc.json",
   "oxc.useExecPath": true, // No global node for me so use VSCode's node
@@ -15,10 +16,10 @@
   "editor.formatOnSaveMode": "file", // oxfmt can only format whole files
   "[javascript]": {
     "editor.defaultFormatter": "oxc.oxc-vscode",
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
   },
   "[typescript]": {
     "editor.defaultFormatter": "oxc.oxc-vscode",
-    "editor.formatOnSave": true
-  }
+    "editor.formatOnSave": true,
+  },
 }

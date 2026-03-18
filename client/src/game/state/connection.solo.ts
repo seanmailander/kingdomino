@@ -1,5 +1,3 @@
-import EventEmitter from "eventemitter3";
-
 import {
   COMMITTMENT,
   committmentMessage,
@@ -7,120 +5,127 @@ import {
   moveMessage,
   REVEAL,
   revealMessage,
+  START,
+  type GameMessage,
+  type GameMessagePayload,
+  type GameMessageType,
+  type PlayerMoveMessage,
 } from "./game.messages";
+import { up } from "../gamelogic/cards";
 
-type GameMessage = {
-  type: string;
-  [key: string]: unknown;
+type MessageResolver = {
+  resolve: (payload: unknown) => void;
+  reject: (error: Error) => void;
 };
 
-const unwrapReturnMessage = ({ type, content }: { type: string; content?: object }) => ({
-  type,
-  ...content,
-});
+export default class SoloConnection {
+  readonly peerIdentifiers = {
+    me: "me",
+    them: "them",
+  } as const;
 
-function responseToPlayerMove(gameMessage: GameMessage, emit: (message: GameMessage) => void) {
-  switch (gameMessage.type) {
-    case COMMITTMENT: {
-      emit(unwrapReturnMessage(committmentMessage("their-committment")));
-      break;
-    }
-    case REVEAL: {
-      emit(unwrapReturnMessage(revealMessage("their-secret")));
-      const move = {
-        playerId: "them",
-        card: 0,
-        x: 0,
-        y: 0,
-        direction: 0,
-      };
-      emit(unwrapReturnMessage(moveMessage(move)));
-      break;
-    }
-    case MOVE: {
-      const move = {
-        playerId: "them",
-        card: 0,
-        x: 0,
-        y: 0,
-        direction: 0,
-      };
-      emit(unwrapReturnMessage(moveMessage(move)));
-      break;
-    }
-    default: {
-      break;
-    }
-  }
-}
+  private readonly messageQueues = new Map<GameMessageType, unknown[]>();
+  private readonly messageResolvers = new Map<GameMessageType, MessageResolver[]>();
 
-function createMessageWaiter(dataConnection: EventEmitter) {
-  const messageQueues: Record<string, GameMessage[]> = {};
-  const messageResolvers: Record<string, Array<(message: GameMessage) => void>> = {};
+  private isDestroyed = false;
 
-  const dataHandler = (gameMessage: GameMessage) => {
-    const queueType = gameMessage.type;
-    const resolver = messageResolvers[queueType]?.shift();
-
-    if (resolver) {
-      resolver(gameMessage);
-      return;
-    }
-
-    messageQueues[queueType] = messageQueues[queueType] ?? [];
-    messageQueues[queueType].push(gameMessage);
+  send = (message: GameMessage) => {
+    this.assertActive();
+    this.respondToMessage(message);
   };
 
-  dataConnection.on("incoming", dataHandler);
+  waitFor = <T extends GameMessageType>(messageType: T): Promise<GameMessagePayload<T>> => {
+    this.assertActive();
 
-  const waitForGameMessage = async <T = GameMessage>(messageType: string): Promise<T> => {
-    const queue = messageQueues[messageType] ?? [];
-    if (queue.length > 0) {
-      return queue.shift() as T;
+    const queue = this.messageQueues.get(messageType) as Array<GameMessagePayload<T>> | undefined;
+    if (queue && queue.length > 0) {
+      return Promise.resolve(queue.shift() as GameMessagePayload<T>);
     }
 
-    return new Promise<T>((resolve) => {
-      messageResolvers[messageType] = messageResolvers[messageType] ?? [];
-      messageResolvers[messageType].push(resolve as (message: GameMessage) => void);
+    return new Promise<GameMessagePayload<T>>((resolve, reject) => {
+      const resolvers = this.messageResolvers.get(messageType) ?? [];
+      resolvers.push({
+        resolve: resolve as (payload: GameMessagePayload<GameMessageType>) => void,
+        reject,
+      });
+      this.messageResolvers.set(messageType, resolvers);
     });
   };
 
-  const dispose = () => {
-    dataConnection.off("incoming", dataHandler);
+  destroy = () => {
+    if (this.isDestroyed) {
+      return;
+    }
+
+    this.isDestroyed = true;
+
+    for (const resolvers of this.messageResolvers.values()) {
+      for (const resolver of resolvers) {
+        resolver.reject(new Error("SoloConnection destroyed while waiting for a message"));
+      }
+    }
+
+    this.messageResolvers.clear();
+    this.messageQueues.clear();
   };
 
-  return {
-    waitForGameMessage,
-    dispose,
-  };
+  private respondToMessage(message: GameMessage) {
+    switch (message.type) {
+      case START:
+        return;
+      case COMMITTMENT:
+        this.emitIncoming(COMMITTMENT, committmentMessage("their-committment").content);
+        return;
+      case REVEAL:
+        this.emitIncoming(REVEAL, revealMessage("their-secret").content);
+        this.emitOpponentMove();
+        return;
+      case MOVE:
+        this.emitOpponentMove();
+        return;
+      default: {
+        const _exhaustiveCheck: never = message;
+        return;
+      }
+    }
+  }
+
+  private emitOpponentMove() {
+    const move: PlayerMoveMessage = {
+      playerId: this.peerIdentifiers.them,
+      card: 0,
+      x: 0,
+      y: 0,
+      direction: up,
+    };
+
+    this.emitIncoming(MOVE, moveMessage(move).content);
+  }
+
+  private emitIncoming<T extends GameMessageType>(messageType: T, payload: GameMessagePayload<T>) {
+    const resolvers = this.messageResolvers.get(messageType);
+    const resolver = resolvers?.shift();
+
+    if (resolver) {
+      resolver.resolve(payload);
+      if (resolvers && resolvers.length === 0) {
+        this.messageResolvers.delete(messageType);
+      }
+      return;
+    }
+
+    const queue = this.messageQueues.get(messageType) as Array<GameMessagePayload<T>> | undefined;
+    if (queue) {
+      queue.push(payload);
+      return;
+    }
+
+    this.messageQueues.set(messageType, [payload]);
+  }
+
+  private assertActive() {
+    if (this.isDestroyed) {
+      throw new Error("SoloConnection has been destroyed");
+    }
+  }
 }
-
-function newSoloConnection() {
-  const inprocEmitter = new EventEmitter();
-  const { waitForGameMessage, dispose } = createMessageWaiter(inprocEmitter);
-
-  const sendGameMessage = ({ type, content }: { type: string; content?: unknown }) => {
-    const message = typeof content === "object" && content ? { type, ...content } : { type };
-
-    responseToPlayerMove(message as GameMessage, (reply) => inprocEmitter.emit("incoming", reply));
-  };
-
-  const peerIdentifiers = {
-    me: "me",
-    them: "them",
-  };
-
-  const destroy = () => {
-    dispose();
-    inprocEmitter.removeAllListeners();
-  };
-
-  return {
-    peerIdentifiers,
-    sendGameMessage,
-    waitForGameMessage,
-    destroy,
-  };
-}
-
-export default newSoloConnection;
