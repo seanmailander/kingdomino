@@ -5,7 +5,7 @@ import type { GameEventBus, GameEventMap, CardId } from "./GameSession";
 import type { GameMessage, GameMessagePayload, GameMessageType } from "./game.messages";
 import SoloConnection from "./connection.solo";
 import { MultiplayerConnection } from "./connection.multiplayer";
-import { setCurrentSession, setRoom, awaitLobbyStart } from "../../App/store";
+import { setCurrentSession, setRoom, awaitLobbyStart, awaitLobbyLeave } from "../../App/store";
 import { Lobby, Game } from "../../App/AppExtras";
 
 // ── Connection interface ───────────────────────────────────────────────────────
@@ -117,8 +117,18 @@ export class LobbyFlow {
       setCurrentSession(this.session);
       setRoom(Lobby);
 
-      // Wait for "Start game" button in Lobby UI (triggerLobbyStart)
-      await awaitLobbyStart();
+      // Wait for "Start game" or "Leave game" from the Lobby UI — whichever fires first.
+      const lobbyResult = await Promise.race([
+        awaitLobbyStart().then(() => "start" as const),
+        awaitLobbyLeave().then(() => "leave" as const),
+      ]);
+
+      if (lobbyResult === "leave") {
+        setCurrentSession(null);
+        setRoom("Splash");
+        return;
+      }
+
       setRoom(Game);
 
       // Determine first-round pick order from a shared cryptographic seed
