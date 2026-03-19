@@ -44,13 +44,11 @@ export const getFlippedPosition = (
     return { flippedX: x, flippedY: y, flippedDirection: direction };
   }
 
-  console.log("flipping", x, y, direction);
 
   const flippedX = x + xDirection[direction];
   const flippedY = y + yDirection[direction];
   const flippedDirection = oppositeDirection[direction];
 
-  console.log("flipping", { x, y, direction }, { flippedX, flippedY, flippedDirection });
   return {
     flippedX,
     flippedY,

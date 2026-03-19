@@ -26,10 +26,20 @@ const ALL_EVENTS: ReadonlyArray<keyof GameEventMap> = [
   "game:ended",
 ];
 
+let sessionUnsubscribers: Array<() => void> = [];
+
 export const setCurrentSession = (session: GameSession | null): void => {
+  // Unsubscribe from all events on the previous session, if any.
+  for (const unsubscribe of sessionUnsubscribers) {
+    unsubscribe();
+  }
+  sessionUnsubscribers = [];
+
   if (session) {
     for (const event of ALL_EVENTS) {
-      session.events.on(event, bumpVersion);
+      const unsubscribe = session.events.on(event, bumpVersion);
+      // Capture unsubscribe functions so we can dispose them when the session changes.
+      sessionUnsubscribers.push(unsubscribe);
     }
   }
   sessionSignal(session);
