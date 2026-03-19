@@ -1,15 +1,15 @@
 import React from "react";
 
 import "./Game.css";
-import BoardArea from "./BoardArea";
-import Card from "./Card";
+import { BoardArea } from "./BoardArea";
+import { Card } from "./Card";
 import type { GameSession } from "../state/GameSession";
 
 type GameProps = {
   session: GameSession;
 };
 
-function Game({ session }: GameProps) {
+export function Game({ session }: GameProps) {
   const players = session.players;
   const deal = session.deal();
   const isMyTurn = session.isMyTurn();
@@ -29,5 +29,3 @@ function Game({ session }: GameProps) {
     </>
   );
 }
-
-export default Game;

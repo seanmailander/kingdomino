@@ -19,7 +19,7 @@ type TileProps = {
   allowHighlight?: boolean;
 };
 
-function Tile({ tile, value: _value, disabled = false, allowHighlight = false }: TileProps) {
+export function Tile({ tile, value: _value, disabled = false, allowHighlight = false }: TileProps) {
   const imageName =
     tile !== undefined && tile !== null && tile in imageNamesByTile
       ? imageNamesByTile[tile as keyof typeof imageNamesByTile]
@@ -33,5 +33,3 @@ function Tile({ tile, value: _value, disabled = false, allowHighlight = false }:
     </div>
   );
 }
-
-export default Tile;

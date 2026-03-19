@@ -7,6 +7,7 @@
  */
 
 import { getCard } from "../gamelogic/cards";
+import { getEligiblePositions, getValidDirections, staysWithin5x5 } from "../gamelogic/board";
 import type { PlayerId, CardId, Direction } from "./types";
 import type { BoardGrid } from "./Board";
 import { Player } from "./Player";
@@ -137,6 +138,27 @@ export class GameSession {
     const player = this._requirePlayer(playerId);
     const cardId = round.deal.pickedCardFor(player);
     if (cardId === null) throw new Error(`${playerId} has no picked card to place`);
+
+    const board = player.board.snapshot();
+    const isEligibleTile = getEligiblePositions(board, cardId).some(
+      (pos) => pos.x === x && pos.y === y,
+    );
+    if (!isEligibleTile) {
+      throw new Error(`Invalid placement tile for player ${playerId}: (${x}, ${y})`);
+    }
+
+    const isEligibleDirection = getValidDirections(board, cardId, x, y).some(
+      (d) => d === direction,
+    );
+    if (!isEligibleDirection) {
+      throw new Error(`Invalid placement direction for player ${playerId}: ${direction}`);
+    }
+
+    if (!staysWithin5x5(board, x, y, direction)) {
+      throw new Error(
+        `Placement exceeds 5x5 kingdom for player ${playerId}: (${x}, ${y}, ${direction})`,
+      );
+    }
 
     round.recordPlacement(player, x, y, direction);
     this.events.emit("place:made", {

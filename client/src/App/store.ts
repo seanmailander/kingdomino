@@ -65,28 +65,34 @@ export const getRoom = (): Room => roomSignal();
 // The game flow module calls await awaitLobbyStart() and the Lobby button
 // calls triggerLobbyStart() — no action types involved.
 
-let lobbyStartResolver: (() => void) | null = null;
+let lobbyStartResolvers: Array<() => void> = [];
 
 export const awaitLobbyStart = (): Promise<void> =>
   new Promise((resolve) => {
-    lobbyStartResolver = resolve;
+    lobbyStartResolvers.push(resolve);
   });
 
 export const triggerLobbyStart = (): void => {
-  lobbyStartResolver?.();
-  lobbyStartResolver = null;
+  const resolvers = lobbyStartResolvers;
+  lobbyStartResolvers = [];
+  for (const resolve of resolvers) {
+    resolve();
+  }
 };
 
-let lobbyLeaveResolver: (() => void) | null = null;
+let lobbyLeaveResolvers: Array<() => void> = [];
 
 export const awaitLobbyLeave = (): Promise<void> =>
   new Promise((resolve) => {
-    lobbyLeaveResolver = resolve;
+    lobbyLeaveResolvers.push(resolve);
   });
 
 export const triggerLobbyLeave = (): void => {
-  lobbyLeaveResolver?.();
-  lobbyLeaveResolver = null;
+  const resolvers = lobbyLeaveResolvers;
+  lobbyLeaveResolvers = [];
+  for (const resolve of resolvers) {
+    resolve();
+  }
 };
 
 // ── React hooks ──────────────────────────────────────────────────────────────

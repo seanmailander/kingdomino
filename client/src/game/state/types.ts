@@ -6,8 +6,8 @@ export type PlayerId = string;
 export type CardId = number;
 
 export type MovePayload = {
-  playerId: string;
-  card: number;
+  playerId: PlayerId;
+  card: CardId;
   x: number;
   y: number;
   direction: Direction;

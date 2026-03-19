@@ -22,7 +22,7 @@ type MessageResolver = {
   reject: (error: Error) => void;
 };
 
-export default class SoloConnection {
+export class SoloConnection {
   readonly peerIdentifiers = {
     me: "me",
     them: "them",

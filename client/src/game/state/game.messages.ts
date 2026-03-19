@@ -3,15 +3,9 @@ export const COMMITTMENT = "COMMITTMENT";
 export const REVEAL = "REVEAL";
 export const MOVE = "MOVE";
 
-import type { Direction } from "./types";
+import type { MovePayload } from "./types";
 
-export type PlayerMoveMessage = {
-  playerId: string;
-  card: number;
-  x: number;
-  y: number;
-  direction: Direction;
-};
+export type PlayerMoveMessage = MovePayload;
 
 export type StartGameMessage = {
   type: typeof START;

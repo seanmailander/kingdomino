@@ -3,12 +3,12 @@ import React, { useState, useRef } from "react";
 import "./board.css";
 import type { GameSession } from "../state/GameSession";
 
-import Tile from "./Tile";
-import BoardOverlay from "./BoardOverlay";
+import { Tile } from "./Tile";
+import { BoardOverlay } from "./BoardOverlay";
 import { getEligiblePositions, getValidDirections } from "../gamelogic/board";
 import { up, down, left, right } from "../gamelogic/cards";
 import type { Direction } from "../state/types";
-import useKeypress from "./useKeyPress";
+import { useKeypress } from "./useKeyPress";
 
 type BoardSquareProps = {
   handleClick: () => void;
@@ -32,7 +32,7 @@ const rotateLookup: Record<Direction, Direction> = {
   [left]: up,
 };
 
-function BoardArea({ session, playerId, isMe }: BoardAreaProps) {
+export function BoardArea({ session, playerId, isMe }: BoardAreaProps) {
   const myBoard = session.boardFor(playerId);
   const cardId = session.localCardToPlace();
   const isMyPlace = session.isMyPlace();
@@ -100,5 +100,3 @@ function BoardArea({ session, playerId, isMe }: BoardAreaProps) {
     </>
   );
 }
-
-export default BoardArea;

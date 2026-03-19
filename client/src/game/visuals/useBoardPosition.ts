@@ -59,7 +59,7 @@ const convertMouseToBoard = ({
   return { x: null, y: null };
 };
 
-const useBoardPosition = (boardNodePosition?: BoardRect | null) => {
+export const useBoardPosition = (boardNodePosition?: BoardRect | null) => {
   const [boardPosition, setBoardPosition] = useState<BoardPosition>({ x: null, y: null });
 
   const { top, left, right, bottom } = boardNodePosition || {};
@@ -86,5 +86,3 @@ const useBoardPosition = (boardNodePosition?: BoardRect | null) => {
 
   return boardPosition;
 };
-
-export default useBoardPosition;

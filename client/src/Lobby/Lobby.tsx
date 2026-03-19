@@ -7,7 +7,7 @@ type LobbyProps = {
   session: GameSession | null;
 };
 
-function Lobby({ session }: LobbyProps) {
+export function Lobby({ session }: LobbyProps) {
   const players = session?.players ?? [];
   const hasEnoughPlayers = session?.hasEnoughPlayers() ?? false;
 
@@ -35,5 +35,3 @@ function Lobby({ session }: LobbyProps) {
     </>
   );
 }
-
-export default Lobby;

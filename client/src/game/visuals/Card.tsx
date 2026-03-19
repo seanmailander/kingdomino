@@ -3,7 +3,7 @@ import React from "react";
 import "./Card.css";
 import type { GameSession } from "../state/GameSession";
 
-import Tile from "./Tile";
+import { Tile } from "./Tile";
 
 type CardProps = {
   card: { id: number; tiles: { tile: number; value: number }[] };
@@ -11,7 +11,7 @@ type CardProps = {
   session: GameSession;
 };
 
-function Card({ card, isMyTurn, session }: CardProps) {
+export function Card({ card, isMyTurn, session }: CardProps) {
   const { id, tiles } = card;
 
   const className = `card${isMyTurn ? "" : " disabled"}`;
@@ -24,5 +24,3 @@ function Card({ card, isMyTurn, session }: CardProps) {
     </div>
   );
 }
-
-export default Card;

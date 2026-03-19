@@ -44,7 +44,6 @@ export const getFlippedPosition = (
     return { flippedX: x, flippedY: y, flippedDirection: direction };
   }
 
-
   const flippedX = x + xDirection[direction];
   const flippedY = y + yDirection[direction];
   const flippedDirection = oppositeDirection[direction];
@@ -68,7 +67,7 @@ const getNeighbors = (x: number, y: number): Neighbor[] =>
   ].filter(isWithinBounds);
 
 export const getEligiblePositions = (board: Board, cardId?: CardId | null): Neighbor[] => {
-  if (!cardId) {
+  if (cardId == null) {
     return [];
   }
   const allPositions = board.reduce<Array<{ card: BoardCell; x: number; y: number }>>(
@@ -104,7 +103,6 @@ export const getValidDirections = (
 ): Direction[] =>
   getNeighbors(tileX, tileY)
     .filter(({ x, y }) => !tileIsValid(board, x, y))
-    .filter(({ x, y }) => !tileIsValid(board, x, y))
     .map(({ x: _x, y: _y, direction }) => direction);
 
 const directionDelta: Record<Direction, { dx: number; dy: number }> = {
@@ -116,7 +114,12 @@ const directionDelta: Record<Direction, { dx: number; dy: number }> = {
 
 const directionPriority: Direction[] = [up, right, down, left];
 
-const staysWithin5x5 = (board: Board, x: number, y: number, direction: Direction): boolean => {
+export const staysWithin5x5 = (
+  board: Board,
+  x: number,
+  y: number,
+  direction: Direction,
+): boolean => {
   const occupied: Array<{ x: number; y: number }> = board.reduce(
     (all, row, rowY) => [
       ...all,

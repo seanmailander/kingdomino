@@ -2,10 +2,10 @@ import React from "react";
 
 import { gameLobby } from "../game/state/game.flow";
 
-function Splash() {
+export function Splash() {
   return (
     <>
-      <button aria-label="Join lobby" onClick={() => gameLobby.ReadyMultiplayer()}>
+      <button aria-label="Join lobby" disabled title="Multiplayer coming soon">
         Ready for a game with friends?
       </button>
       <button aria-label="Start solo" onClick={() => gameLobby.ReadySolo()}>
@@ -14,5 +14,3 @@ function Splash() {
     </>
   );
 }
-
-export default Splash;

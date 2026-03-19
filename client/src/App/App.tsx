@@ -1,9 +1,9 @@
 import React from "react";
 
 import "./App.css";
-import SplashComponent from "../Splash/Splash";
-import LobbyComponent from "../Lobby/Lobby";
-import GameComponent from "../game/visuals/Game";
+import { Splash as SplashComponent } from "../Splash/Splash";
+import { Lobby as LobbyComponent } from "../Lobby/Lobby";
+import { Game as GameComponent } from "../game/visuals/Game";
 import { useApp } from "./store";
 
 export function App() {

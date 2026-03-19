@@ -3,10 +3,9 @@ import { ConnectionManager } from "./ConnectionManager";
 import { GameSession, Player } from "./GameSession";
 import type { GameEventBus, GameEventMap, CardId } from "./GameSession";
 import type { GameMessage, GameMessagePayload, GameMessageType } from "./game.messages";
-import SoloConnection from "./connection.solo";
-import { MultiplayerConnection } from "./connection.multiplayer";
+import { SoloConnection } from "./connection.solo";
 import { setCurrentSession, setRoom, awaitLobbyStart, awaitLobbyLeave } from "../../App/store";
-import { Lobby, Game } from "../../App/AppExtras";
+import { Lobby, Game, Splash } from "../../App/AppExtras";
 
 // ── Connection interface ───────────────────────────────────────────────────────
 
@@ -54,9 +53,10 @@ export class LobbyFlow {
   }
 
   ReadyMultiplayer() {
-    if (this.isRunning) return;
-    this.isRunning = true;
-    void this.runFlow(new MultiplayerConnection());
+    // Multiplayer transport wiring is not implemented yet.
+    // Keep this as a safe no-op until a transport is configured.
+    setCurrentSession(null);
+    setRoom(Splash);
   }
 
   private async playRound() {

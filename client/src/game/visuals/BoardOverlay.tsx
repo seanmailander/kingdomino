@@ -1,8 +1,8 @@
 import React, { useMemo } from "react";
 
-import useBoardPosition from "./useBoardPosition";
+import { useBoardPosition } from "./useBoardPosition";
 
-import Tile from "./Tile";
+import { Tile } from "./Tile";
 import { Board } from "../state/Board";
 import { getFlippedPosition } from "../gamelogic/board";
 import type { CardId, Direction } from "../state/types";
@@ -16,7 +16,7 @@ type BoardOverlayProps = {
   isMyPlace: boolean;
 };
 
-function BoardOverlay({
+export function BoardOverlay({
   playerId,
   getBoardPosition,
   direction,
@@ -51,5 +51,3 @@ function BoardOverlay({
     </div>
   );
 }
-
-export default BoardOverlay;
