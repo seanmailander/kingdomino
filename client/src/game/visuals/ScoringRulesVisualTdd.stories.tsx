@@ -51,7 +51,7 @@ export const TieBreakResolution: Story = {
     expectedOutcome: "Winner follows tie-break rule order",
   },
   play: async () => {
-    // TODO: Assert tie-break explanation and winner selection.
+    // TODO(blocked by missing runtime feature): convert after docs/superpowers/plans/2026-03-25-missing-game-features-next-steps.md is implemented.
   },
 };
 
@@ -64,7 +64,7 @@ export const VariantBonusesMiddleKingdomAndHarmony: Story = {
     expectedOutcome: "Bonus points are displayed and included",
   },
   play: async () => {
-    // TODO: Assert optional variant bonus rows and totals.
+    // TODO(blocked by missing runtime feature): convert after docs/superpowers/plans/2026-03-25-missing-game-features-next-steps.md is implemented.
   },
 };
 
@@ -77,6 +77,6 @@ export const DynastyThreeRoundAggregate: Story = {
     expectedOutcome: "Aggregate totals determine the winner",
   },
   play: async () => {
-    // TODO: Assert per-round totals and final aggregate ranking.
+    // TODO(blocked by missing runtime feature): convert after docs/superpowers/plans/2026-03-25-missing-game-features-next-steps.md is implemented.
   },
 };

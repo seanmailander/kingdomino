@@ -3,6 +3,8 @@ import { expect } from "storybook/test";
 
 import {
   FIRST_ROUND_RULE_SCENARIO,
+  GRID_BOUNDARY_RULE_SCENARIO,
+  PLACEMENT_CONNECT_LEGALITY_SCENARIO,
   RealGameRuleHarness,
   RuleScenarioScaffold,
 } from "./GameRulesVisualTdd.shared";
@@ -39,6 +41,7 @@ export const TurnOrderFromDominoSelection: Story = {
 };
 
 export const PlacementMustConnectLegally: Story = {
+  // In scope for docs/superpowers/plans/2026-03-25-supported-story-conversion-next-steps.md.
   args: {
     title: "Placement must connect to castle or matching terrain",
     ruleFocus: "Domino placement requires valid orthogonal connection",
@@ -46,8 +49,11 @@ export const PlacementMustConnectLegally: Story = {
     when: "A player attempts legal and illegal placements",
     expectedOutcome: "Only legal placements are accepted",
   },
-  play: async () => {
-    // TODO: Simulate placement attempts and verify accept/reject feedback.
+  render: () => <RealGameRuleHarness scenario={PLACEMENT_CONNECT_LEGALITY_SCENARIO} />,
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByText(/place-rejected:/i)).toBeVisible();
+    await expect(await canvas.findByText("place: me -> #46 @ (6,5) up")).toBeVisible();
+    await expect(await canvas.findByText("round-complete: them -> me")).toBeVisible();
   },
 };
 
@@ -60,11 +66,12 @@ export const DiscardWhenUnplaceable: Story = {
     expectedOutcome: "Domino is discarded with visible discard state",
   },
   play: async () => {
-    // TODO: Assert discard UI state and no board mutation from discarded domino.
+    // TODO(blocked by missing runtime feature): convert after docs/superpowers/plans/2026-03-25-missing-game-features-next-steps.md is implemented.
   },
 };
 
 export const GridBoundaryEnforced: Story = {
+  // In scope for docs/superpowers/plans/2026-03-25-supported-story-conversion-next-steps.md.
   args: {
     title: "5x5 kingdom boundary enforced",
     ruleFocus: "All placed dominoes must fit inside a 5x5 kingdom",
@@ -72,12 +79,16 @@ export const GridBoundaryEnforced: Story = {
     when: "Player attempts overflow placement",
     expectedOutcome: "Overflow placement is rejected or discarded",
   },
-  play: async () => {
-    // TODO: Assert board bounds visualization and overflow handling.
+  render: () => <RealGameRuleHarness scenario={GRID_BOUNDARY_RULE_SCENARIO} />,
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByText(/Placement exceeds 5x5 kingdom/i)).toBeVisible();
+    await expect(await canvas.findByText(/place: me ->/i)).toBeVisible();
+    await expect(await canvas.findByText("round-complete: them -> me")).toBeVisible();
   },
 };
 
 export const FinalTurnNoReselection: Story = {
+  // In scope for docs/superpowers/plans/2026-03-25-supported-story-conversion-next-steps.md.
   args: {
     title: "Final turn places only",
     ruleFocus: "Last line turn has placement action only (no new selection)",
@@ -85,7 +96,11 @@ export const FinalTurnNoReselection: Story = {
     when: "A player completes their final action",
     expectedOutcome: "No next-line selection UI appears",
   },
-  play: async () => {
-    // TODO: Assert selection affordances are absent on final turn.
+  render: () => <RealGameRuleHarness scenario={FIRST_ROUND_RULE_SCENARIO} />,
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByText("game-ended: me:2, them:0")).toBeVisible();
+    await expect(canvas.getByText("Round phase: none")).toBeVisible();
+    await expect(canvas.getAllByText(/^pick:/i)).toHaveLength(2);
+    await expect(canvas.getAllByText(/^round-started:/i)).toHaveLength(1);
   },
 };

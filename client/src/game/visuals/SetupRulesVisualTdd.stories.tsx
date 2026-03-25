@@ -45,6 +45,6 @@ export const MightyDuelUsesSevenBySevenGrid: Story = {
     expectedOutcome: "Board boundary and available dominoes reflect variant rules",
   },
   play: async () => {
-    // TODO: Assert 7x7 bounds and variant setup indicators.
+    // TODO(blocked by missing runtime feature): convert after docs/superpowers/plans/2026-03-25-missing-game-features-next-steps.md is implemented.
   },
 };

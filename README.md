@@ -40,6 +40,9 @@ See [research](./RESEARCH.md) for more info
   - reload game state
   - admin panel to select state
 
+- make an e2e test for multiplayer that simulates two parallel browsers
+- plan for reusable test scaffolds for the game (like the page fixture model) that can be invoked from e2e or integration or unit tests
+
 ## NOW
 
 1. Calculate only eligible places by neighbors

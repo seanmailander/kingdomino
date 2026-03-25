@@ -2,7 +2,14 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { App } from "../../App/App";
 import { resetAppState, triggerLobbyLeave, triggerLobbyStart, useApp } from "../../App/store";
+import {
+  findPlacementWithin5x5,
+  getEligiblePositions,
+  getValidDirections,
+  staysWithin5x5,
+} from "../gamelogic/board";
 import { hashIt } from "../gamelogic/utils";
+import type { BoardPlacement } from "../state/Board";
 import { ConnectionManager } from "../state/ConnectionManager";
 import { LobbyFlow } from "../state/game.flow";
 import { TestConnection, type TestConnectionScenario } from "../state/connection.testing";
@@ -16,9 +23,12 @@ type HandshakeScript = {
 
 type LocalMoveScript = {
   card: number;
-  x: number;
-  y: number;
-  direction: Direction;
+  x?: number;
+  y?: number;
+  direction?: Direction;
+  placements?: ReadonlyArray<
+    { x: number; y: number; direction: Direction } | { mode: "overflow" | "legal" }
+  >;
 };
 
 type EventLogEntry = {
@@ -31,6 +41,7 @@ export type RealGameScenario = {
   them?: string;
   autoStart?: boolean;
   roundLimit?: number;
+  localBoardPlacements?: ReadonlyArray<BoardPlacement>;
   handshakes: ReadonlyArray<HandshakeScript>;
   localMoves: ReadonlyArray<LocalMoveScript>;
   remoteMoves: TestConnectionScenario["moves"];
@@ -43,6 +54,42 @@ export const FIRST_ROUND_RULE_SCENARIO: RealGameScenario = {
     { localSecret: 22, remoteSecret: 202 },
   ],
   localMoves: [{ card: 46, x: 6, y: 5, direction: "up" }],
+  remoteMoves: [{ card: 4, x: 6, y: 5, direction: "up" }],
+};
+
+export const PLACEMENT_CONNECT_LEGALITY_SCENARIO: RealGameScenario = {
+  roundLimit: 1,
+  handshakes: [
+    { localSecret: 11, remoteSecret: 101 },
+    { localSecret: 22, remoteSecret: 202 },
+  ],
+  localMoves: [
+    {
+      card: 46,
+      placements: [
+        { x: 0, y: 0, direction: "right" },
+        { x: 6, y: 5, direction: "up" },
+      ],
+    },
+  ],
+  remoteMoves: [{ card: 4, x: 6, y: 5, direction: "up" }],
+};
+
+export const GRID_BOUNDARY_RULE_SCENARIO: RealGameScenario = {
+  roundLimit: 1,
+  localBoardPlacements: [
+    { card: 46, x: 7, y: 4, direction: "right" },
+    { card: 9, x: 7, y: 5, direction: "right" },
+    { card: 6, x: 7, y: 6, direction: "right" },
+    { card: 0, x: 7, y: 7, direction: "right" },
+    { card: 2, x: 7, y: 8, direction: "right" },
+    { card: 11, x: 5, y: 4, direction: "left" },
+  ],
+  handshakes: [
+    { localSecret: 11, remoteSecret: 101 },
+    { localSecret: 22, remoteSecret: 202 },
+  ],
+  localMoves: [{ card: 46, placements: [{ mode: "overflow" }, { mode: "legal" }] }],
   remoteMoves: [{ card: 4, x: 6, y: 5, direction: "up" }],
 };
 
@@ -76,9 +123,19 @@ const buildCommitSequence = (handshakes: ReadonlyArray<HandshakeScript>) => {
   };
 };
 
-function ScriptedLocalPlayer({ localMoves }: { localMoves: ReadonlyArray<LocalMoveScript> }) {
+function ScriptedLocalPlayer({
+  localMoves,
+  localBoardPlacements,
+  onPlacementRejected,
+}: {
+  localMoves: ReadonlyArray<LocalMoveScript>;
+  localBoardPlacements?: ReadonlyArray<BoardPlacement>;
+  onPlacementRejected?: (message: string) => void;
+}) {
   const { session } = useApp();
   const roundIndex = useRef(0);
+  const placementAttemptIndex = useRef(0);
+  const boardSeeded = useRef(false);
   const lastActionKey = useRef<string | null>(null);
 
   const round = session?.currentRound ?? null;
@@ -88,6 +145,16 @@ function ScriptedLocalPlayer({ localMoves }: { localMoves: ReadonlyArray<LocalMo
   useEffect(() => {
     if (!session || !round) {
       return;
+    }
+
+    if (!boardSeeded.current) {
+      const me = session.myPlayer();
+      if (me && localBoardPlacements?.length) {
+        localBoardPlacements.forEach((placement) => {
+          me.board.place(placement.card, placement.x, placement.y, placement.direction);
+        });
+      }
+      boardSeeded.current = true;
     }
 
     const actor = round.currentActor;
@@ -100,7 +167,10 @@ function ScriptedLocalPlayer({ localMoves }: { localMoves: ReadonlyArray<LocalMo
       throw new Error(`No scripted local move for round ${roundIndex.current + 1}`);
     }
 
-    const actionKey = `${roundIndex.current}:${phase}:${actor.id}`;
+    const actionKey =
+      phase === "placing"
+        ? `${roundIndex.current}:${phase}:${actor.id}:${placementAttemptIndex.current}`
+        : `${roundIndex.current}:${phase}:${actor.id}`;
     if (lastActionKey.current === actionKey) {
       return;
     }
@@ -113,16 +183,76 @@ function ScriptedLocalPlayer({ localMoves }: { localMoves: ReadonlyArray<LocalMo
       }
 
       if (phase === "placing") {
-        session.handleLocalPlacement(move.x, move.y, move.direction);
-        roundIndex.current += 1;
+        const placements =
+          move.placements ??
+          (move.x !== undefined && move.y !== undefined && move.direction !== undefined
+            ? [{ x: move.x, y: move.y, direction: move.direction }]
+            : []);
+
+        const placementStep = placements[placementAttemptIndex.current];
+        if (!placementStep) {
+          throw new Error(
+            `No scripted local placement attempt ${placementAttemptIndex.current + 1} for round ${roundIndex.current + 1}`,
+          );
+        }
+
+        const placement =
+          "mode" in placementStep
+            ? (() => {
+                const cardToPlace = session.localCardToPlace();
+                if (cardToPlace === undefined) {
+                  throw new Error("No local card available to place");
+                }
+
+                const board = session.myPlayer()?.board.snapshot();
+                if (!board) {
+                  throw new Error("No local board snapshot available");
+                }
+
+                if (placementStep.mode === "legal") {
+                  const legalPlacement = findPlacementWithin5x5(board, cardToPlace);
+                  if (!legalPlacement) {
+                    throw new Error("No legal 5x5 placement available");
+                  }
+                  return legalPlacement;
+                }
+
+                const overflowPlacement = getEligiblePositions(board, cardToPlace)
+                  .sort((a, b) => a.y - b.y || a.x - b.x)
+                  .flatMap(({ x, y }) =>
+                    getValidDirections(board, cardToPlace, x, y)
+                      .slice()
+                      .sort()
+                      .map((direction) => ({ x, y, direction })),
+                  )
+                  .find(({ x, y, direction }) => !staysWithin5x5(board, x, y, direction));
+
+                if (!overflowPlacement) {
+                  throw new Error("No overflow placement candidate available");
+                }
+
+                return overflowPlacement;
+              })()
+            : placementStep;
+
+        try {
+          session.handleLocalPlacement(placement.x, placement.y, placement.direction);
+          roundIndex.current += 1;
+          placementAttemptIndex.current = 0;
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          // Keep trying scripted attempts for the same round until one succeeds.
+          placementAttemptIndex.current += 1;
+          onPlacementRejected?.(`place-rejected: ${reason}`);
+        }
       }
     });
-  }, [actorId, localMoves, phase, round, session]);
+  }, [actorId, localBoardPlacements, localMoves, onPlacementRejected, phase, round, session]);
 
   return null;
 }
 
-function StoryStatePanel() {
+function StoryStatePanel({ scriptLog }: { scriptLog: ReadonlyArray<string> }) {
   const { hint, room, session } = useApp();
   const [eventLog, setEventLog] = useState<EventLogEntry[]>([]);
 
@@ -209,12 +339,17 @@ function StoryStatePanel() {
             {entry.label}: {entry.detail}
           </li>
         ))}
+        {scriptLog.map((entry, index) => (
+          <li key={`script-${index}`}>{entry}</li>
+        ))}
       </ol>
     </section>
   );
 }
 
 export function RealGameRuleHarness({ scenario }: RealGameRuleHarnessProps) {
+  const [scriptLog, setScriptLog] = useState<string[]>([]);
+
   const flow = useMemo(() => {
     const commit = buildCommitSequence(scenario.handshakes);
     return new LobbyFlow({
@@ -227,6 +362,7 @@ export function RealGameRuleHarness({ scenario }: RealGameRuleHarnessProps) {
 
   useEffect(() => {
     resetAppState();
+    setScriptLog([]);
 
     const connection = new TestConnection({
       me: scenario.me,
@@ -249,14 +385,19 @@ export function RealGameRuleHarness({ scenario }: RealGameRuleHarnessProps) {
     return () => {
       triggerLobbyLeave();
       resetAppState();
+      setScriptLog([]);
     };
   }, [flow, scenario]);
 
   return (
     <>
       <App />
-      <ScriptedLocalPlayer localMoves={scenario.localMoves} />
-      <StoryStatePanel />
+      <ScriptedLocalPlayer
+        localBoardPlacements={scenario.localBoardPlacements}
+        localMoves={scenario.localMoves}
+        onPlacementRejected={(message) => setScriptLog((current) => [...current, message])}
+      />
+      <StoryStatePanel scriptLog={scriptLog} />
     </>
   );
 }
