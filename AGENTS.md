@@ -1,7 +1,6 @@
+- Using superpowers skill
 - Use red/green TDD
 - First run the tests
-
-
 
 Game Client Visual TDD Rules
 
