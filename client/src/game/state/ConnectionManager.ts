@@ -25,15 +25,31 @@ type TrustedSeedHandshakeState =
   | "local-reveal-sent"
   | "complete";
 
+type TrustedSeedDependencies = {
+  commit?: typeof commit;
+  verify?: typeof verify;
+  combine?: typeof combine;
+};
+
 export class ConnectionManager {
   private readonly sendGameMessage: SendGameMessage;
   private readonly waitForGameMessage: WaitForGameMessage;
+  private readonly buildCommitment: typeof commit;
+  private readonly verifyCommitment: typeof verify;
+  private readonly combineSecrets: typeof combine;
 
   private trustedSeedState: TrustedSeedHandshakeState = "idle";
 
-  constructor(sendGameMessage: SendGameMessage, waitForGameMessage: WaitForGameMessage) {
+  constructor(
+    sendGameMessage: SendGameMessage,
+    waitForGameMessage: WaitForGameMessage,
+    dependencies: TrustedSeedDependencies = {},
+  ) {
     this.sendGameMessage = sendGameMessage;
     this.waitForGameMessage = waitForGameMessage;
+    this.buildCommitment = dependencies.commit ?? commit;
+    this.verifyCommitment = dependencies.verify ?? verify;
+    this.combineSecrets = dependencies.combine ?? combine;
   }
 
   sendStart() {
@@ -62,7 +78,7 @@ export class ConnectionManager {
     this.assertHandshakeReady();
 
     console.debug("building trusted seed");
-    const { secret: mySecret, committment: myCommittment } = await commit();
+    const { secret: mySecret, committment: myCommittment } = await this.buildCommitment();
     this.sendCommittment(myCommittment);
     this.trustedSeedState = "local-commit-sent";
 
@@ -74,7 +90,7 @@ export class ConnectionManager {
 
     const { secret: theirSecret } = await this.waitForReveal();
 
-    const isValid = await verify(theirSecret, theirCommittment);
+    const isValid = await this.verifyCommitment(theirSecret, theirCommittment);
     if (!isValid) {
       this.resetTrustedSeedHandshake();
       throw new Error("Remote committment verification failed");
@@ -86,7 +102,7 @@ export class ConnectionManager {
       throw new Error("Their secret is not a valid number");
     }
 
-    const trustedSeed = await combine(mySecret, theirSecretAsNumber);
+    const trustedSeed = await this.combineSecrets(mySecret, theirSecretAsNumber);
     this.trustedSeedState = "complete";
     console.debug("done building trusted seed");
     return trustedSeed;

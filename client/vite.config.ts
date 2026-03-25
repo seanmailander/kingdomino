@@ -45,6 +45,14 @@ export default defineConfig(() => {
       projects: [
         {
           extends: true,
+          test: {
+            name: "unit",
+            include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+            exclude: ["src/**/*.stories.ts", "src/**/*.stories.tsx", "src/**/*.mdx"],
+          },
+        },
+        {
+          extends: true,
           plugins: [
             storybookTest({
               // The location of your Storybook config, main.js|ts

@@ -12,7 +12,7 @@ export function App() {
   return (
     <div className="App">
       <h1>Kingdomino</h1>
-      <h5>{hint}</h5>
+      <p>{hint}</p>
       {room === "Splash" && <SplashComponent />}
       {room === "Lobby" && <LobbyComponent session={session} />}
       {room === "Game" && session && <GameComponent session={session} />}

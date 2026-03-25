@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect } from "storybook/test";
 
-import { RuleScenarioScaffold, TurnOrderHarness } from "./GameRulesVisualTdd.shared";
+import { up } from "../gamelogic/cards";
+import { RealGameRuleHarness, RuleScenarioScaffold } from "./GameRulesVisualTdd.shared";
 
 const meta = {
   title: "Game/Rules Visual TDD/Play",
@@ -12,6 +13,16 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const turnOrderScenario = {
+  roundLimit: 1,
+  handshakes: [
+    { localSecret: 11, remoteSecret: 101 },
+    { localSecret: 22, remoteSecret: 202 },
+  ],
+  localMoves: [{ card: 46, x: 6, y: 5, direction: up }],
+  remoteMoves: [{ card: 4, x: 6, y: 5, direction: up }],
+} as const;
+
 export const TurnOrderFromDominoSelection: Story = {
   args: {
     title: "Turn order from chosen domino positions",
@@ -20,23 +31,17 @@ export const TurnOrderFromDominoSelection: Story = {
     when: "Turn begins",
     expectedOutcome: "Players act in king order from first domino to last",
   },
-  render: () => <TurnOrderHarness />,
+  render: () => <RealGameRuleHarness scenario={turnOrderScenario} />,
   play: async ({ canvas }) => {
     await expect(
-      canvas.getByRole("heading", { name: "Turn order from chosen domino positions" }),
+      canvas.getByRole("heading", { name: "Real game visual test summary" }),
     ).toBeVisible();
-
-    const lineOrderTable = canvas.getByRole("table", {
-      name: "Current line king turn order",
-    });
-
-    await expect(lineOrderTable).toBeVisible();
-    await expect(canvas.getByRole("rowheader", { name: "1st" })).toHaveTextContent("1st");
-    await expect(canvas.getByRole("rowheader", { name: "2nd" })).toHaveTextContent("2nd");
-    await expect(canvas.getByRole("rowheader", { name: "3rd" })).toHaveTextContent("3rd");
-    await expect(lineOrderTable).toHaveTextContent("Blue king");
-    await expect(lineOrderTable).toHaveTextContent("Yellow king");
-    await expect(lineOrderTable).toHaveTextContent("Pink king");
+    await expect(canvas.getByText("pick: them -> #4")).toBeVisible();
+    await expect(canvas.getByText("pick: me -> #46")).toBeVisible();
+    await expect(canvas.getByText("round-complete: them -> me")).toBeVisible();
+    await expect(canvas.getByText("Pick order: them -> me")).toBeVisible();
+    await expect(canvas.getByRole("rowheader", { name: "me" })).toBeVisible();
+    await expect(canvas.getByRole("rowheader", { name: "them" })).toBeVisible();
   },
 };
 

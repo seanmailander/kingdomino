@@ -95,6 +95,13 @@ export const triggerLobbyLeave = (): void => {
   }
 };
 
+export const resetAppState = (): void => {
+  lobbyStartResolvers = [];
+  lobbyLeaveResolvers = [];
+  setCurrentSession(null);
+  setRoom(Splash);
+};
+
 // ── React hooks ──────────────────────────────────────────────────────────────
 
 /**

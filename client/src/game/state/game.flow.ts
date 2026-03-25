@@ -9,12 +9,17 @@ import { Lobby, Game, Splash } from "../../App/AppExtras";
 
 // ── Connection interface ───────────────────────────────────────────────────────
 
-interface IGameConnection {
+export interface IGameConnection {
   readonly peerIdentifiers: { me: string; them: string };
   send: (message: GameMessage) => void;
   waitFor: <T extends GameMessageType>(messageType: T) => Promise<GameMessagePayload<T>>;
   destroy: () => void;
 }
+
+type LobbyFlowOptions = {
+  createConnectionManager?: (connection: IGameConnection) => ConnectionManager;
+  shouldContinuePlaying?: (completedRounds: number, remainingDeck: readonly number[]) => boolean;
+};
 
 // ── Event-based waiting (replaces waitForComputed) ──────────────────────────────
 
@@ -45,11 +50,28 @@ export class LobbyFlow {
   private session: GameSession | null = null;
   private connectionManager: ConnectionManager | null = null;
   private remainingDeck?: number[];
+  private readonly createConnectionManager: (connection: IGameConnection) => ConnectionManager;
+  private readonly shouldContinuePlaying: (
+    completedRounds: number,
+    remainingDeck: readonly number[],
+  ) => boolean;
 
-  ReadySolo() {
+  constructor(options: LobbyFlowOptions = {}) {
+    this.createConnectionManager =
+      options.createConnectionManager ??
+      ((connection) => new ConnectionManager(connection.send, connection.waitFor));
+    this.shouldContinuePlaying =
+      options.shouldContinuePlaying ?? ((_, remainingDeck) => remainingDeck.length > 0);
+  }
+
+  ready(connection: IGameConnection) {
     if (this.isRunning) return;
     this.isRunning = true;
-    void this.runFlow(new SoloConnection());
+    void this.runFlow(connection);
+  }
+
+  ReadySolo() {
+    this.ready(new SoloConnection());
   }
 
   ReadyMultiplayer() {
@@ -109,7 +131,7 @@ export class LobbyFlow {
 
   private async runFlow(connection: IGameConnection) {
     this.session = new GameSession();
-    this.connectionManager = new ConnectionManager(connection.send, connection.waitFor);
+    this.connectionManager = this.createConnectionManager(connection);
 
     try {
       this.session.addPlayer(new Player(connection.peerIdentifiers.me, true));
@@ -139,9 +161,14 @@ export class LobbyFlow {
       this.session.startGame(pickOrder);
 
       // Play all rounds until the deck is exhausted
+      let completedRounds = 0;
       do {
         await this.playRound();
-      } while (this.remainingDeck?.length);
+        completedRounds += 1;
+      } while (
+        this.remainingDeck?.length &&
+        this.shouldContinuePlaying(completedRounds, this.remainingDeck)
+      );
 
       this.session.endGame();
     } catch {
