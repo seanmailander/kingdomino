@@ -2,6 +2,13 @@
 - Use red/green TDD
 - First run the tests
 
+Startup Baseline
+
+- Root `npm test` is a placeholder echo, not real validation.
+- Real baseline tests are in `client/`: run `npm test` there first.
+- `client` test baseline: Vitest plus Storybook stories; currently green.
+- `server` does not currently have a real test suite.
+
 Game Client Visual TDD Rules
 
 - Always start with Storybook MCP discovery before making UI changes.
