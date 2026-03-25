@@ -1,7 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect } from "storybook/test";
 
-import { RuleScenarioScaffold, ScoringByPropertyHarness } from "./GameRulesVisualTdd.shared";
+import {
+  FIRST_ROUND_RULE_SCENARIO,
+  RealGameRuleHarness,
+  RuleScenarioScaffold,
+} from "./GameRulesVisualTdd.shared";
 
 const meta = {
   title: "Game/Rules Visual TDD/Scoring",
@@ -20,19 +24,21 @@ export const PrestigeScoringByProperty: Story = {
     when: "Scoring summary is shown",
     expectedOutcome: "Each property and total score match rules",
   },
-  render: () => <ScoringByPropertyHarness />,
+  render: () => <RealGameRuleHarness scenario={FIRST_ROUND_RULE_SCENARIO} />,
   play: async ({ canvas }) => {
     await expect(
-      canvas.getByRole("heading", { name: "Property scoring equals area x crowns" }),
+      canvas.getByRole("heading", { name: "Real game visual test summary" }),
     ).toBeVisible();
 
-    const propertyTable = canvas.getByRole("table", { name: "Scoring summary by property" });
-    await expect(propertyTable).toBeVisible();
-    await expect(canvas.getByRole("rowheader", { name: "Wheat" })).toBeVisible();
-    await expect(canvas.getByRole("rowheader", { name: "Forest" })).toBeVisible();
-    await expect(propertyTable).toHaveTextContent("12");
-    await expect(propertyTable).toHaveTextContent("8");
-    await expect(canvas.getByText("Total prestige: 20")).toBeVisible();
+    const playerSummary = canvas.getByRole("table", { name: "Player summary" });
+    await expect(playerSummary).toBeVisible();
+    await expect(canvas.getByRole("rowheader", { name: "me" })).toBeVisible();
+    await expect(canvas.getByRole("rowheader", { name: "them" })).toBeVisible();
+    await expect(playerSummary).toHaveTextContent("me");
+    await expect(playerSummary).toHaveTextContent("2");
+    await expect(playerSummary).toHaveTextContent("them");
+    await expect(playerSummary).toHaveTextContent("0");
+    await expect(canvas.getByText("game-ended: me:2, them:0")).toBeVisible();
   },
 };
 

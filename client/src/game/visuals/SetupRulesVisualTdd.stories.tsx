@@ -1,7 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect } from "storybook/test";
 
-import { RuleScenarioScaffold, SetupByPlayerCountHarness } from "./GameRulesVisualTdd.shared";
+import {
+  FIRST_ROUND_RULE_SCENARIO,
+  RealGameRuleHarness,
+  RuleScenarioScaffold,
+} from "./GameRulesVisualTdd.shared";
 
 const meta = {
   title: "Game/Rules Visual TDD/Setup",
@@ -20,20 +24,15 @@ export const SetupByPlayerCount: Story = {
     when: "Initial draw line is created",
     expectedOutcome: "Line length and available domino pool match rules",
   },
-  render: () => <SetupByPlayerCountHarness />,
+  render: () => <RealGameRuleHarness scenario={FIRST_ROUND_RULE_SCENARIO} />,
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole("heading", { name: "Setup by player count" })).toBeVisible();
-    const table = canvas.getByRole("table", { name: "Kingdomino setup rules by player count" });
-
-    await expect(table).toBeVisible();
-    await expect(canvas.getByRole("rowheader", { name: "2 players" })).toBeVisible();
-    await expect(canvas.getByRole("rowheader", { name: "3 players" })).toBeVisible();
-    await expect(canvas.getByRole("rowheader", { name: "4 players" })).toBeVisible();
-    await expect(table).toHaveTextContent("24");
-    await expect(table).toHaveTextContent("36");
-    await expect(table).toHaveTextContent("48");
-    await expect(table).toHaveTextContent("6");
-    await expect(table).toHaveTextContent("12");
+    await expect(
+      canvas.getByRole("heading", { name: "Real game visual test summary" }),
+    ).toBeVisible();
+    await expect(canvas.getByText("round-started: #4, #22, #28, #46")).toBeVisible();
+    await expect(canvas.getByRole("rowheader", { name: "me" })).toBeVisible();
+    await expect(canvas.getByRole("rowheader", { name: "them" })).toBeVisible();
+    await expect(canvas.getByText("Room: Game")).toBeVisible();
   },
 };
 

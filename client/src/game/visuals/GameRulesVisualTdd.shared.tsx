@@ -36,6 +36,16 @@ export type RealGameScenario = {
   remoteMoves: TestConnectionScenario["moves"];
 };
 
+export const FIRST_ROUND_RULE_SCENARIO: RealGameScenario = {
+  roundLimit: 1,
+  handshakes: [
+    { localSecret: 11, remoteSecret: 101 },
+    { localSecret: 22, remoteSecret: 202 },
+  ],
+  localMoves: [{ card: 46, x: 6, y: 5, direction: "up" }],
+  remoteMoves: [{ card: 4, x: 6, y: 5, direction: "up" }],
+};
+
 type RealGameRuleHarnessProps = {
   scenario: RealGameScenario;
 };
@@ -128,6 +138,15 @@ function StoryStatePanel() {
     };
 
     const unsubscribers = [
+      session.events.on("round:started", ({ round }) =>
+        append(
+          "round-started",
+          round.deal
+            .snapshot()
+            .map((slot) => `#${slot.cardId}`)
+            .join(", "),
+        ),
+      ),
       session.events.on("pick:made", ({ player, cardId }) =>
         append("pick", `${player.id} -> #${cardId}`),
       ),
