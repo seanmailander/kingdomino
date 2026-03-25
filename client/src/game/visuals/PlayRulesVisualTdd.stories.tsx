@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect } from "storybook/test";
 
-import { RuleScenarioScaffold } from "./GameRulesVisualTdd.shared";
+import { RuleScenarioScaffold, TurnOrderHarness } from "./GameRulesVisualTdd.shared";
 
 const meta = {
   title: "Game/Rules Visual TDD/Play",
@@ -19,8 +20,23 @@ export const TurnOrderFromDominoSelection: Story = {
     when: "Turn begins",
     expectedOutcome: "Players act in king order from first domino to last",
   },
-  play: async () => {
-    // TODO: Assert active player indicator changes in line order.
+  render: () => <TurnOrderHarness />,
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("heading", { name: "Turn order from chosen domino positions" }),
+    ).toBeVisible();
+
+    const lineOrderTable = canvas.getByRole("table", {
+      name: "Current line king turn order",
+    });
+
+    await expect(lineOrderTable).toBeVisible();
+    await expect(canvas.getByRole("rowheader", { name: "1st" })).toHaveTextContent("1st");
+    await expect(canvas.getByRole("rowheader", { name: "2nd" })).toHaveTextContent("2nd");
+    await expect(canvas.getByRole("rowheader", { name: "3rd" })).toHaveTextContent("3rd");
+    await expect(lineOrderTable).toHaveTextContent("Blue king");
+    await expect(lineOrderTable).toHaveTextContent("Yellow king");
+    await expect(lineOrderTable).toHaveTextContent("Pink king");
   },
 };
 

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect } from "storybook/test";
 
-import { RuleScenarioScaffold } from "./GameRulesVisualTdd.shared";
+import { RuleScenarioScaffold, ScoringByPropertyHarness } from "./GameRulesVisualTdd.shared";
 
 const meta = {
   title: "Game/Rules Visual TDD/Scoring",
@@ -19,8 +20,19 @@ export const PrestigeScoringByProperty: Story = {
     when: "Scoring summary is shown",
     expectedOutcome: "Each property and total score match rules",
   },
-  play: async () => {
-    // TODO: Assert per-property score rows and total prestige points.
+  render: () => <ScoringByPropertyHarness />,
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("heading", { name: "Property scoring equals area x crowns" }),
+    ).toBeVisible();
+
+    const propertyTable = canvas.getByRole("table", { name: "Scoring summary by property" });
+    await expect(propertyTable).toBeVisible();
+    await expect(canvas.getByRole("rowheader", { name: "Wheat" })).toBeVisible();
+    await expect(canvas.getByRole("rowheader", { name: "Forest" })).toBeVisible();
+    await expect(propertyTable).toHaveTextContent("12");
+    await expect(propertyTable).toHaveTextContent("8");
+    await expect(canvas.getByText("Total prestige: 20")).toBeVisible();
   },
 };
 
