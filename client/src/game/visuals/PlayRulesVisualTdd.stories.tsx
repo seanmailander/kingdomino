@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect } from "storybook/test";
 
 import {
+  DISCARD_WHEN_UNPLACEABLE_SCENARIO,
   FIRST_ROUND_RULE_SCENARIO,
   GRID_BOUNDARY_RULE_SCENARIO,
   PLACEMENT_CONNECT_LEGALITY_SCENARIO,
@@ -65,8 +66,10 @@ export const DiscardWhenUnplaceable: Story = {
     when: "Player resolves placement action",
     expectedOutcome: "Domino is discarded with visible discard state",
   },
-  play: async () => {
-    // TODO(blocked by missing runtime feature): convert after docs/superpowers/plans/2026-03-25-missing-game-features-next-steps.md is implemented.
+  render: () => <RealGameRuleHarness scenario={DISCARD_WHEN_UNPLACEABLE_SCENARIO} />,
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByText("discard: me -> #46")).toBeVisible();
+    await expect(await canvas.findByText("round-complete: them -> me")).toBeVisible();
   },
 };
 

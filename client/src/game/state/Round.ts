@@ -56,4 +56,15 @@ export class Round {
     this._playerQueue.shift();
     this._phase = this._playerQueue.length === 0 ? "complete" : "picking";
   }
+
+  recordDiscard(player: Player): void {
+    if (this._phase !== "placing") {
+      throw new Error(`Round.recordDiscard() called in "${this._phase}" phase`);
+    }
+    if (player.id !== this.currentActor?.id) {
+      throw new Error(`Not ${player.id}'s turn to discard`);
+    }
+    this._playerQueue.shift();
+    this._phase = this._playerQueue.length === 0 ? "complete" : "picking";
+  }
 }

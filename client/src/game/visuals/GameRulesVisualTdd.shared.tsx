@@ -23,6 +23,7 @@ type HandshakeScript = {
 
 type LocalMoveScript = {
   card: number;
+  discard?: boolean;
   x?: number;
   y?: number;
   direction?: Direction;
@@ -90,6 +91,24 @@ export const GRID_BOUNDARY_RULE_SCENARIO: RealGameScenario = {
     { localSecret: 22, remoteSecret: 202 },
   ],
   localMoves: [{ card: 46, placements: [{ mode: "overflow" }, { mode: "legal" }] }],
+  remoteMoves: [{ card: 4, x: 6, y: 5, direction: "up" }],
+};
+
+// Board pre-filled with non-marsh/non-mine terrain on all 4 castle-adjacent
+// positions so card 46 (marsh/mine) has no eligible neighbour and must be discarded.
+export const DISCARD_WHEN_UNPLACEABLE_SCENARIO: RealGameScenario = {
+  roundLimit: 1,
+  localBoardPlacements: [
+    { card: 0, x: 7, y: 6, direction: "right" }, // grain/grain east  (7,6)(8,6)
+    { card: 1, x: 5, y: 6, direction: "left" }, //  grain/grain west  (5,6)(4,6)
+    { card: 6, x: 6, y: 7, direction: "down" }, //  water/water south (6,7)(6,8)
+    { card: 9, x: 6, y: 5, direction: "up" }, //    grass/grass north (6,5)(6,4)
+  ],
+  handshakes: [
+    { localSecret: 11, remoteSecret: 101 },
+    { localSecret: 22, remoteSecret: 202 },
+  ],
+  localMoves: [{ card: 46, discard: true }],
   remoteMoves: [{ card: 4, x: 6, y: 5, direction: "up" }],
 };
 
@@ -183,6 +202,13 @@ function ScriptedLocalPlayer({
       }
 
       if (phase === "placing") {
+        if (move.discard === true) {
+          session.handleLocalDiscard();
+          roundIndex.current += 1;
+          placementAttemptIndex.current = 0;
+          return;
+        }
+
         const placements =
           move.placements ??
           (move.x !== undefined && move.y !== undefined && move.direction !== undefined
@@ -282,6 +308,9 @@ function StoryStatePanel({ scriptLog }: { scriptLog: ReadonlyArray<string> }) {
       ),
       session.events.on("place:made", ({ player, cardId, x, y, direction }) =>
         append("place", `${player.id} -> #${cardId} @ (${x},${y}) ${direction}`),
+      ),
+      session.events.on("discard:made", ({ player, cardId }) =>
+        append("discard", `${player.id} -> #${cardId}`),
       ),
       session.events.on("round:complete", ({ nextPickOrder }) =>
         append("round-complete", nextPickOrder.map((player) => player.id).join(" -> ")),

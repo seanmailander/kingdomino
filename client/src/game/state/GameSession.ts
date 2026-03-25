@@ -7,7 +7,12 @@
  */
 
 import { getCard } from "../gamelogic/cards";
-import { getEligiblePositions, getValidDirections, staysWithin5x5 } from "../gamelogic/board";
+import {
+  findPlacementWithin5x5,
+  getEligiblePositions,
+  getValidDirections,
+  staysWithin5x5,
+} from "../gamelogic/board";
 import type { PlayerId, CardId, Direction } from "./types";
 import type { BoardGrid } from "./Board";
 import { Player } from "./Player";
@@ -37,6 +42,7 @@ export type GameEventMap = {
     y: number;
     direction: Direction;
   };
+  "discard:made": { player: Player; cardId: CardId };
   "round:complete": { nextPickOrder: ReadonlyArray<Player> };
   "game:ended": { scores: Array<{ player: Player; score: number }> };
 };
@@ -181,6 +187,41 @@ export class GameSession {
   handleLocalPlacement(x: number, y: number, direction: Direction): void {
     const me = this._requireLocalPlayer();
     this.handlePlacement(me.id, x, y, direction);
+  }
+
+  /**
+   * Discard the picked card for a player when no legal 5×5 placement exists.
+   * Throws if the player hasn't picked, or if a valid placement is available.
+   */
+  handleDiscard(playerId: PlayerId): void {
+    const round = this._requireActiveRound();
+    const player = this._requirePlayer(playerId);
+    const cardId = round.deal.pickedCardFor(player);
+    if (cardId === null) throw new Error(`${playerId} has no picked card to discard`);
+
+    const board = player.board.snapshot();
+    const hasValidPlacement = findPlacementWithin5x5(board, cardId) !== null;
+    if (hasValidPlacement) {
+      throw new Error(
+        `${playerId} has a valid placement; must place the domino, cannot discard`,
+      );
+    }
+
+    round.recordDiscard(player);
+    this.events.emit("discard:made", { player, cardId });
+
+    if (round.phase === "complete") {
+      const nextPickOrder = round.deal.nextRoundPickOrder();
+      this._pickOrder = nextPickOrder;
+      this._currentRound = null;
+      this.events.emit("round:complete", { nextPickOrder });
+    }
+  }
+
+  /** Convenience: discard for the local player. */
+  handleLocalDiscard(): void {
+    const me = this._requireLocalPlayer();
+    this.handleDiscard(me.id);
   }
 
   endGame(): void {
