@@ -2,6 +2,7 @@
   "name": "kingdomino-client",
   "version": "0.2.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "start": "vite",
     "start-host": "vite --host kingdomino.local --port 80",
@@ -9,7 +10,9 @@
     "build": "vite build --outDir build",
     "preview": "vite preview --host",
     "test": "vitest run",
-    "tscheck": "tsc --noEmit"
+    "tscheck": "tsc --noEmit",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@testing-library/jest-dom": "^6.5.0",
@@ -26,11 +29,21 @@
     "uuid": "^10.0.0"
   },
   "devDependencies": {
+    "@storybook/addon-a11y": "^10.3.3",
+    "@storybook/addon-docs": "^10.3.3",
+    "@storybook/addon-mcp": "^0.4.2",
+    "@storybook/addon-onboarding": "^10.3.3",
+    "@storybook/addon-vitest": "^10.3.3",
+    "@storybook/react-vite": "^10.3.3",
     "@types/node": "^24.7.2",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^5.1.0",
+    "@vitest/browser-playwright": "^4.0.0",
+    "@vitest/coverage-v8": "^4.0.0",
     "jest-extended": "^4.0.2",
+    "playwright": "^1.58.2",
+    "storybook": "^10.3.3",
     "typescript": "^5.9.3",
     "vite": "^8.0.0",
     "vitest": "^4.0.0"

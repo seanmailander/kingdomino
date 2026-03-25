@@ -25,3 +25,5 @@ yarn-error.log*
 client/build
 
 .cert
+*storybook.log
+storybook-static
