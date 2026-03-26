@@ -107,6 +107,13 @@ export class SoloConnection {
       direction: up,
     };
 
+    // TODO: hardcoded move above — replace with something that helps a game progress
+    // Maybe a decision tree for "good" moves
+
+    // Example
+    // Pick a random card
+    // Place in a random (valid) position
+    // Discard if not
     this.emitIncoming(MOVE, moveMessage(move).content);
   }
 

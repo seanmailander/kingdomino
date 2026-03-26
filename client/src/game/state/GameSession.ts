@@ -243,6 +243,11 @@ export class GameSession {
     }
 
     round.recordDiscard(player);
+    // Track discarded players so endGame() can withhold the Harmony bonus.
+    // NOTE: Only local player discards reach this path in the current flow.
+    // Remote player discards are a pre-existing gap in the peer protocol
+    // (game.messages.ts MovePayload carries no discard flag), so remote
+    // players who discard will still receive the Harmony bonus.
     this._discardedPlayerIds.add(player.id);
     this.events.emit("discard:made", { player, cardId });
 
