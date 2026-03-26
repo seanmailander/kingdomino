@@ -139,6 +139,66 @@ export class Board {
     return total;
   }
 
+  /** Size of the largest single contiguous terrain region (castle excluded). */
+  largestPropertySize(): number {
+    const grid = this.snapshot();
+    const size = grid.length;
+    const visited = Array.from({ length: size }, () => new Array<boolean>(size).fill(false));
+    let maxSize = 0;
+
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const cell = grid[y][x];
+        if (visited[y][x] || !cell?.tile) continue;
+
+        const terrain = cell.tile;
+        const queue: [number, number][] = [[x, y]];
+        let regionSize = 0;
+
+        while (queue.length > 0) {
+          const [cx, cy] = queue.pop()!;
+          if (visited[cy][cx]) continue;
+          visited[cy][cx] = true;
+          regionSize++;
+
+          const neighbors: [number, number][] = [
+            [cx + 1, cy],
+            [cx - 1, cy],
+            [cx, cy + 1],
+            [cx, cy - 1],
+          ];
+          for (const [nx, ny] of neighbors) {
+            if (
+              nx >= 0 &&
+              nx < size &&
+              ny >= 0 &&
+              ny < size &&
+              !visited[ny][nx] &&
+              grid[ny][nx]?.tile === terrain
+            ) {
+              queue.push([nx, ny]);
+            }
+          }
+        }
+
+        if (regionSize > maxSize) maxSize = regionSize;
+      }
+    }
+    return maxSize;
+  }
+
+  /** Sum of all crown values across all terrain tiles (castle excluded). */
+  totalCrowns(): number {
+    const grid = this.snapshot();
+    let total = 0;
+    for (const row of grid) {
+      for (const cell of row) {
+        if (cell?.tile) total += cell.value ?? 0;
+      }
+    }
+    return total;
+  }
+
   get placements(): ReadonlyArray<BoardPlacement> {
     return this._placements;
   }

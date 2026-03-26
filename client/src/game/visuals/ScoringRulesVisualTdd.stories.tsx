@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect } from "storybook/test";
+import { expect, waitFor } from "storybook/test";
 
 import {
   FIRST_ROUND_RULE_SCENARIO,
+  TIE_BREAK_SCENARIO,
   RealGameRuleHarness,
   RuleScenarioScaffold,
 } from "./GameRulesVisualTdd.shared";
@@ -50,8 +51,27 @@ export const TieBreakResolution: Story = {
     when: "Winner is resolved",
     expectedOutcome: "Winner follows tie-break rule order",
   },
-  play: async () => {
-    // TODO(blocked by missing runtime feature): convert after docs/superpowers/plans/2026-03-25-missing-game-features-next-steps.md is implemented.
+  render: () => <RealGameRuleHarness scenario={TIE_BREAK_SCENARIO} />,
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("heading", { name: "Real game visual test summary" }),
+    ).toBeVisible();
+
+    // Both players finish with score 3 — a tie
+    const playerSummary = canvas.getByRole("table", { name: "Player summary" });
+    await expect(playerSummary).toBeVisible();
+
+    // Wait for game to complete and game-ended event to appear
+    await waitFor(
+      async () => {
+        const gameEndedEntry = canvas.getByText(/^game-ended:/);
+        await expect(gameEndedEntry).toBeVisible();
+      },
+      { timeout: 5000 },
+    );
+
+    // me wins the tie-break by largest property (3 > 2), so me appears first in scores
+    await expect(canvas.getByText("game-ended: me:3, them:3")).toBeVisible();
   },
 };
 

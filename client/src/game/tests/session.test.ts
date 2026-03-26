@@ -184,6 +184,47 @@ describe("GameSession — full round", () => {
 
 // ── Section 9: End of game ───────────────────────────────────────────────────
 
+// ── Section 10: Tie-break ranking ────────────────────────────────────────────
+
+describe("GameSession — tie-break ranking", () => {
+  it("ties on score are broken by largest single property: the player with the larger region ranks first", () => {
+    const { session, alice, bob } = makeSession();
+    // alice: mine(2cr)/grain → mine 1-tile × 3 crowns... use card 47: grain/mine(3cr)
+    // grain(0cr) at (7,6), mine(3cr) at (8,6) → mine region 1×3=3, largest=1
+    alice.board.place(47, 7, 6, right);
+    // bob: grain/grain + grain(1cr)/wood connected → grain region 3 tiles × 1 crown = 3, largest=3
+    bob.board.place(0, 7, 6, right);  // grain at (7,6), grain at (8,6)
+    bob.board.place(18, 9, 6, right); // grain+1cr at (9,6), wood at (10,6)
+
+    let topPlayerId = "";
+    session.events.on("game:ended", ({ scores }) => {
+      topPlayerId = scores[0].player.id;
+    });
+    session.endGame();
+    // both score 3; bob has larger property (3 > 1) → bob ranks first
+    expect(topPlayerId).toBe(bob.id);
+  });
+
+  it("when score and largest property tie, the player with more total crowns ranks first", () => {
+    const { session, alice, bob } = makeSession();
+    // alice: grain(7,6)+grain(8,6) + grain+1cr(9,6)+wood(10,6) → score=3, largest=3, totalCrowns=1
+    alice.board.place(0, 7, 6, right);  // grain at (7,6), grain at (8,6)
+    alice.board.place(18, 9, 6, right); // grain+1cr at (9,6), wood at (10,6)
+    // bob: grain(7,6)+grain(8,6)+grain(9,6)+wood(10,6) + mine+3cr(4,6) → score=3, largest=3, totalCrowns=3
+    bob.board.place(0, 7, 6, right);    // grain at (7,6), grain at (8,6)
+    bob.board.place(12, 9, 6, right);   // grain at (9,6), wood at (10,6) — no crowns (card 12 = grain/wood 0cr)
+    bob.board.place(47, 5, 6, left);    // grain(0cr) at (5,6), mine+3cr at (4,6) → mine 1×3=3
+
+    let topPlayerId = "";
+    session.events.on("game:ended", ({ scores }) => {
+      topPlayerId = scores[0].player.id;
+    });
+    session.endGame();
+    // both score 3, both largest=3; bob has more total crowns (3 > 1) → bob ranks first
+    expect(topPlayerId).toBe(bob.id);
+  });
+});
+
 describe("GameSession — end of game", () => {
   it.todo("a session with no cards remaining cannot begin another round");
 

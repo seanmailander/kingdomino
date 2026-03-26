@@ -252,7 +252,13 @@ export class GameSession {
     this._phase = "finished";
     const scores = this._players
       .map((p) => ({ player: p, score: p.score() }))
-      .sort((a, b) => b.score - a.score);
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        const largestA = a.player.board.largestPropertySize();
+        const largestB = b.player.board.largestPropertySize();
+        if (largestB !== largestA) return largestB - largestA;
+        return b.player.board.totalCrowns() - a.player.board.totalCrowns();
+      });
     this.events.emit("game:ended", { scores });
   }
 

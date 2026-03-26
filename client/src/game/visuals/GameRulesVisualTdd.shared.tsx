@@ -50,6 +50,26 @@ export type RealGameScenario = {
   remoteMoves: TestConnectionScenario["moves"];
 };
 
+export const TIE_BREAK_SCENARIO: RealGameScenario = {
+  // Two rounds. Local ends with score 3, largest property 3, totalCrowns 1.
+  // Remote ends with score 3, largest property 2, totalCrowns 3.
+  // Tie on score → local wins by largest property (3 > 2).
+  roundLimit: 2,
+  handshakes: [
+    { localSecret: 11, remoteSecret: 101 },  // pick-order seed (local picks first)
+    { localSecret: 30, remoteSecret: 800 },  // round 1 deal: [0,2,27,34]
+    { localSecret: 20, remoteSecret: 700 },  // round 2 deal: [18,37,39,47]
+  ],
+  localMoves: [
+    { card: 0, x: 7, y: 6, direction: "right" },   // grain/grain → (7,6)+(8,6)
+    { card: 18, x: 9, y: 6, direction: "right" },  // grain+1cr/wood → (9,6)+(10,6); grain region 3×1=3
+  ],
+  remoteMoves: [
+    { card: 2, x: 7, y: 6, direction: "right" },   // wood/wood → (7,6)+(8,6)
+    { card: 47, x: 5, y: 6, direction: "left" },   // grain/mine+3cr → (5,6)+(4,6); mine 1×3=3
+  ],
+};
+
 export const FIRST_ROUND_RULE_SCENARIO: RealGameScenario = {
   roundLimit: 1,
   handshakes: [
