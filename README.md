@@ -30,6 +30,10 @@ See [research](./RESEARCH.md) for more info
 
 ### Simplify DevX
 
+- couch coop (local visual take turns)
+- full game loop (menu, start, pause, exit)
+- e2e tests over local UI
+
 - create a workflow for client-only development
   - play without competition
   - HMR
