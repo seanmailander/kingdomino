@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect } from "storybook/test";
+import { expect, waitFor } from "storybook/test";
 
 import {
   FIRST_ROUND_RULE_SCENARIO,
+  MIGHTY_DUEL_SCENARIO,
   RealGameRuleHarness,
   RuleScenarioScaffold,
 } from "./GameRulesVisualTdd.shared";
@@ -44,7 +45,20 @@ export const MightyDuelUsesSevenBySevenGrid: Story = {
     when: "Board is initialized and placement begins",
     expectedOutcome: "Board boundary and available dominoes reflect variant rules",
   },
-  play: async () => {
-    // TODO(blocked by missing runtime feature): convert after docs/superpowers/plans/2026-03-25-missing-game-features-next-steps.md is implemented.
+  render: () => <RealGameRuleHarness scenario={MIGHTY_DUEL_SCENARIO} />,
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("heading", { name: "Real game visual test summary" }),
+    ).toBeVisible();
+    // Card 4 (wood/wood) placed at (11,6)→right spans 7 columns from castle (6)
+    // to column 12. This placement is valid only in 7×7 Mighty Duel mode.
+    await waitFor(
+      () => expect(canvas.getByText("place: me -> #4 @ (11,6) right")).toBeVisible(),
+      { timeout: 5000 },
+    );
+    await waitFor(
+      () => expect(canvas.getByText(/game-ended/)).toBeVisible(),
+      { timeout: 5000 },
+    );
   },
 };

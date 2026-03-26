@@ -9,6 +9,7 @@ import {
   staysWithin5x5,
 } from "../gamelogic/board";
 import { hashIt } from "../gamelogic/utils";
+import type { GameVariant } from "../gamelogic/cards";
 import type { BoardPlacement } from "../state/Board";
 import { ConnectionManager } from "../state/ConnectionManager";
 import { LobbyFlow } from "../state/game.flow";
@@ -42,6 +43,7 @@ export type RealGameScenario = {
   them?: string;
   autoStart?: boolean;
   roundLimit?: number;
+  variant?: GameVariant;
   localBoardPlacements?: ReadonlyArray<BoardPlacement>;
   handshakes: ReadonlyArray<HandshakeScript>;
   localMoves: ReadonlyArray<LocalMoveScript>;
@@ -112,8 +114,23 @@ export const DISCARD_WHEN_UNPLACEABLE_SCENARIO: RealGameScenario = {
   remoteMoves: [{ card: 4, x: 6, y: 5, direction: "up" }],
 };
 
-type RealGameRuleHarnessProps = {
-  scenario: RealGameScenario;
+// Board pre-filled with wood/wood cards to the east, spanning columns 7–10
+// (width from castle=6 to 10 is 5 = exactly 5×5). The local player then places
+// a wood/wood card at (11,6)→right, expanding width to 7. This is valid in 7×7
+// Mighty Duel but would be rejected in standard 5×5 mode.
+export const MIGHTY_DUEL_SCENARIO: RealGameScenario = {
+  variant: "mighty-duel",
+  roundLimit: 1,
+  localBoardPlacements: [
+    { card: 2, x: 7, y: 6, direction: "right" }, // wood at (7,6)(8,6)
+    { card: 3, x: 9, y: 6, direction: "right" }, // wood at (9,6)(10,6)
+  ],
+  handshakes: [
+    { localSecret: 11, remoteSecret: 101 },
+    { localSecret: 22, remoteSecret: 202 },
+  ],
+  localMoves: [{ card: 4, x: 11, y: 6, direction: "right" }],
+  remoteMoves: [{ card: 46, x: 6, y: 5, direction: "up" }],
 };
 
 export type RuleScenarioProps = {
@@ -376,7 +393,7 @@ function StoryStatePanel({ scriptLog }: { scriptLog: ReadonlyArray<string> }) {
   );
 }
 
-export function RealGameRuleHarness({ scenario }: RealGameRuleHarnessProps) {
+export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }) {
   const [scriptLog, setScriptLog] = useState<string[]>([]);
 
   const flow = useMemo(() => {
@@ -386,8 +403,9 @@ export function RealGameRuleHarness({ scenario }: RealGameRuleHarnessProps) {
         new ConnectionManager(connection.send, connection.waitFor, { commit }),
       shouldContinuePlaying: (completedRounds) =>
         scenario.roundLimit === undefined || completedRounds < scenario.roundLimit,
+      variant: scenario.variant,
     });
-  }, [scenario.handshakes, scenario.roundLimit]);
+  }, [scenario.handshakes, scenario.roundLimit, scenario.variant]);
 
   useEffect(() => {
     resetAppState();

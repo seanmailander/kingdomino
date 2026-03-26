@@ -114,11 +114,12 @@ const directionDelta: Record<Direction, { dx: number; dy: number }> = {
 
 const directionPriority: Direction[] = [up, right, down, left];
 
-export const staysWithin5x5 = (
+export const staysWithinBounds = (
   board: Board,
   x: number,
   y: number,
   direction: Direction,
+  maxSize: number,
 ): boolean => {
   const occupied: Array<{ x: number; y: number }> = board.reduce(
     (all, row, rowY) => [
@@ -140,12 +141,27 @@ export const staysWithin5x5 = (
   const width = Math.max(...xs) - Math.min(...xs) + 1;
   const height = Math.max(...ys) - Math.min(...ys) + 1;
 
-  return width <= 5 && height <= 5;
+  return width <= maxSize && height <= maxSize;
 };
 
-export const findPlacementWithin5x5 = (
+export const staysWithin5x5 = (
+  board: Board,
+  x: number,
+  y: number,
+  direction: Direction,
+): boolean => staysWithinBounds(board, x, y, direction, 5);
+
+export const staysWithin7x7 = (
+  board: Board,
+  x: number,
+  y: number,
+  direction: Direction,
+): boolean => staysWithinBounds(board, x, y, direction, 7);
+
+export const findPlacementWithinBounds = (
   board: Board,
   cardId: CardId,
+  maxSize: number,
 ): { x: number; y: number; direction: Direction } | null => {
   const candidateAnchors = getEligiblePositions(board, cardId).sort(
     (a, b) => a.y - b.y || a.x - b.x,
@@ -155,7 +171,9 @@ export const findPlacementWithin5x5 = (
     const directions = (getValidDirections(board, cardId, x, y) as Direction[]).sort(
       (a, b) => directionPriority.indexOf(a) - directionPriority.indexOf(b),
     );
-    const validDirection = directions.find((direction) => staysWithin5x5(board, x, y, direction));
+    const validDirection = directions.find((direction) =>
+      staysWithinBounds(board, x, y, direction, maxSize),
+    );
     if (validDirection !== undefined) {
       return { x, y, direction: validDirection };
     }
@@ -163,3 +181,13 @@ export const findPlacementWithin5x5 = (
 
   return null;
 };
+
+export const findPlacementWithin5x5 = (
+  board: Board,
+  cardId: CardId,
+): { x: number; y: number; direction: Direction } | null => findPlacementWithinBounds(board, cardId, 5);
+
+export const findPlacementWithin7x7 = (
+  board: Board,
+  cardId: CardId,
+): { x: number; y: number; direction: Direction } | null => findPlacementWithinBounds(board, cardId, 7);

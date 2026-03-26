@@ -10,7 +10,7 @@
 //   3  wood/wood    — no crowns
 //   6  water/water  — no crowns
 import { describe, expect, it } from "vitest";
-import { getEligiblePositions, getValidDirections } from "../gamelogic/board";
+import { getEligiblePositions, getValidDirections, staysWithin5x5, staysWithin7x7 } from "../gamelogic/board";
 import { right, left } from "../gamelogic/cards";
 import { Board, type BoardPlacement } from "../state/Board";
 
@@ -73,5 +73,34 @@ describe("Card placement", () => {
     expect(dirs).not.toContain(left);
   });
 
-  it.todo("a placement that would push the kingdom beyond 5×5 is invalid");
+  it("a placement that would push the kingdom beyond 5×5 is invalid", () => {
+    // Castle at (6,6); tiles at (7,6)(8,6) and (9,6)(10,6) — exactly 5 columns wide
+    const board = placedCardsToBoard([
+      { card: 2, x: 7, y: 6, direction: right }, // wood at (7,6)(8,6)
+      { card: 3, x: 9, y: 6, direction: right }, // wood at (9,6)(10,6)
+    ]);
+    // Placing card 4 at (11,6)→right would span columns 6–12 (width=7 > 5)
+    expect(staysWithin5x5(board, 11, 6, right)).toBe(false);
+  });
+
+  it("a placement within 7×7 is valid even if it exceeds 5×5", () => {
+    // Same board: castle+tiles span columns 6–10 (width=5)
+    const board = placedCardsToBoard([
+      { card: 2, x: 7, y: 6, direction: right },
+      { card: 3, x: 9, y: 6, direction: right },
+    ]);
+    // Placing at (11,6)→right spans columns 6–12 (width=7 ≤ 7) — valid in 7×7
+    expect(staysWithin7x7(board, 11, 6, right)).toBe(true);
+  });
+
+  it("a placement that would push the kingdom beyond 7×7 is invalid in Mighty Duel mode", () => {
+    // Castle at (6,6); tiles span columns 2–8 (width=7, exactly fills 7×7)
+    const board = placedCardsToBoard([
+      { card: 2, x: 5, y: 6, direction: left }, // wood at (5,6)(4,6)
+      { card: 3, x: 7, y: 6, direction: right }, // wood at (7,6)(8,6)
+      { card: 4, x: 3, y: 6, direction: left }, // wood at (3,6)(2,6)
+    ]);
+    // Placing at (9,6)→right spans columns 2–10 (width=9 > 7)
+    expect(staysWithin7x7(board, 9, 6, right)).toBe(false);
+  });
 });

@@ -9,15 +9,18 @@
 import { getCard } from "../gamelogic/cards";
 import {
   findPlacementWithin5x5,
+  findPlacementWithin7x7,
   getEligiblePositions,
   getValidDirections,
   staysWithin5x5,
+  staysWithin7x7,
 } from "../gamelogic/board";
 import type { PlayerId, CardId, Direction } from "./types";
 import type { BoardGrid } from "./Board";
 import { Player } from "./Player";
 import { Deal } from "./Deal";
 import { Round } from "./Round";
+import type { GameVariant } from "../gamelogic/cards";
 
 // Re-export sub-module classes and types for backward compatibility
 export type { BoardCell, BoardGrid } from "./Board";
@@ -92,6 +95,27 @@ export class GameSession {
   private _players: Player[] = [];
   private _pickOrder: Player[] = [];
   private _currentRound: Round | null = null;
+  private readonly _variant: GameVariant;
+
+  constructor({ variant = "standard" }: { variant?: GameVariant } = {}) {
+    this._variant = variant;
+  }
+
+  private _staysWithinBounds(board: BoardGrid, x: number, y: number, direction: Direction): boolean {
+    return this._variant === "mighty-duel"
+      ? staysWithin7x7(board, x, y, direction)
+      : staysWithin5x5(board, x, y, direction);
+  }
+
+  private _findPlacementWithinBounds(board: BoardGrid, cardId: CardId) {
+    return this._variant === "mighty-duel"
+      ? findPlacementWithin7x7(board, cardId)
+      : findPlacementWithin5x5(board, cardId);
+  }
+
+  get variant(): GameVariant {
+    return this._variant;
+  }
 
   // ── Player management ──
 
@@ -160,9 +184,9 @@ export class GameSession {
       throw new Error(`Invalid placement direction for player ${playerId}: ${direction}`);
     }
 
-    if (!staysWithin5x5(board, x, y, direction)) {
+    if (!this._staysWithinBounds(board, x, y, direction)) {
       throw new Error(
-        `Placement exceeds 5x5 kingdom for player ${playerId}: (${x}, ${y}, ${direction})`,
+        `Placement exceeds ${this._variant === "mighty-duel" ? "7x7" : "5x5"} kingdom for player ${playerId}: (${x}, ${y}, ${direction})`,
       );
     }
 
@@ -200,7 +224,7 @@ export class GameSession {
     if (cardId === null) throw new Error(`${playerId} has no picked card to discard`);
 
     const board = player.board.snapshot();
-    const hasValidPlacement = findPlacementWithin5x5(board, cardId) !== null;
+    const hasValidPlacement = this._findPlacementWithinBounds(board, cardId) !== null;
     if (hasValidPlacement) {
       throw new Error(
         `${playerId} has a valid placement; must place the domino, cannot discard`,

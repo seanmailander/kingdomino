@@ -6,6 +6,7 @@ import type { GameMessage, GameMessagePayload, GameMessageType } from "./game.me
 import { SoloConnection } from "./connection.solo";
 import { setCurrentSession, setRoom, awaitLobbyStart, awaitLobbyLeave } from "../../App/store";
 import { Lobby, Game, Splash } from "../../App/AppExtras";
+import type { GameVariant } from "../gamelogic/cards";
 
 // ── Connection interface ───────────────────────────────────────────────────────
 
@@ -19,6 +20,7 @@ export interface IGameConnection {
 type LobbyFlowOptions = {
   createConnectionManager?: (connection: IGameConnection) => ConnectionManager;
   shouldContinuePlaying?: (completedRounds: number, remainingDeck: readonly number[]) => boolean;
+  variant?: GameVariant;
 };
 
 // ── Event-based waiting (replaces waitForComputed) ──────────────────────────────
@@ -55,6 +57,7 @@ export class LobbyFlow {
     completedRounds: number,
     remainingDeck: readonly number[],
   ) => boolean;
+  private readonly variant: GameVariant;
 
   constructor(options: LobbyFlowOptions = {}) {
     this.createConnectionManager =
@@ -62,6 +65,7 @@ export class LobbyFlow {
       ((connection) => new ConnectionManager(connection.send, connection.waitFor));
     this.shouldContinuePlaying =
       options.shouldContinuePlaying ?? ((_, remainingDeck) => remainingDeck.length > 0);
+    this.variant = options.variant ?? "standard";
   }
 
   ready(connection: IGameConnection) {
@@ -130,7 +134,7 @@ export class LobbyFlow {
   }
 
   private async runFlow(connection: IGameConnection) {
-    this.session = new GameSession();
+    this.session = new GameSession({ variant: this.variant });
     this.connectionManager = this.createConnectionManager(connection);
 
     try {
