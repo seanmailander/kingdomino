@@ -214,7 +214,7 @@ export class GameSession {
   }
 
   /**
-   * Discard the picked card for a player when no legal 5×5 placement exists.
+   * Discard the picked card for a player when no legal placement exists within kingdom bounds.
    * Throws if the player hasn't picked, or if a valid placement is available.
    */
   handleDiscard(playerId: PlayerId): void {

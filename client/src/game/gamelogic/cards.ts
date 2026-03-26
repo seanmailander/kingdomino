@@ -109,14 +109,6 @@ export const generateDeck = () => [...Array(48).keys()] as const;
 
 export type GameVariant = "standard" | "mighty-duel";
 
-export const generateDeckForVariant = (variant: GameVariant): readonly number[] => {
-  // Mighty Duel always uses the full 48-domino deck.
-  // Standard variant also uses the full deck by default (player-count filtering
-  // is the responsibility of the flow layer).
-  void variant;
-  return generateDeck();
-};
-
 const cardMap = generateCardMap();
 
 const blankCard: CardInfo = {

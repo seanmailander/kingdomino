@@ -1,6 +1,6 @@
 // Section 1 — Deck
 import { describe, expect, it } from "vitest";
-import { generateCardMap, generateDeck, generateDeckForVariant } from "../gamelogic/cards";
+import { generateCardMap, generateDeck } from "../gamelogic/cards";
 import { getNextFourCards } from "../gamelogic/utils";
 
 describe("Deck", () => {
@@ -33,10 +33,5 @@ describe("Deck", () => {
   it("a dealt hand excludes cards already drawn from the deck", () => {
     const { next: first, remaining } = getNextFourCards("1", generateDeck());
     first.forEach((id) => expect(remaining).not.toContain(id));
-  });
-
-  it("Mighty Duel variant deck contains all 48 dominoes", () => {
-    const deck = generateDeckForVariant("mighty-duel");
-    expect(deck).toHaveLength(48);
   });
 });
