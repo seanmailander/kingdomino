@@ -29,11 +29,11 @@ Public API:
 
 **`SoloConnection`** (modified — `client/src/game/state/connection.solo.ts`)
 
-Gains an optional `aiPlayer: RandomAIPlayer` constructor parameter. `emitOpponentMove()` delegates to `aiPlayer.generateMove()` when an AI player is present. When processing a human `MOVE` message, calls `aiPlayer.receiveHumanMove()` before generating the AI response.
+Gains an `aiPlayer: RandomAIPlayer` constructor parameter. `emitOpponentMove()` delegates to `aiPlayer.generateMove()`. When processing a human `MOVE` message, calls `aiPlayer.receiveHumanMove()` before generating the AI response. Gains a `beginRound(cardIds)` method that forwards to `aiPlayer.beginRound(cardIds)`.
 
 **`LobbyFlow` / `game.flow.ts`** (minor modification)
 
-In solo mode, after calling `humanSession.beginRound(cardIds)`, also calls `aiPlayer.beginRound(cardIds)`. This keeps both sessions synchronized on the current round's card deal.
+`ReadySolo()` creates `RandomAIPlayer` (with `aiPlayerId = "them"`, `humanPlayerId = "me"`) and passes it to the `SoloConnection` constructor. `LobbyFlow` stores a reference to the `aiPlayer` instance. In `playRound()`, after calling `session.beginRound(cardIds)`, also calls `aiPlayer.beginRound(cardIds)` to keep both sessions synchronized on the current round's card deal.
 
 ## Data Flow
 
@@ -48,11 +48,13 @@ In solo mode, after calling `humanSession.beginRound(cardIds)`, also calls `aiPl
 Triggered by `SoloConnection.emitOpponentMove()` (once after `REVEAL`, once per human `MOVE`):
 
 1. `aiPlayer.generateMove()` is called
-2. `aiSession.currentRound.deal.snapshot()` → filter for unpicked slots → random selection
-3. `aiSession.handleLocalPick(randomCardId)` — AI session records the pick
-4. `getEligiblePositions(aiSession.boardFor("ai"), randomCardId)` → list of valid `(x, y, dir)` placements
-5. If positions exist: pick one at random → `aiSession.handleLocalPlacement(x, y, dir)` → return that move
-6. If no positions: `aiSession.handleLocalDiscard()` → return discard sentinel
+2. `aiSession.currentRound.deal.snapshot()` → filter for unpicked slots → shuffle randomly
+3. For each candidate card (in shuffled order):
+   - `getEligiblePositions(aiSession.boardFor("ai"), cardId)` → raw neighbor list
+   - Filter with `staysWithin5x5()` (or `staysWithin7x7()` for Mighty Duel) to get bounds-safe positions
+   - If any valid positions exist: use this card+positions
+4. If a valid card+position was found: `aiSession.handleLocalPick(cardId)` + `aiSession.handleLocalPlacement(x, y, dir)` → return that move
+5. If no available card has any valid in-bounds placement: `aiSession.handleLocalPick(firstAvailableCardId)` + `aiSession.handleLocalDiscard()` → return discard sentinel
 7. `SoloConnection` emits the returned `PlayerMoveMessage` as an incoming MOVE → human game flow proceeds
 
 ### When Human Sends a MOVE
@@ -61,12 +63,13 @@ Triggered by `SoloConnection.emitOpponentMove()` (once after `REVEAL`, once per 
 2. `aiPlayer.receiveHumanMove(card, x, y, dir)`:
    - `aiSession.handlePick("human", card)`
    - `aiSession.handlePlacement("human", x, y, dir)`
+   - Note: a human discard does not produce a MOVE message in the current protocol (pre-existing gap — see Out of Scope). `receiveHumanMove()` is only called when a MOVE is received, which corresponds to a successful human pick+place.
 3. `emitOpponentMove()` → `aiPlayer.generateMove()` as above
 
 ## Error Handling & Edge Cases
 
-**Discard:**
-`getEligiblePositions()` returns empty → `aiSession.handleLocalDiscard()` is called (validates internally that no placement exists, matching the human discard path). The MOVE returned uses a sentinel placement. This matches the existing behavior for the remote-player discard limitation documented in the prior spec.
+**AI Discard:**
+If no available card has any valid in-bounds placement, the AI picks the first available card and calls `aiSession.handleLocalDiscard()`. The MOVE sentinel emitted back matches the existing behavior for the remote-player discard limitation documented in the prior spec.
 
 **Pick order correctness:**
 `SoloConnection.emitOpponentMove()` is called once after `REVEAL` and once per human `MOVE`. The AI session's `deal.snapshot()` reflects what has been picked so far at each call, so random selection is always from genuinely available cards regardless of which player goes first in the round.
