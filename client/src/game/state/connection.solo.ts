@@ -12,6 +12,7 @@ import {
   type PlayerMoveMessage,
 } from "./game.messages";
 import { up } from "../gamelogic/cards";
+import { commit } from "../gamelogic/utils";
 
 type AnyGameMessagePayload = {
   [MessageType in GameMessageType]: GameMessagePayload<MessageType>;
@@ -32,6 +33,8 @@ export class SoloConnection {
   private readonly messageResolvers = new Map<GameMessageType, MessageResolver[]>();
 
   private isDestroyed = false;
+
+  private readonly commitData = commit();
 
   send = (message: GameMessage) => {
     this.assertActive();
@@ -73,15 +76,16 @@ export class SoloConnection {
     this.messageQueues.clear();
   };
 
-  private respondToMessage(message: GameMessage) {
+  private async respondToMessage(message: GameMessage) {
+    const { secret, committment } = await this.commitData;
     switch (message.type) {
       case START:
         return;
       case COMMITTMENT:
-        this.emitIncoming(COMMITTMENT, committmentMessage("their-committment").content);
+        this.emitIncoming(COMMITTMENT, committmentMessage(committment).content);
         return;
       case REVEAL:
-        this.emitIncoming(REVEAL, revealMessage("their-secret").content);
+        this.emitIncoming(REVEAL, revealMessage(String(secret)).content);
         this.emitOpponentMove();
         return;
       case MOVE:
