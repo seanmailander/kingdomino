@@ -95,22 +95,28 @@ Two additions:
 
 ## Connection Implementations
 
+### Unified action queue — required for all implementations
+
+**`Promise.race()` over two typed queues must not be used.** Racing `waitFor(MOVE)` against `waitFor(DISCARD)` leaves a stale resolver in the losing queue. On the next turn an incoming message of that type would be consumed by the stale resolver, causing `waitForAction()` to hang indefinitely.
+
+All three implementations must instead maintain a **single unified action queue**: `actionQueue: RemoteAction[]` and `actionResolvers`. Incoming MOVE and DISCARD messages are both converted to `RemoteAction` and routed to this shared queue/resolver, regardless of original message type. `waitForAction()` pops from this unified queue — FIFO, type-agnostic.
+
 ### `SoloConnection`
 
-- `respondToMessage()` gains a `DISCARD` case (no-op — the solo opponent never sends discards to itself via the local-player path)
-- `emitOpponentAction()` (renamed from `emitOpponentMove()`) emits either a MOVE or DISCARD into the appropriate queue based on `AIPlayer.generateAction()`
-- `waitForAction()` returns whichever of the MOVE or DISCARD queues has a pending message
+- `respondToMessage()` gains a `DISCARD` case (no-op — the solo opponent never sends discards through the local-player path)
+- `emitOpponentAction()` (renamed from `emitOpponentMove()`) converts the result of `AIPlayer.generateAction()` to a `RemoteAction` and pushes it into the unified action queue. Because `emitOpponentAction()` is called synchronously before `waitForAction()` is awaited, the action is already queued by the time the caller reaches `await connectionManager.waitForAction()` — no race condition.
+- `waitForAction()` pops from the unified action queue, or registers a resolver if empty
 
 ### `MultiplayerConnection`
 
-- `handleIncomingMessage()` gains a `DISCARD` case that routes the payload to the DISCARD queue
-- `waitForAction()` returns whichever of the MOVE or DISCARD queues resolves first
+- `handleIncomingMessage()` gains a `DISCARD` case; both `MOVE` and `DISCARD` cases convert their payload to a `RemoteAction` and route to the unified action queue (or resolve the next registered action resolver)
+- `waitForAction()` pops from the unified action queue, or registers a resolver if empty
 
 ### `TestConnection`
 
 - `ScriptedAction` union replaces `ScriptedMove` in `TestConnectionScenario`
-- When replaying scenarios, emits a MOVE or DISCARD message depending on the scripted action's `kind`
-- `waitForAction()` returns the scripted result directly, typed as `RemoteAction`
+- During `respondToReveal()`, the scripted action for the current round is converted to a `RemoteAction` and pushed into the unified action queue — following the same offset-by-one queuing pattern as the existing scripted move mechanism
+- `waitForAction()` pops from the unified action queue, or registers a resolver if empty
 
 ### `RandomAIPlayer` (from `2026-03-26-single-player-ai-design.md`)
 
@@ -149,7 +155,7 @@ The NOTE comment at lines 245–250 ("Only local player discards reach this path
 | `client/src/game/state/connection.solo.ts` | Add DISCARD case; rename `emitOpponentMove()` → `emitOpponentAction()`; implement `waitForAction()` |
 | `client/src/game/state/connection.multiplayer.ts` | Add DISCARD routing in `handleIncomingMessage()`; implement `waitForAction()` |
 | `client/src/game/state/connection.testing.ts` | Replace `ScriptedMove` with `ScriptedAction` union; implement `waitForAction()` |
-| `client/src/game/state/IGameConnection.ts` (or `game.flow.ts`) | Add `waitForAction()` to `IGameConnection` interface |
+| `client/src/game/state/game.flow.ts` | Add `waitForAction()` to `IGameConnection` interface (defined at line 14); local path: handle `discard:made`; remote path: use `waitForAction()` and branch |
 | `client/src/game/state/GameSession.ts` | Remove the NOTE comment at lines 245–250 |
 | `client/src/game/state/ai.player.ts` | Rename `generateMove()` → `generateAction()` returning `RemoteAction` |
 
