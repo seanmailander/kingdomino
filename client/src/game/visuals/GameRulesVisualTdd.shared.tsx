@@ -10,6 +10,7 @@ import {
 } from "../gamelogic/board";
 import { hashIt } from "../gamelogic/utils";
 import type { GameVariant } from "../gamelogic/cards";
+import type { GameBonuses } from "../state/GameSession";
 import type { BoardPlacement } from "../state/Board";
 import { ConnectionManager } from "../state/ConnectionManager";
 import { LobbyFlow } from "../state/game.flow";
@@ -44,6 +45,7 @@ export type RealGameScenario = {
   autoStart?: boolean;
   roundLimit?: number;
   variant?: GameVariant;
+  bonuses?: GameBonuses;
   localBoardPlacements?: ReadonlyArray<BoardPlacement>;
   handshakes: ReadonlyArray<HandshakeScript>;
   localMoves: ReadonlyArray<LocalMoveScript>;
@@ -151,6 +153,31 @@ export const MIGHTY_DUEL_SCENARIO: RealGameScenario = {
   ],
   localMoves: [{ card: 4, x: 11, y: 6, direction: "right" }],
   remoteMoves: [{ card: 46, x: 6, y: 5, direction: "up" }],
+};
+
+// Pre-seed me's board with 4 symmetric placements to form a centred 5×5 kingdom:
+//   East:  grain at (7,6)+(8,6)   West: grain at (5,6)+(4,6)
+//   South: wood  at (6,7)+(6,8)   North: wood  at (6,5)+(6,4)
+// Bounding box: x ∈ [4,8], y ∈ [4,8] → minX+maxX=12, minY+maxY=12 → centred.
+// In the round, me picks card 0 (grain/grain) from deal [0,2,27,34] and places
+// it at (7,5)→right within the existing bounds → kingdom stays centred (+10 MK).
+// Neither player discards → both earn Harmony (+5).
+// Final: me = 0 base + 10 MK + 5 harmony = 15; them = 0 base + 0 MK + 5 harmony = 5.
+export const BONUS_SCENARIO: RealGameScenario = {
+  bonuses: { middleKingdom: true, harmony: true },
+  roundLimit: 1,
+  localBoardPlacements: [
+    { card: 0, x: 7, y: 6, direction: "right" }, // grain east:  (7,6),(8,6)
+    { card: 1, x: 5, y: 6, direction: "left" },  // grain west:  (5,6),(4,6)
+    { card: 2, x: 6, y: 7, direction: "down" },  // wood south:  (6,7),(6,8)
+    { card: 3, x: 6, y: 5, direction: "up" },    // wood north:  (6,5),(6,4)
+  ],
+  handshakes: [
+    { localSecret: 11, remoteSecret: 101 }, // pick-order seed (local picks first)
+    { localSecret: 30, remoteSecret: 800 }, // round 1 deal: [0, 2, 27, 34]
+  ],
+  localMoves: [{ card: 0, x: 7, y: 5, direction: "right" }], // grain at (7,5),(8,5) — stays within bounds
+  remoteMoves: [{ card: 2, x: 7, y: 6, direction: "right" }], // wood east of their castle
 };
 
 export type RuleScenarioProps = {
@@ -424,8 +451,9 @@ export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }
       shouldContinuePlaying: (completedRounds) =>
         scenario.roundLimit === undefined || completedRounds < scenario.roundLimit,
       variant: scenario.variant,
+      bonuses: scenario.bonuses,
     });
-  }, [scenario.handshakes, scenario.roundLimit, scenario.variant]);
+  }, [scenario.handshakes, scenario.roundLimit, scenario.variant, scenario.bonuses]);
 
   useEffect(() => {
     resetAppState();

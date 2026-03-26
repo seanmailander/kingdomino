@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, waitFor } from "storybook/test";
 
 import {
+  BONUS_SCENARIO,
   FIRST_ROUND_RULE_SCENARIO,
   TIE_BREAK_SCENARIO,
   RealGameRuleHarness,
@@ -83,8 +84,23 @@ export const VariantBonusesMiddleKingdomAndHarmony: Story = {
     when: "Final scoring runs",
     expectedOutcome: "Bonus points are displayed and included",
   },
-  play: async () => {
-    // TODO(blocked by missing runtime feature): convert after docs/superpowers/plans/2026-03-25-missing-game-features-next-steps.md is implemented.
+  render: () => <RealGameRuleHarness scenario={BONUS_SCENARIO} />,
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("heading", { name: "Real game visual test summary" }),
+    ).toBeVisible();
+
+    // Wait for game to complete; me earns +10 MK + +5 harmony = 15 total (0 base).
+    // them earns +5 harmony only = 5 total (0 base, not centred).
+    await waitFor(
+      async () => {
+        const gameEndedEntry = canvas.getByText(/^game-ended:/);
+        await expect(gameEndedEntry).toBeVisible();
+      },
+      { timeout: 5000 },
+    );
+
+    await expect(canvas.getByText("game-ended: me:15, them:5")).toBeVisible();
   },
 };
 

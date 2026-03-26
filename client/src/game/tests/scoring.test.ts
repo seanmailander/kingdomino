@@ -5,12 +5,19 @@
 //
 // Selected card ids (0-indexed):
 //   0  grain/grain       — no crowns
+//   1  grain/grain       — no crowns
+//   2  wood/wood         — no crowns
 //   3  wood/wood         — no crowns
+//   6  water/water       — no crowns
+//   9  grass/grass       — no crowns
 //  18  grain(1cr)/wood   — crown on tileA  [secondTwelve[6]: getTile(grain, wood, oneCrown)]
 //  44  mine(2cr)/grain   — crown on tileA  [fourthTwelve[8]: getTile(mine, grain, twoCrown)]
+//  46  marsh/mine(2cr)   — crown on tileB  [fourthTwelve[10]: getTile(marsh, mine, _, twoCrown)]
 import { describe, expect, it } from "vitest";
 import { Board } from "../state/Board";
-import { right, left } from "../gamelogic/cards";
+import { GameSession, Player } from "../state/GameSession";
+import type { GameEventMap } from "../state/GameSession";
+import { right, left, down, up } from "../gamelogic/cards";
 
 describe("Tie-break helpers", () => {
   it("largestPropertySize returns 0 for an empty board", () => {
@@ -76,5 +83,148 @@ describe("Scoring", () => {
     // wood region (3 cells, 0 crowns) scores 0; grain region (1 cell, 1 crown) scores 1
     const board = new Board().place(18, 7, 6, right).place(3, 9, 6, right);
     expect(board.score()).toBe(1);
+  });
+});
+
+// ── Section 4: Middle Kingdom bonus ──────────────────────────────────────────
+//
+// Board.isCastleCentered() returns true if the bounding box of all placed tiles
+// (including castle at grid position (6,6)) is symmetric about the castle.
+// Centered means: minX + maxX = 12 AND minY + maxY = 12 (castle is at 6,6 → 6×2=12).
+
+describe("Middle Kingdom bonus — isCastleCentered", () => {
+  it("empty board (only castle) is considered centered", () => {
+    expect(new Board().isCastleCentered()).toBe(true);
+  });
+
+  it("symmetric east+west placement is centered", () => {
+    // card 0: grain/grain, placed east (7,6)+(8,6) and west (5,6)+(4,6)
+    // minX=4, maxX=8: 4+8=12 ✓  minY=6, maxY=6: 6+6=12 ✓ → centered
+    const board = new Board().place(0, 7, 6, right).place(0, 5, 6, left);
+    expect(board.isCastleCentered()).toBe(true);
+  });
+
+  it("asymmetric placement (only east) is not centered", () => {
+    // Only east: (7,6)+(8,6) → minX=6 (castle), maxX=8: 6+8=14 ≠ 12 → not centered
+    const board = new Board().place(0, 7, 6, right);
+    expect(board.isCastleCentered()).toBe(false);
+  });
+
+  it("symmetric in both axes is centered", () => {
+    // East (7,6)+(8,6), West (5,6)+(4,6), North (6,5)+(6,4), South (6,7)+(6,8)
+    // minX=4, maxX=8: 12 ✓  minY=4, maxY=8: 12 ✓ → centered
+    const board = new Board()
+      .place(0, 7, 6, right)
+      .place(0, 5, 6, left)
+      .place(0, 6, 5, up)
+      .place(0, 6, 7, down);
+    expect(board.isCastleCentered()).toBe(true);
+  });
+});
+
+// ── Section 5: Bonus scoring in GameSession.endGame() ────────────────────────
+
+describe("Bonus scoring in GameSession.endGame()", () => {
+  const makeSessionWithBonuses = (bonuses: { middleKingdom?: boolean; harmony?: boolean }) => {
+    const session = new GameSession({ bonuses });
+    const me = new Player("me", true);
+    const them = new Player("them", false);
+    session.addPlayer(me);
+    session.addPlayer(them);
+    session.startGame([me, them]);
+    return { session, me, them };
+  };
+
+  it("no bonuses applied when bonus config is empty", () => {
+    const { session, me } = makeSessionWithBonuses({});
+    me.board.place(0, 7, 6, right).place(0, 5, 6, left); // symmetric, would qualify for MK
+    let result: GameEventMap["game:ended"] | undefined;
+    session.events.on("game:ended", (data) => {
+      result = data;
+    });
+    session.endGame();
+    const meScore = result!.scores.find((s) => s.player.id === "me")!;
+    expect(meScore.bonuses.middleKingdom).toBe(0);
+    expect(meScore.bonuses.harmony).toBe(0);
+    expect(meScore.score).toBe(0);
+  });
+
+  it("Middle Kingdom +10 when enabled and castle is centered", () => {
+    const { session, me } = makeSessionWithBonuses({ middleKingdom: true });
+    me.board.place(0, 7, 6, right).place(0, 5, 6, left); // symmetric
+    let result: GameEventMap["game:ended"] | undefined;
+    session.events.on("game:ended", (data) => {
+      result = data;
+    });
+    session.endGame();
+    const meScore = result!.scores.find((s) => s.player.id === "me")!;
+    expect(meScore.bonuses.middleKingdom).toBe(10);
+    expect(meScore.score).toBe(10); // 0 base + 10 MK
+  });
+
+  it("no Middle Kingdom bonus when castle is not centered", () => {
+    const { session, me } = makeSessionWithBonuses({ middleKingdom: true });
+    me.board.place(0, 7, 6, right); // only east — asymmetric
+    let result: GameEventMap["game:ended"] | undefined;
+    session.events.on("game:ended", (data) => {
+      result = data;
+    });
+    session.endGame();
+    const meScore = result!.scores.find((s) => s.player.id === "me")!;
+    expect(meScore.bonuses.middleKingdom).toBe(0);
+  });
+
+  it("Harmony +5 when enabled and player never discarded", () => {
+    const { session } = makeSessionWithBonuses({ harmony: true });
+    let result: GameEventMap["game:ended"] | undefined;
+    session.events.on("game:ended", (data) => {
+      result = data;
+    });
+    session.endGame();
+    const meScore = result!.scores.find((s) => s.player.id === "me")!;
+    expect(meScore.bonuses.harmony).toBe(5);
+    expect(meScore.score).toBe(5); // 0 base + 5 harmony
+  });
+
+  it("no Harmony bonus when player discarded during the game", () => {
+    const { session, me, them } = makeSessionWithBonuses({ harmony: true });
+    // Block all 4 castle-adjacent positions with non-marsh/non-mine terrain
+    // so card 46 (marsh/mine) has no eligible neighbour and must be discarded.
+    me.board
+      .place(0, 7, 6, right) // grain east:  (7,6),(8,6)
+      .place(1, 5, 6, left)  // grain west:  (5,6),(4,6)
+      .place(6, 6, 7, down)  // water south: (6,7),(6,8)
+      .place(9, 6, 5, up);   // grass north: (6,5),(6,4)
+
+    // beginRound with card 46 in the deal; me picks first (pickOrder: [me, them])
+    session.beginRound([2, 18, 26, 46]);
+    session.handleLocalPick(46); // me picks the marsh/mine card
+    session.handleLocalDiscard(); // forced: no valid placement for card 46
+    session.handlePick(them.id, 2); // them picks card 2
+    session.handlePlacement(them.id, 7, 6, right); // them places; round complete
+
+    let result: GameEventMap["game:ended"] | undefined;
+    session.events.on("game:ended", (data) => {
+      result = data;
+    });
+    session.endGame();
+    const meScore = result!.scores.find((s) => s.player.id === "me")!;
+    const themScore = result!.scores.find((s) => s.player.id === "them")!;
+    expect(meScore.bonuses.harmony).toBe(0); // me discarded → no harmony
+    expect(themScore.bonuses.harmony).toBe(5); // them never discarded → harmony
+  });
+
+  it("both Middle Kingdom and Harmony bonuses stack for +15", () => {
+    const { session, me } = makeSessionWithBonuses({ middleKingdom: true, harmony: true });
+    me.board.place(0, 7, 6, right).place(0, 5, 6, left); // symmetric, no discards
+    let result: GameEventMap["game:ended"] | undefined;
+    session.events.on("game:ended", (data) => {
+      result = data;
+    });
+    session.endGame();
+    const meScore = result!.scores.find((s) => s.player.id === "me")!;
+    expect(meScore.bonuses.middleKingdom).toBe(10);
+    expect(meScore.bonuses.harmony).toBe(5);
+    expect(meScore.score).toBe(15); // 0 base + 10 MK + 5 harmony
   });
 });

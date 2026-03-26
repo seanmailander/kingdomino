@@ -47,7 +47,13 @@ export type GameEventMap = {
   };
   "discard:made": { player: Player; cardId: CardId };
   "round:complete": { nextPickOrder: ReadonlyArray<Player> };
-  "game:ended": { scores: Array<{ player: Player; score: number }> };
+  "game:ended": {
+    scores: Array<{
+      player: Player;
+      score: number;
+      bonuses: { middleKingdom: number; harmony: number };
+    }>;
+  };
 };
 
 type Listener<K extends keyof GameEventMap> = (event: GameEventMap[K]) => void;
@@ -74,6 +80,8 @@ export class GameEventBus {
 
 export type GamePhase = "lobby" | "playing" | "finished";
 
+export type GameBonuses = { middleKingdom?: boolean; harmony?: boolean };
+
 /**
  * Top-level game orchestrator. Owns all Players and the active Round.
  *
@@ -96,9 +104,12 @@ export class GameSession {
   private _pickOrder: Player[] = [];
   private _currentRound: Round | null = null;
   private readonly _variant: GameVariant;
+  private readonly _bonuses: GameBonuses;
+  private readonly _discardedPlayerIds = new Set<string>();
 
-  constructor({ variant = "standard" }: { variant?: GameVariant } = {}) {
+  constructor({ variant = "standard", bonuses = {} }: { variant?: GameVariant; bonuses?: GameBonuses } = {}) {
     this._variant = variant;
+    this._bonuses = bonuses;
   }
 
   private _staysWithinBounds(board: BoardGrid, x: number, y: number, direction: Direction): boolean {
@@ -232,6 +243,7 @@ export class GameSession {
     }
 
     round.recordDiscard(player);
+    this._discardedPlayerIds.add(player.id);
     this.events.emit("discard:made", { player, cardId });
 
     if (round.phase === "complete") {
@@ -251,7 +263,16 @@ export class GameSession {
   endGame(): void {
     this._phase = "finished";
     const scores = this._players
-      .map((p) => ({ player: p, score: p.score() }))
+      .map((p) => {
+        const baseScore = p.score();
+        const mkBonus = this._bonuses.middleKingdom && p.board.isCastleCentered() ? 10 : 0;
+        const harmonyBonus = this._bonuses.harmony && !this._discardedPlayerIds.has(p.id) ? 5 : 0;
+        return {
+          player: p,
+          score: baseScore + mkBonus + harmonyBonus,
+          bonuses: { middleKingdom: mkBonus, harmony: harmonyBonus },
+        };
+      })
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
         const largestA = a.player.board.largestPropertySize();

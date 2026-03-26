@@ -199,6 +199,28 @@ export class Board {
     return total;
   }
 
+  /** Returns true if the castle (at grid position 6,6) is at the center of the
+   * bounding box of all placed tiles. Centered means minX + maxX == 12 AND
+   * minY + maxY == 12 (since the castle sits at col=6, row=6, i.e. 6×2=12). */
+  isCastleCentered(): boolean {
+    const CASTLE_X = 6;
+    const CASTLE_Y = 6;
+    const grid = this.snapshot();
+    let minX = CASTLE_X, maxX = CASTLE_X;
+    let minY = CASTLE_Y, maxY = CASTLE_Y;
+    for (let y = 0; y < grid.length; y++) {
+      for (let x = 0; x < grid[y].length; x++) {
+        if (grid[y][x]?.tile !== undefined) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    return minX + maxX === CASTLE_X * 2 && minY + maxY === CASTLE_Y * 2;
+  }
+
   get placements(): ReadonlyArray<BoardPlacement> {
     return this._placements;
   }
