@@ -54,8 +54,8 @@ Triggered by `SoloConnection.emitOpponentMove()` (once after `REVEAL`, once per 
    - Filter with `staysWithin5x5()` (or `staysWithin7x7()` for Mighty Duel) to get bounds-safe positions
    - If any valid positions exist: use this card+positions
 4. If a valid card+position was found: `aiSession.handleLocalPick(cardId)` + `aiSession.handleLocalPlacement(x, y, dir)` → return that move
-5. If no available card has any valid in-bounds placement: `aiSession.handleLocalPick(firstAvailableCardId)` + `aiSession.handleLocalDiscard()` → return discard sentinel
-7. `SoloConnection` emits the returned `PlayerMoveMessage` as an incoming MOVE → human game flow proceeds
+5. If no available card has any valid in-bounds placement (degenerate/late-game edge case): pick the first available card, call `aiSession.handleLocalPick(cardId)`, log a `console.warn`, and return a move with coordinates `(0, 0, up)` — identical to the current hardcoded stub. **Do not call `handleLocalDiscard()`.**
+6. `SoloConnection` emits the returned `PlayerMoveMessage` as an incoming MOVE → human game flow proceeds
 
 ### When Human Sends a MOVE
 
@@ -68,8 +68,8 @@ Triggered by `SoloConnection.emitOpponentMove()` (once after `REVEAL`, once per 
 
 ## Error Handling & Edge Cases
 
-**AI Discard:**
-If no available card has any valid in-bounds placement, the AI picks the first available card and calls `aiSession.handleLocalDiscard()`. The MOVE sentinel emitted back matches the existing behavior for the remote-player discard limitation documented in the prior spec.
+**AI Discard (degenerate edge case):**
+`generateMove()` always tries to find a card with a valid in-bounds placement before returning. The "no valid placement" fallback (step 5 above) uses coordinates `(0, 0, up)` — the same as the current stub — and does NOT call `handleLocalDiscard()`. This means `LobbyFlow` will call `humanSession.handlePlacement()` with those coordinates, which will fail validation. This is the same undefined behavior as the pre-existing remote-player discard protocol gap. It is explicitly deferred to the same phase as fixing that gap. `console.warn` makes the case debuggable if it occurs.
 
 **Pick order correctness:**
 `SoloConnection.emitOpponentMove()` is called once after `REVEAL` and once per human `MOVE`. The AI session's `deal.snapshot()` reflects what has been picked so far at each call, so random selection is always from genuinely available cards regardless of which player goes first in the round.
@@ -111,4 +111,4 @@ A `SoloGame` story that runs a complete solo game to completion and asserts the 
 - Strategic AI (greedy, look-ahead, minimax) — the random baseline is the goal for this phase
 - Difficulty levels or AI personality
 - Full removal of `isLocal` convenience methods from `GameSession` (deferred per the Player-Agnostic principle note)
-- Encoding AI discards in the peer protocol (existing known limitation, not addressed here)
+- Encoding AI discards in the peer protocol — the degenerate "all cards unplaceable" case shares the pre-existing remote-player discard gap and is deferred to when that gap is resolved
