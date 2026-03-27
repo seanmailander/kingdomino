@@ -6,6 +6,12 @@ import {
   REVEAL,
   revealMessage,
   START,
+  PAUSE_REQUEST,
+  PAUSE_ACK,
+  RESUME_REQUEST,
+  RESUME_ACK,
+  EXIT_REQUEST,
+  EXIT_ACK,
   type GameMessage,
   type GameMessagePayload,
   type GameMessageType,
@@ -90,6 +96,14 @@ export class SoloConnection {
         return;
       case MOVE:
         this.emitOpponentMove();
+        return;
+      case PAUSE_REQUEST:
+      case PAUSE_ACK:
+      case RESUME_REQUEST:
+      case RESUME_ACK:
+      case EXIT_REQUEST:
+      case EXIT_ACK:
+        // Control messages handled in Task 3
         return;
       default: {
         const _exhaustiveCheck: never = message;

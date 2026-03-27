@@ -4,6 +4,12 @@ import {
   MOVE,
   REVEAL,
   START,
+  PAUSE_REQUEST,
+  PAUSE_ACK,
+  RESUME_REQUEST,
+  RESUME_ACK,
+  EXIT_REQUEST,
+  EXIT_ACK,
   committmentMessage,
   moveMessage,
   revealMessage,
@@ -73,6 +79,14 @@ export class TestConnection {
         this.respondToReveal();
         return;
       case MOVE:
+        return;
+      case PAUSE_REQUEST:
+      case PAUSE_ACK:
+      case RESUME_REQUEST:
+      case RESUME_ACK:
+      case EXIT_REQUEST:
+      case EXIT_ACK:
+        // Control messages handled in Task 3
         return;
       default: {
         const exhaustiveCheck: never = message;

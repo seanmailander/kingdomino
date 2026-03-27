@@ -3,6 +3,12 @@ import {
   MOVE,
   REVEAL,
   START,
+  PAUSE_REQUEST,
+  PAUSE_ACK,
+  RESUME_REQUEST,
+  RESUME_ACK,
+  EXIT_REQUEST,
+  EXIT_ACK,
   type GameMessage,
   type GameMessagePayload,
   type GameMessageType,
@@ -112,6 +118,14 @@ export class MultiplayerConnection {
         return;
       case MOVE:
         this.emitIncoming(MOVE, message.content);
+        return;
+      case PAUSE_REQUEST:
+      case PAUSE_ACK:
+      case RESUME_REQUEST:
+      case RESUME_ACK:
+      case EXIT_REQUEST:
+      case EXIT_ACK:
+        // Control messages handled in Task 3
         return;
       default: {
         const exhaustiveCheck: never = message;
