@@ -4,10 +4,21 @@ import { GameSession, Player } from "./GameSession";
 import type { GameEventBus, GameEventMap, CardId } from "./GameSession";
 import type { GameMessage, GameMessagePayload, GameMessageType } from "./game.messages";
 import { SoloConnection } from "./connection.solo";
-import { setCurrentSession, setRoom, awaitLobbyStart, awaitLobbyLeave } from "../../App/store";
-import { Lobby, Game, Splash } from "../../App/AppExtras";
+import {
+  setCurrentSession,
+  setRoom,
+  getRoom,
+  onceRoomIsNot,
+  awaitLobbyStart,
+  awaitLobbyLeave,
+  awaitPauseIntent,
+  resetAppState,
+} from "../../App/store";
+import { Lobby, Game, Splash, GamePaused } from "../../App/AppExtras";
 import type { GameVariant } from "../gamelogic/cards";
 import type { GameBonuses } from "./GameSession";
+
+const CONTROL_TIMEOUT_MS = 5000;
 
 // ── Connection interface ───────────────────────────────────────────────────────
 
@@ -89,6 +100,42 @@ export class LobbyFlow {
     setRoom(Splash);
   }
 
+  private async handleLocalPauseRequest() {
+    if (getRoom() !== Game) return;
+    this.connectionManager!.sendPauseRequest();
+    await this.connectionManager!.waitForPauseAck(CONTROL_TIMEOUT_MS);
+    setRoom(GamePaused);
+  }
+
+  private handleIncomingPauseRequest() {
+    if (getRoom() === GamePaused) {
+      this.connectionManager!.sendPauseAck();
+      return;
+    }
+    if (getRoom() !== Game) return;
+    this.connectionManager!.sendPauseAck();
+    setRoom(GamePaused);
+  }
+
+  private handleIncomingExitRequest() {
+    this.connectionManager!.sendExitAck();
+    resetAppState();
+  }
+
+  private async listenForControlMessages() {
+    try {
+      while (getRoom() === Game || getRoom() === GamePaused) {
+        await Promise.race([
+          this.connectionManager!.waitForPauseRequest().then(() => this.handleIncomingPauseRequest()),
+          this.connectionManager!.waitForExitRequest().then(() => this.handleIncomingExitRequest()),
+          awaitPauseIntent().then(() => this.handleLocalPauseRequest()),
+        ]);
+      }
+    } catch {
+      // Connection destroyed or flow ended — stop silently
+    }
+  }
+
   private async playRound() {
     const { session, connectionManager } = this;
     if (!session || !connectionManager) throw new Error("LobbyFlow: no active game");
@@ -109,17 +156,22 @@ export class LobbyFlow {
       if (!actor) break;
 
       if (actor.isLocal) {
-        // Wait for user to pick via Card.tsx (session.handleLocalPick)
-        await waitForEvent(session.events, "pick:made", (e) => e.player.id === actor.id);
+        const pickOrPause = await Promise.race([
+          waitForEvent(session.events, "pick:made", (e) => e.player.id === actor.id)
+            .then((r) => ({ type: "pick" as const, r })),
+          onceRoomIsNot(Game).then(() => ({ type: "inactive" as const })),
+        ]);
+        if (pickOrPause.type === "inactive") return;
 
-        // Wait for user to place via BoardArea.tsx (session.handleLocalPlacement)
-        const placeEvent = await waitForEvent(
-          session.events,
-          "place:made",
-          (e) => e.player.id === actor.id,
-        );
+        const placeOrPause = await Promise.race([
+          waitForEvent(session.events, "place:made", (e) => e.player.id === actor.id)
+            .then((r) => ({ type: "place" as const, r })),
+          onceRoomIsNot(Game).then(() => ({ type: "inactive" as const })),
+        ]);
+        if (placeOrPause.type === "inactive") return;
 
         // Send move to peer
+        const placeEvent = placeOrPause.r;
         connectionManager.sendMove({
           playerId: actor.id,
           card: placeEvent.cardId,
@@ -128,9 +180,16 @@ export class LobbyFlow {
           direction: placeEvent.direction,
         });
       } else {
-        // Wait for opponent's move from peer
-        const { move } = await connectionManager.waitForMove();
+        const moveOrPause = await Promise.race([
+          connectionManager.waitForMove().then(
+            (r) => ({ type: "move" as const, r }),
+            () => ({ type: "inactive" as const }),
+          ),
+          onceRoomIsNot(Game).then(() => ({ type: "inactive" as const })),
+        ]);
+        if (moveOrPause.type === "inactive") return;
 
+        const { move } = moveOrPause.r;
         session.handlePick(move.playerId, move.card);
         session.handlePlacement(move.playerId, move.x, move.y, move.direction);
       }
@@ -161,6 +220,9 @@ export class LobbyFlow {
 
       setRoom(Game);
 
+      // Start listening for control messages immediately — before any async work
+      void this.listenForControlMessages();
+
       // Determine first-round pick order from a shared cryptographic seed
       const firstSeed = await this.connectionManager.buildTrustedSeed();
       const orderedIds = chooseOrderFromSeed(firstSeed, connection.peerIdentifiers);
@@ -168,17 +230,20 @@ export class LobbyFlow {
 
       this.session.startGame(pickOrder);
 
-      // Play all rounds until the deck is exhausted
+      // Play rounds until the deck is exhausted or the game is paused/exited
       let completedRounds = 0;
-      do {
+      while (getRoom() === Game) {
         await this.playRound();
         completedRounds += 1;
-      } while (
-        this.remainingDeck?.length &&
-        this.shouldContinuePlaying(completedRounds, this.remainingDeck)
-      );
+        if (
+          !this.remainingDeck?.length ||
+          !this.shouldContinuePlaying(completedRounds, this.remainingDeck)
+        ) break;
+      }
 
-      this.session.endGame();
+      if (getRoom() === Game) {
+        this.session.endGame();
+      }
     } catch (e) {
       // Connection error — reset to Splash
       console.error(e);

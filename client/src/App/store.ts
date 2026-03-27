@@ -59,6 +59,23 @@ export const setRoom = (room: Room): void => {
 
 export const getRoom = (): Room => roomSignal();
 
+/**
+ * Resolves once the room is no longer `room`.
+ * If the room is already different, resolves immediately.
+ */
+export const onceRoomIsNot = (room: Room): Promise<void> => {
+  return new Promise((resolve) => {
+    let resolved = false;
+    const dispose = effect(() => {
+      if (roomSignal() !== room && !resolved) {
+        resolved = true;
+        queueMicrotask(dispose);
+        resolve();
+      }
+    });
+  });
+};
+
 // ── Lobby coordination ────────────────────────────────────────────────────────
 //
 // Replaces action dispatching for start/leave commands from the Lobby UI.

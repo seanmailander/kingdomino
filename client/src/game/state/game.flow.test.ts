@@ -6,8 +6,11 @@ import {
   setCurrentSession,
   setRoom,
   triggerLobbyLeave,
+  resetAppState,
+  triggerLobbyStart,
+  triggerPauseIntent,
 } from "../../App/store";
-import { Splash, Lobby } from "../../App/AppExtras";
+import { Splash, Lobby, Game, GamePaused } from "../../App/AppExtras";
 import { LobbyFlow } from "./game.flow";
 import {
   MOVE,
@@ -15,6 +18,7 @@ import {
   type GameMessagePayload,
   type GameMessageType,
 } from "./game.messages";
+import { TestConnection } from "./connection.testing";
 
 class StubConnection {
   readonly peerIdentifiers = {
@@ -71,5 +75,64 @@ describe("LobbyFlow", () => {
       expect(getRoom()).toBe(Lobby);
       expect(getCurrentSession()?.players.map((player) => player.id)).toEqual(["me", "them"]);
     });
+  });
+});
+
+describe("LobbyFlow control transitions", () => {
+  afterEach(async () => {
+    resetAppState();
+    await vi.waitFor(() => {
+      expect(getRoom()).toBe(Splash);
+    });
+  });
+
+  it("enters GamePaused after pause request/ack handshake (local initiates)", async () => {
+    setCurrentSession(null);
+    setRoom(Splash);
+    const flow = new LobbyFlow();
+    const connection = new TestConnection({
+      scenario: {
+        handshakes: [{ secret: 1 }, { secret: 2 }, { secret: 3 }, { secret: 4 }],
+        moves: [
+          { card: 1, x: 0, y: 1, direction: "up" },
+          { card: 2, x: 0, y: 2, direction: "up" },
+          { card: 3, x: 0, y: 3, direction: "up" },
+        ],
+        control: { respondToPauseRequest: true },
+      },
+    });
+    flow.ready(connection);
+
+    await vi.waitFor(() => expect(getRoom()).toBe(Lobby));
+    triggerLobbyStart();
+    await vi.waitFor(() => expect(getRoom()).toBe(Game));
+
+    triggerPauseIntent();
+
+    await vi.waitFor(() => expect(getRoom()).toBe(GamePaused), { timeout: 3000 });
+  });
+
+  it("handles incoming pause request from remote (remote initiates)", async () => {
+    setCurrentSession(null);
+    setRoom(Splash);
+    const flow = new LobbyFlow();
+    const connection = new TestConnection({
+      scenario: {
+        handshakes: [{ secret: 1 }, { secret: 2 }, { secret: 3 }, { secret: 4 }],
+        moves: [
+          { card: 1, x: 0, y: 1, direction: "up" },
+          { card: 2, x: 0, y: 2, direction: "up" },
+          { card: 3, x: 0, y: 3, direction: "up" },
+        ],
+        control: { sendPauseRequestOnStart: true },
+      },
+    });
+    flow.ready(connection);
+
+    await vi.waitFor(() => expect(getRoom()).toBe(Lobby));
+    triggerLobbyStart();
+    await vi.waitFor(() => expect(getRoom()).toBe(Game));
+
+    await vi.waitFor(() => expect(getRoom()).toBe(GamePaused), { timeout: 3000 });
   });
 });

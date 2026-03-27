@@ -35,9 +35,17 @@ type TestHandshake = {
 
 type ScriptedMove = Omit<PlayerMoveMessage, "playerId">;
 
+export type TestConnectionControl = {
+  respondToPauseRequest?: boolean;
+  respondToResumeRequest?: boolean;
+  respondToExitRequest?: boolean;
+  sendPauseRequestOnStart?: boolean;
+};
+
 export type TestConnectionScenario = {
   handshakes: ReadonlyArray<TestHandshake>;
   moves: ReadonlyArray<ScriptedMove>;
+  control?: TestConnectionControl;
 };
 
 export type TestConnectionOptions = {
@@ -55,6 +63,7 @@ export class TestConnection {
 
   private handshakeIndex = 0;
   private isDestroyed = false;
+  private pauseRequestOnStartFired = false;
 
   constructor({ me = "me", them = "them", scenario }: TestConnectionOptions) {
     if (scenario.handshakes.length === 0) {
@@ -81,12 +90,23 @@ export class TestConnection {
       case MOVE:
         return;
       case PAUSE_REQUEST:
-      case PAUSE_ACK:
+        if (this.scenario.control?.respondToPauseRequest) {
+          this.emitIncoming(PAUSE_ACK, undefined);
+        }
+        return;
       case RESUME_REQUEST:
-      case RESUME_ACK:
+        if (this.scenario.control?.respondToResumeRequest) {
+          this.emitIncoming(RESUME_ACK, undefined);
+        }
+        return;
       case EXIT_REQUEST:
+        if (this.scenario.control?.respondToExitRequest) {
+          this.emitIncoming(EXIT_ACK, undefined);
+        }
+        return;
+      case PAUSE_ACK:
+      case RESUME_ACK:
       case EXIT_ACK:
-        // Control messages handled in Task 3
         return;
       default: {
         const exhaustiveCheck: never = message;
@@ -94,6 +114,14 @@ export class TestConnection {
       }
     }
   };
+
+  triggerRemoteControl(type: "pause" | "resume" | "exit") {
+    switch (type) {
+      case "pause": this.emitIncoming(PAUSE_REQUEST, undefined); return;
+      case "resume": this.emitIncoming(RESUME_REQUEST, undefined); return;
+      case "exit": this.emitIncoming(EXIT_REQUEST, undefined); return;
+    }
+  }
 
   waitFor = <T extends GameMessageType>(messageType: T): Promise<GameMessagePayload<T>> => {
     this.assertActive();
@@ -138,9 +166,19 @@ export class TestConnection {
 
   private respondToReveal() {
     const handshake = this.currentHandshake();
+    const isFirstRoundHandshake = this.handshakeIndex === 1;
+    const ctrl = this.scenario.control;
+    // When any control behavior is configured, skip MOVE emissions so that
+    // waitForMove() stays pending and pause/exit races resolve cleanly.
+    const hasControlBehavior = !!(
+      ctrl?.respondToPauseRequest ||
+      ctrl?.respondToResumeRequest ||
+      ctrl?.respondToExitRequest ||
+      ctrl?.sendPauseRequestOnStart
+    );
 
     let queuedMove: GameMessagePayload<typeof MOVE> | null = null;
-    if (this.handshakeIndex > 0) {
+    if (this.handshakeIndex > 0 && !hasControlBehavior) {
       const scriptedMove = this.scenario.moves[this.handshakeIndex - 1];
       if (!scriptedMove) {
         throw new Error(
@@ -157,6 +195,12 @@ export class TestConnection {
 
     if (queuedMove) {
       this.emitIncoming(MOVE, queuedMove);
+    }
+
+    if (isFirstRoundHandshake && ctrl?.sendPauseRequestOnStart && !this.pauseRequestOnStartFired) {
+      this.pauseRequestOnStartFired = true;
+      // Delay long enough for test polling (vi.waitFor interval ~50ms) to observe Game state
+      setTimeout(() => this.emitIncoming(PAUSE_REQUEST, undefined), 100);
     }
   }
 
