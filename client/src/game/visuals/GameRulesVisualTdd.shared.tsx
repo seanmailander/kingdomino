@@ -50,6 +50,7 @@ export type RealGameScenario = {
   handshakes: ReadonlyArray<HandshakeScript>;
   localMoves: ReadonlyArray<LocalMoveScript>;
   remoteMoves: TestConnectionScenario["moves"];
+  remoteControl?: TestConnectionScenario["control"];
 };
 
 export const TIE_BREAK_SCENARIO: RealGameScenario = {
@@ -178,6 +179,19 @@ export const BONUS_SCENARIO: RealGameScenario = {
   ],
   localMoves: [{ card: 0, x: 7, y: 5, direction: "right" }], // grain at (7,5),(8,5) — stays within bounds
   remoteMoves: [{ card: 2, x: 7, y: 6, direction: "right" }], // wood east of their castle
+};
+
+// Scenario where game is in progress; remote peer will ack any pause request.
+// Use with triggerPauseIntent() in story play to reach GamePaused state.
+export const PAUSABLE_GAME_SCENARIO: RealGameScenario = {
+  handshakes: [
+    { localSecret: 11, remoteSecret: 101 }, // pick-order seed (local picks first)
+    { localSecret: 22, remoteSecret: 202 }, // round 1 seed
+    { localSecret: 33, remoteSecret: 303 }, // round 2 seed (if resumed)
+  ],
+  localMoves: [],
+  remoteMoves: [],
+  remoteControl: { respondToPauseRequest: true, respondToResumeRequest: true },
 };
 
 export type RuleScenarioProps = {
@@ -468,6 +482,7 @@ export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }
           committment: remoteCommittment,
         })),
         moves: scenario.remoteMoves,
+        control: scenario.remoteControl,
       },
     });
 

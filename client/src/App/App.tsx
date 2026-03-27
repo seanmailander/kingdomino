@@ -15,7 +15,7 @@ export function App() {
       <p>{hint}</p>
       {room === "Splash" && <SplashComponent />}
       {room === "Lobby" && <LobbyComponent session={session} />}
-      {room === "Game" && session && <GameComponent session={session} />}
+      {(room === "Game" || room === "GamePaused") && session && <GameComponent session={session} />}
     </div>
   );
 }

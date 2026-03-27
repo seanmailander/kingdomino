@@ -1,14 +1,16 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect } from "storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 
 import {
   DISCARD_WHEN_UNPLACEABLE_SCENARIO,
   FIRST_ROUND_RULE_SCENARIO,
   GRID_BOUNDARY_RULE_SCENARIO,
+  PAUSABLE_GAME_SCENARIO,
   PLACEMENT_CONNECT_LEGALITY_SCENARIO,
   RealGameRuleHarness,
   RuleScenarioScaffold,
 } from "./GameRulesVisualTdd.shared";
+import { triggerPauseIntent } from "../../App/store";
 
 const meta = {
   title: "Game/Rules Visual TDD/Play",
@@ -105,5 +107,57 @@ export const FinalTurnNoReselection: Story = {
     await expect(canvas.getByText("Round phase: none")).toBeVisible();
     await expect(canvas.getAllByText(/^pick:/i)).toHaveLength(2);
     await expect(canvas.getAllByText(/^round-started:/i)).toHaveLength(1);
+  },
+};
+
+export const PausedState: Story = {
+  args: {
+    title: "Game paused state",
+    ruleFocus: "Pause overlay shown; gameplay input locked",
+    given: "A game is in progress",
+    when: "The local player triggers pause and remote acks",
+    expectedOutcome: "PauseOverlay appears; card picks and placements are disabled",
+  },
+  render: () => <RealGameRuleHarness scenario={PAUSABLE_GAME_SCENARIO} />,
+  play: async ({ canvas }) => {
+    // Wait for game to enter active Game state
+    await expect(await canvas.findByText("Room: Game")).toBeVisible();
+
+    // Trigger pause from the store (simulates Pause button in UI)
+    triggerPauseIntent();
+
+    // PauseOverlay should appear
+    await expect(await canvas.findByRole("button", { name: /resume/i })).toBeVisible();
+    await expect(canvas.getByRole("button", { name: /exit/i })).toBeVisible();
+
+    // The "Game Paused" heading in PauseOverlay should be visible
+    await expect(canvas.getByRole("heading", { name: /game paused/i })).toBeVisible();
+  },
+};
+
+export const ExitConfirmState: Story = {
+  args: {
+    title: "Exit confirmation dialog",
+    ruleFocus: "Player must confirm before exiting a paused game",
+    given: "A game is paused",
+    when: "The local player clicks Exit",
+    expectedOutcome: "ExitConfirmDialog appears with confirm and cancel buttons",
+  },
+  render: () => <RealGameRuleHarness scenario={PAUSABLE_GAME_SCENARIO} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Reach Game state and pause
+    await expect(await canvas.findByText("Room: Game")).toBeVisible();
+    triggerPauseIntent();
+    const exitBtn = await canvas.findByRole("button", { name: /^exit$/i });
+    await expect(exitBtn).toBeVisible();
+
+    // Click Exit in the PauseOverlay
+    await userEvent.click(exitBtn);
+
+    // Exit confirmation dialog should appear
+    await expect(await canvas.findByRole("button", { name: /exit game/i })).toBeVisible();
+    await expect(canvas.getByRole("button", { name: /cancel/i })).toBeVisible();
   },
 };
