@@ -95,9 +95,47 @@ export const triggerLobbyLeave = (): void => {
   }
 };
 
+// ── Pause / exit coordination ─────────────────────────────────────────────────
+
+let pauseIntentResolvers: Array<(value: undefined) => void> = [];
+
+export const awaitPauseIntent = (): Promise<void> =>
+  new Promise((resolve) => {
+    pauseIntentResolvers.push(resolve);
+  });
+
+export const triggerPauseIntent = (): void => {
+  const resolvers = pauseIntentResolvers;
+  pauseIntentResolvers = [];
+  for (const resolve of resolvers) {
+    resolve(undefined);
+  }
+};
+
+let exitConfirmResolvers: Array<(value: boolean | undefined) => void> = [];
+
+export const awaitExitConfirm = (): Promise<boolean | undefined> =>
+  new Promise((resolve) => {
+    exitConfirmResolvers.push(resolve);
+  });
+
+export const triggerExitConfirm = (confirmed: boolean): void => {
+  const resolvers = exitConfirmResolvers;
+  exitConfirmResolvers = [];
+  for (const resolve of resolvers) {
+    resolve(confirmed);
+  }
+};
+
 export const resetAppState = (): void => {
   lobbyStartResolvers = [];
   lobbyLeaveResolvers = [];
+  const pendingPause = pauseIntentResolvers;
+  pauseIntentResolvers = [];
+  for (const resolve of pendingPause) resolve(undefined);
+  const pendingExit = exitConfirmResolvers;
+  exitConfirmResolvers = [];
+  for (const resolve of pendingExit) resolve(undefined);
   setCurrentSession(null);
   setRoom(Splash);
 };
