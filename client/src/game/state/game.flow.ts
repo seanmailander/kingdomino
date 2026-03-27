@@ -137,6 +137,10 @@ export class LobbyFlow {
   }
 
   private async listenForControlMessages() {
+    // Each loop iteration creates new waitFor promises. When Promise.race resolves one,
+    // the other two remain pending until the connection is destroyed (which rejects them).
+    // This is safe: connection's resolver map handles multiple concurrent waiters per type,
+    // and each handler guards against wrong room state before acting.
     try {
       while (getRoom() === Game || getRoom() === GamePaused) {
         await Promise.race([

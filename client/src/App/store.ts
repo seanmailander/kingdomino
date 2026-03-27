@@ -69,7 +69,8 @@ export const onceRoomIsNot = (room: Room): Promise<void> => {
     const dispose = effect(() => {
       if (roomSignal() !== room && !resolved) {
         resolved = true;
-        queueMicrotask(dispose);
+        // Use a lambda to avoid accessing `dispose` before initialization (TDZ safety)
+        queueMicrotask(() => dispose());
         resolve();
       }
     });
