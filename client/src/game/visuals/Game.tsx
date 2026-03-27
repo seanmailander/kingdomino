@@ -7,8 +7,8 @@ import { PauseOverlay } from "./PauseOverlay";
 import { ExitConfirmDialog } from "./ExitConfirmDialog";
 import type { GameSession } from "../state/GameSession";
 import { useApp } from "../../App/store";
-import { triggerResumeIntent, triggerExitConfirm } from "../../App/store";
-import { GamePaused } from "../../App/AppExtras";
+import { triggerPauseIntent, triggerResumeIntent, triggerExitConfirm } from "../../App/store";
+import { Game as GameRoom, GamePaused } from "../../App/AppExtras";
 
 type GameProps = {
   session: GameSession;
@@ -39,6 +39,11 @@ export function Game({ session }: GameProps) {
       )}
       {showExitConfirm && (
         <ExitConfirmDialog onConfirm={handleExitConfirm} onCancel={handleExitCancel} />
+      )}
+      {room === GameRoom && (
+        <div className="game-controls">
+          <button onClick={triggerPauseIntent}>Pause</button>
+        </div>
       )}
       <div className="deal">
         {deal.map((card) => (
