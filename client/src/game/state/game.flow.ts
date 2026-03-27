@@ -12,6 +12,7 @@ import {
   awaitLobbyStart,
   awaitLobbyLeave,
   awaitPauseIntent,
+  awaitResumeIntent,
   resetAppState,
 } from "../../App/store";
 import { Lobby, Game, Splash, GamePaused } from "../../App/AppExtras";
@@ -117,6 +118,19 @@ export class LobbyFlow {
     setRoom(GamePaused);
   }
 
+  private async handleLocalResumeRequest() {
+    if (getRoom() !== GamePaused) return;
+    this.connectionManager!.sendResumeRequest();
+    await this.connectionManager!.waitForResumeAck(CONTROL_TIMEOUT_MS);
+    setRoom(Game);
+  }
+
+  private handleIncomingResumeRequest() {
+    if (getRoom() !== GamePaused) return;
+    this.connectionManager!.sendResumeAck();
+    setRoom(Game);
+  }
+
   private handleIncomingExitRequest() {
     this.connectionManager!.sendExitAck();
     resetAppState();
@@ -127,8 +141,10 @@ export class LobbyFlow {
       while (getRoom() === Game || getRoom() === GamePaused) {
         await Promise.race([
           this.connectionManager!.waitForPauseRequest().then(() => this.handleIncomingPauseRequest()),
+          this.connectionManager!.waitForResumeRequest().then(() => this.handleIncomingResumeRequest()),
           this.connectionManager!.waitForExitRequest().then(() => this.handleIncomingExitRequest()),
           awaitPauseIntent().then(() => this.handleLocalPauseRequest()),
+          awaitResumeIntent().then(() => this.handleLocalResumeRequest()),
         ]);
       }
     } catch {
@@ -232,8 +248,14 @@ export class LobbyFlow {
 
       // Play rounds until the deck is exhausted or the game is paused/exited
       let completedRounds = 0;
-      while (getRoom() === Game) {
+      while (getRoom() === Game || getRoom() === GamePaused) {
+        if (getRoom() === GamePaused) {
+          // Suspended: wait for listenForControlMessages to resume or exit
+          await onceRoomIsNot(GamePaused);
+          continue;
+        }
         await this.playRound();
+        if (getRoom() !== Game) continue; // Paused or exited mid-round
         completedRounds += 1;
         if (
           !this.remainingDeck?.length ||

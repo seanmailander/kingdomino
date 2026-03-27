@@ -129,6 +129,21 @@ export const triggerPauseIntent = (): void => {
   }
 };
 
+let resumeIntentResolvers: Array<(value: undefined) => void> = [];
+
+export const awaitResumeIntent = (): Promise<void> =>
+  new Promise((resolve) => {
+    resumeIntentResolvers.push(resolve);
+  });
+
+export const triggerResumeIntent = (): void => {
+  const resolvers = resumeIntentResolvers;
+  resumeIntentResolvers = [];
+  for (const resolve of resolvers) {
+    resolve(undefined);
+  }
+};
+
 let exitConfirmResolvers: Array<(value: boolean | undefined) => void> = [];
 
 export const awaitExitConfirm = (): Promise<boolean | undefined> =>
@@ -150,6 +165,9 @@ export const resetAppState = (): void => {
   const pendingPause = pauseIntentResolvers;
   pauseIntentResolvers = [];
   for (const resolve of pendingPause) resolve(undefined);
+  const pendingResume = resumeIntentResolvers;
+  resumeIntentResolvers = [];
+  for (const resolve of pendingResume) resolve(undefined);
   const pendingExit = exitConfirmResolvers;
   exitConfirmResolvers = [];
   for (const resolve of pendingExit) resolve(undefined);

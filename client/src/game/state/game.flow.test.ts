@@ -9,6 +9,7 @@ import {
   resetAppState,
   triggerLobbyStart,
   triggerPauseIntent,
+  triggerResumeIntent,
 } from "../../App/store";
 import { Splash, Lobby, Game, GamePaused } from "../../App/AppExtras";
 import { LobbyFlow } from "./game.flow";
@@ -134,5 +135,29 @@ describe("LobbyFlow control transitions", () => {
     await vi.waitFor(() => expect(getRoom()).toBe(Game));
 
     await vi.waitFor(() => expect(getRoom()).toBe(GamePaused), { timeout: 3000 });
+  });
+
+  it("returns to Game state after local resume", async () => {
+    setCurrentSession(null);
+    setRoom(Splash);
+    const flow = new LobbyFlow();
+    const connection = new TestConnection({
+      scenario: {
+        handshakes: [{ secret: 1 }, { secret: 2 }, { secret: 3 }, { secret: 4 }],
+        moves: [],
+        control: { respondToPauseRequest: true, respondToResumeRequest: true },
+      },
+    });
+    flow.ready(connection);
+
+    await vi.waitFor(() => expect(getRoom()).toBe(Lobby));
+    triggerLobbyStart();
+    await vi.waitFor(() => expect(getRoom()).toBe(Game));
+
+    triggerPauseIntent();
+    await vi.waitFor(() => expect(getRoom()).toBe(GamePaused), { timeout: 3000 });
+
+    triggerResumeIntent();
+    await vi.waitFor(() => expect(getRoom()).toBe(Game), { timeout: 3000 });
   });
 });

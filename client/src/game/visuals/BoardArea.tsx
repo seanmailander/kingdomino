@@ -2,6 +2,8 @@ import React, { useState, useRef } from "react";
 
 import "./board.css";
 import type { GameSession } from "../state/GameSession";
+import { useApp } from "../../App/store";
+import { Game as GameRoom } from "../../App/AppExtras";
 
 import { Tile } from "./Tile";
 import { BoardOverlay } from "./BoardOverlay";
@@ -33,6 +35,9 @@ const rotateLookup: Record<Direction, Direction> = {
 };
 
 export function BoardArea({ session, playerId, isMe }: BoardAreaProps) {
+  const { room } = useApp();
+  const isActive = room === GameRoom;
+
   const myBoard = session.boardFor(playerId);
   const cardId = session.localCardToPlace();
   const isMyPlace = session.isMyPlace();
@@ -44,7 +49,7 @@ export function BoardArea({ session, playerId, isMe }: BoardAreaProps) {
   const getBoardPosition = () => boardNode.current?.getBoundingClientRect();
 
   const handleClick = (x: number, y: number) => () => {
-    if (isMyPlace && isValidTile(x, y) && isValidDirection(x, y, direction)) {
+    if (isActive && isMyPlace && isValidTile(x, y) && isValidDirection(x, y, direction)) {
       session.handleLocalPlacement(x, y, direction);
     }
   };
@@ -59,11 +64,11 @@ export function BoardArea({ session, playerId, isMe }: BoardAreaProps) {
 
   // TODO: this is forcing keypress to re-add listeners on ever change of direction
   // is there an easier way?
-  const handleRotate = () => setDirection(rotateLookup[direction]);
-  const handleFlip = () => setFlipped(!flipped);
+  const handleRotate = () => isActive && setDirection(rotateLookup[direction]);
+  const handleFlip = () => isActive && setFlipped(!flipped);
 
-  useKeypress("KeyR", () => handleRotate(), [direction]);
-  useKeypress("KeyF", () => handleFlip(), [flipped]);
+  useKeypress("KeyR", () => handleRotate(), [direction, isActive]);
+  useKeypress("KeyF", () => handleFlip(), [flipped, isActive]);
 
   return (
     <>
