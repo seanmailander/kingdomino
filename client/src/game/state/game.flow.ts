@@ -104,7 +104,11 @@ export class LobbyFlow {
   private async handleLocalPauseRequest() {
     if (getRoom() !== Game) return;
     this.connectionManager!.sendPauseRequest();
-    await this.connectionManager!.waitForPauseAck(CONTROL_TIMEOUT_MS);
+    try {
+      await this.connectionManager!.waitForPauseAck(CONTROL_TIMEOUT_MS);
+    } catch {
+      return; // Peer didn't ack in time — stay in Game, loop continues
+    }
     setRoom(GamePaused);
   }
 
@@ -121,7 +125,11 @@ export class LobbyFlow {
   private async handleLocalResumeRequest() {
     if (getRoom() !== GamePaused) return;
     this.connectionManager!.sendResumeRequest();
-    await this.connectionManager!.waitForResumeAck(CONTROL_TIMEOUT_MS);
+    try {
+      await this.connectionManager!.waitForResumeAck(CONTROL_TIMEOUT_MS);
+    } catch {
+      return; // Peer didn't ack in time — stay paused, loop continues
+    }
     setRoom(Game);
   }
 

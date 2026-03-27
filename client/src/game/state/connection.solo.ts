@@ -98,12 +98,17 @@ export class SoloConnection {
         this.emitOpponentMove();
         return;
       case PAUSE_REQUEST:
-      case PAUSE_ACK:
+        this.emitIncoming(PAUSE_ACK, undefined);
+        return;
       case RESUME_REQUEST:
-      case RESUME_ACK:
+        this.emitIncoming(RESUME_ACK, undefined);
+        return;
       case EXIT_REQUEST:
+        this.emitIncoming(EXIT_ACK, undefined);
+        return;
+      case PAUSE_ACK:
+      case RESUME_ACK:
       case EXIT_ACK:
-        // Control messages handled in Task 3
         return;
       default: {
         const _exhaustiveCheck: never = message;
