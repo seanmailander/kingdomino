@@ -105,6 +105,13 @@ Quality Guardrails
 - If a required component or prop is not documented, report it instead of guessing.
 - Do not report completion while story tests are failing.
 
+Bug Logging Rule
+
+- When a bug or issue is noticed during any task — even if unrelated to the current work — immediately log it as a todo in the SQL `todos` table with status `pending`, then **continue the original task without switching focus**.
+- Use a descriptive kebab-case ID and enough detail in the description to reproduce and fix the bug later.
+- Example: `INSERT INTO todos (id, title, description) VALUES ('bug-scoring-edge-case', 'Fix scoring edge case', 'Score calculation returns wrong value when board has no center tile. Noticed in GameSession.calculateScore().');`
+- After the original task is complete, surface any logged bugs to the user so they can be prioritized.
+
 ---
 
 # Documentation Map
