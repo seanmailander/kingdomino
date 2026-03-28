@@ -65,20 +65,29 @@ score DESC → largestPropertySize DESC → totalCrowns DESC
 
 ## Component API
 
-```tsx
-// From GameSession.endGame() — already typed in GameSession.ts
-interface ScoreEntry {
+The `game:ended` event payload shape (from `GameSession.ts`):
+
+```typescript
+// Payload of game:ended — defined inline in GameEventMap
+type GameEndedEntry = {
   player: Player;
   score: number;           // total score (base + bonuses)
-  bonuses: {
-    middleKingdom: number; // 10 if castle centred, else 0
-    harmony: number;       // 5 if no discards, else 0
-  };
-  isWinner: boolean;       // true for all co-winners
+  bonuses: { middleKingdom: number; harmony: number };
+};
+```
+
+`GameOverScreen` uses an enriched version with `isWinner`:
+
+```typescript
+interface ScoreEntry {
+  player: Player;
+  score: number;
+  bonuses: { middleKingdom: number; harmony: number };
+  isWinner: boolean;
 }
 
 interface GameOverScreenProps {
-  scores: ScoreEntry[];        // sorted rank 1 first
+  scores: ScoreEntry[];        // sorted rank 1 first, isWinner set
   onReturnToLobby: () => void;
 }
 ```
@@ -87,12 +96,13 @@ interface GameOverScreenProps {
 
 ### Winner Determination
 
-A pure function `determineWinners(scores: RawScoreEntry[]): ScoreEntry[]` computes `isWinner` and lives in `client/src/game/gamelogic/`. It:
-1. Identifies the top-ranked player(s) by comparing `score`, then `largestPropertySize`, then `totalCrowns`
-2. Marks **all** players whose values equal the top values as `isWinner: true` (co-winner tie handling)
-3. Returns the enriched entries (still sorted rank 1 first)
+A pure function `determineWinners(scores: GameEndedEntry[]): ScoreEntry[]` in `client/src/game/gamelogic/winners.ts`:
 
-This function is pure and unit-testable independently of any component.
+1. Reads the top entry's `score`, `player.board.largestPropertySize()`, and `player.board.totalCrowns()` — all available via the `Player` object already present in the payload (both are public `Board` methods).
+2. Marks `isWinner: true` for every player whose three values equal the top entry's.
+3. Returns the enriched, still-sorted array.
+
+No changes to `GameSession.ts` or the event payload are needed.
 
 ---
 
@@ -125,7 +135,7 @@ This function is pure and unit-testable independently of any component.
 
 | Story | Purpose |
 |-------|---------|
-| `SoloWin` | 1 player, no bonuses — basic score render |
+| `TwoPlayerNoBonuses` | 2 players, clear score difference, no bonuses |
 | `TwoPlayerClear` | 2 players, clear score difference |
 | `TwoPlayerTie` | 2 players with identical score/property/crowns — both highlighted |
 
