@@ -778,9 +778,11 @@ export class GameSession {
   get phase(): GamePhase { return this._phase; }
   get players(): ReadonlyArray<Player> { return this._players; }
   get pickOrder(): ReadonlyArray<Player> { return this._pickOrder; }
-  get round(): Round | null { return this._currentRound; }
+  get currentRound(): Round | null { return this._currentRound; }
 
-  /** Returns the card infos in the current round's deal, or [] if no round is active. */
+  /** Returns the card infos in the current round's deal, or [] if no round is active.
+   *  `CardInfo` is the return type of `getCard()` from `./gamelogic/cards` — import it there.
+   */
   deal(): CardInfo[] {
     return this._currentRound ? this._currentRound.deal.cards.map((id) => getCard(id)) : [];
   }
@@ -1778,9 +1780,10 @@ private async relayRemoteMoves(session: GameSession, connection: IGameConnection
   while (session.phase === "playing" || session.phase === "paused") {
     const msg = await this.connectionManager!.waitForNextMoveMessage();
     if (!msg) break; // connection closed
-    if (msg.type === "pick")    session.handlePick(remoteId, msg.cardId);
-    if (msg.type === "place")   session.handlePlacement(remoteId, msg.x, msg.y, msg.direction);
-    if (msg.type === "discard") session.handleDiscard(remoteId);
+    // MoveMessage discriminants match the PICK/PLACE/DISCARD constants ("pick:made" etc.)
+    if (msg.type === "pick:made")    session.handlePick(remoteId, msg.cardId);
+    if (msg.type === "place:made")   session.handlePlacement(remoteId, msg.x, msg.y, msg.direction);
+    if (msg.type === "discard:made") session.handleDiscard(remoteId);
   }
 }
 ```
