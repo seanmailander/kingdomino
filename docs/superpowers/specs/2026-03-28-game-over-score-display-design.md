@@ -54,6 +54,8 @@ score DESC → largestPropertySize DESC → totalCrowns DESC
 
 | File | Change |
 |------|--------|
+| `client/src/game/gamelogic/winners.ts` | **New** — pure `determineWinners()` function |
+| `client/src/game/gamelogic/winners.test.ts` | **New** — unit tests for `determineWinners()` |
 | `client/src/game/visuals/GameOverScreen.tsx` | **New** — display component |
 | `client/src/game/visuals/GameOverScreen.stories.tsx` | **New** — Storybook stories + play tests |
 | `client/src/App/store.ts` | Add `gameOverScores` signal, populate on `game:ended` |
@@ -72,6 +74,7 @@ interface ScoreEntry {
     middleKingdom: number; // 10 if castle centred, else 0
     harmony: number;       // 5 if no discards, else 0
   };
+  isWinner: boolean;       // true for all co-winners
 }
 
 interface GameOverScreenProps {
@@ -81,6 +84,15 @@ interface GameOverScreenProps {
 ```
 
 `baseScore = score − bonuses.middleKingdom − bonuses.harmony`
+
+### Winner Determination
+
+A pure function `determineWinners(scores: RawScoreEntry[]): ScoreEntry[]` computes `isWinner` and lives in `client/src/game/gamelogic/`. It:
+1. Identifies the top-ranked player(s) by comparing `score`, then `largestPropertySize`, then `totalCrowns`
+2. Marks **all** players whose values equal the top values as `isWinner: true` (co-winner tie handling)
+3. Returns the enriched entries (still sorted rank 1 first)
+
+This function is pure and unit-testable independently of any component.
 
 ---
 
@@ -105,6 +117,7 @@ interface GameOverScreenProps {
 - Middle Kingdom row only shown if `bonuses.middleKingdom > 0`
 - Harmony row only shown if `bonuses.harmony > 0`
 - Winner (rank 1) visually distinguished (e.g. trophy icon, bold name, or highlighted card)
+- **Ties:** All players where `isWinner === true` are highlighted; ties are fully supported via `determineWinners()`
 
 ---
 
@@ -114,7 +127,7 @@ interface GameOverScreenProps {
 |-------|---------|
 | `SoloWin` | 1 player, no bonuses — basic score render |
 | `TwoPlayerClear` | 2 players, clear score difference |
-| `WithBonuses` | Winner has both middle kingdom + harmony bonuses |
+| `TwoPlayerTie` | 2 players with identical score/property/crowns — both highlighted |
 
 Each story includes a `play` function asserting:
 - Winner is highlighted
@@ -133,8 +146,8 @@ Each story includes a `play` function asserting:
 
 ## Testing Strategy
 
-1. **Visual TDD** — Write story + play assertions first (red), then implement component (green).
-2. No new unit test files needed; scoring logic is already unit-tested in `scoring.test.ts`.
+1. **Unit tests first** — write `winners.test.ts` for `determineWinners()` (single winner, tie, multi-player), then implement the function.
+2. **Visual TDD** — Write story + play assertions first (red), then implement component (green).
 3. Run `cd client && npm test` to confirm no regressions.
 
 ---
