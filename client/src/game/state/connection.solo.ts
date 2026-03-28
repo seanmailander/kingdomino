@@ -15,10 +15,9 @@ import {
   type GameMessage,
   type GameMessagePayload,
   type GameMessageType,
-  type PlayerMoveMessage,
 } from "./game.messages";
-import { up } from "../gamelogic/cards";
 import { commit } from "../gamelogic/utils";
+import type { RandomAIPlayer } from "./ai.player";
 
 type AnyGameMessagePayload = {
   [MessageType in GameMessageType]: GameMessagePayload<MessageType>;
@@ -35,12 +34,17 @@ export class SoloConnection {
     them: "them",
   } as const;
 
+  private readonly aiPlayer: RandomAIPlayer;
   private readonly messageQueues = new Map<GameMessageType, unknown[]>();
   private readonly messageResolvers = new Map<GameMessageType, MessageResolver[]>();
 
   private isDestroyed = false;
 
   private readonly commitData = commit();
+
+  constructor(aiPlayer: RandomAIPlayer) {
+    this.aiPlayer = aiPlayer;
+  }
 
   send = (message: GameMessage) => {
     this.assertActive();
@@ -70,6 +74,7 @@ export class SoloConnection {
       return;
     }
 
+    this.aiPlayer.destroy();
     this.isDestroyed = true;
 
     for (const resolvers of this.messageResolvers.values()) {
@@ -95,6 +100,12 @@ export class SoloConnection {
         this.emitOpponentMove();
         return;
       case MOVE:
+        this.aiPlayer.receiveHumanMove(
+          message.content.move.card,
+          message.content.move.x,
+          message.content.move.y,
+          message.content.move.direction,
+        );
         this.emitOpponentMove();
         return;
       case PAUSE_REQUEST:
@@ -118,21 +129,7 @@ export class SoloConnection {
   }
 
   private emitOpponentMove() {
-    const move: PlayerMoveMessage = {
-      playerId: this.peerIdentifiers.them,
-      card: 0,
-      x: 0,
-      y: 0,
-      direction: up,
-    };
-
-    // TODO: hardcoded move above — replace with something that helps a game progress
-    // Maybe a decision tree for "good" moves
-
-    // Example
-    // Pick a random card
-    // Place in a random (valid) position
-    // Discard if not
+    const move = this.aiPlayer.generateMove();
     this.emitIncoming(MOVE, moveMessage(move).content);
   }
 
