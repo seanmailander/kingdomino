@@ -256,7 +256,7 @@ In `client/package.json`, add to `"dependencies"`:
 - [ ] **Step 6: Install workspaces**
 
 ```bash
-cd /path/to/repo/root && npm install
+cd $(git rev-parse --show-toplevel) && npm install
 ```
 
 Expected: `node_modules/kingdomino-engine` and `node_modules/kingdomino-commitment` symlinks created.
@@ -1332,44 +1332,47 @@ import { describe, it, expect } from "vitest";
 import { CommitmentSeedProvider } from "./CommitmentSeedProvider";
 import type { CommitmentTransport } from "./CommitmentTransport";
 
-/** Simple in-process transport: messages go directly between two sides */
+/** Simple in-process transport: A's sends → B's inbound, B's sends → A's inbound */
 const makeLinkedPair = (): [CommitmentTransport, CommitmentTransport] => {
   type Resolver = (v: unknown) => void;
-  const waiters: Map<string, Resolver[]> = new Map();
-  const queued: Map<string, unknown[]> = new Map();
 
-  const enqueue = (type: string, msg: unknown) => {
-    const resolvers = waiters.get(type);
-    if (resolvers?.length) {
-      resolvers.shift()!(msg);
-    } else {
-      if (!queued.has(type)) queued.set(type, []);
-      queued.get(type)!.push(msg);
-    }
+  const makeChannel = () => {
+    const waiters = new Map<string, Resolver[]>();
+    const queued  = new Map<string, unknown[]>();
+    return {
+      enqueue(type: string, msg: unknown) {
+        const resolvers = waiters.get(type);
+        if (resolvers?.length) {
+          resolvers.shift()!(msg);
+        } else {
+          if (!queued.has(type)) queued.set(type, []);
+          queued.get(type)!.push(msg);
+        }
+      },
+      waitFor<T>(type: string): Promise<T> {
+        const q = queued.get(type);
+        if (q?.length) return Promise.resolve(q.shift() as T);
+        return new Promise<T>((resolve) => {
+          if (!waiters.has(type)) waiters.set(type, []);
+          waiters.get(type)!.push(resolve as Resolver);
+        });
+      },
+    };
   };
 
-  const makeTransport = (sendQueue: (t: string, m: unknown) => void): CommitmentTransport => ({
-    send(msg) { sendQueue(msg.type, msg); },
-    waitFor<T>(type: string) {
-      const q = queued.get(type);
-      if (q?.length) return Promise.resolve(q.shift() as T);
-      return new Promise<T>((resolve) => {
-        if (!waiters.has(type)) waiters.set(type, []);
-        waiters.get(type)!.push(resolve as Resolver);
-      });
-    },
-  });
+  const inboxB = makeChannel(); // A sends → B reads
+  const inboxA = makeChannel(); // B sends → A reads
 
-  const qA: (t: string, m: unknown) => void = (t, m) => enqueue(t, m); // A→B
-  const qB: (t: string, m: unknown) => void = (t, m) => enqueue(t, m); // B→A
-  // Wire: A sends → B receives; B sends → A receives
-  const queuesAB = new Map<string, unknown[]>();
-  const queuesBA = new Map<string, unknown[]>();
-  // ... (implement properly with two separate inbound queues)
-  // Simplified: for test purposes use two separate CommitmentSeedProvider instances
-  // sharing a deterministic in-process message passing channel
+  const transportA: CommitmentTransport = {
+    send(msg)           { inboxB.enqueue(msg.type, msg.content); },
+    waitFor<T>(type)    { return inboxA.waitFor<T>(type); },
+  };
+  const transportB: CommitmentTransport = {
+    send(msg)           { inboxA.enqueue(msg.type, msg.content); },
+    waitFor<T>(type)    { return inboxB.waitFor<T>(type); },
+  };
 
-  return [makeTransport(qB), makeTransport(qA)];
+  return [transportA, transportB];
 };
 
 describe("CommitmentSeedProvider", () => {
@@ -1387,8 +1390,6 @@ describe("CommitmentSeedProvider", () => {
   });
 });
 ```
-
-> **Note:** The `makeLinkedPair` helper needs to route A→B and B→A independently. The sketch above shows the concept — implement with two separate inbound message queues so A's `send()` delivers to B's `waitFor()` and vice versa.
 
 - [ ] **Step 7: Create CommitmentSeedProvider.ts**
 
@@ -1900,7 +1901,7 @@ In `README.md`, move item 6 from the `NEXT` section to `Current state` (or remov
 - [ ] **Step 6: Run root lint**
 
 ```bash
-cd /path/to/repo/root && npm run lint && npm run fmt:check
+cd $(git rev-parse --show-toplevel) && npm run lint && npm run fmt:check
 ```
 Expected: no errors.
 
