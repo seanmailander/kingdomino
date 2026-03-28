@@ -23,6 +23,12 @@ See [research](./RESEARCH.md) for more info
 - Connectivity is bare-bones, but works
 - Deck is shuffled in a "fair" way
 - Players can pick cards and take turns making moves
+- Full game loop: pause, resume, and exit controls synchronized across peers
+- Solo play with a RandomAI opponent (no WebRTC needed for single-player)
+- Only eligible placement positions are offered (by neighbors, rotation, and board bounds)
+- Unplaceable dominoes are automatically discarded
+- Scoring algorithm implemented (BFS flood-fill: region size × crowns) with end-of-game ranking and tie-break resolution
+- Client-only development workflow: Vitest unit/integration tests + Storybook visual TDD
 
 # TODO
 
@@ -31,15 +37,8 @@ See [research](./RESEARCH.md) for more info
 ### Simplify DevX
 
 - couch coop (local second player uses right-hand board, no WebRTC needed)
-- full game loop (menu, start, pause, exit) ✅
 - e2e tests over local UI
 
-- create a workflow for client-only development
-  - play without competition
-  - HMR
-  - typesafety
-  - linting
-  - tests
 - create a workflow for game state testing
   - reload game state
   - admin panel to select state
@@ -51,10 +50,7 @@ See [research](./RESEARCH.md) for more info
 
 1. Split pick from move — both are independent player actions; decouple in game state and connection interface
 2. Normalize `notifyLocalDiscard` into the standard send/waitFor message pipeline (remove special-case handling)
-3. Calculate only eligible places by neighbors
-4. Add mid-game debug states
-5. Calculate only eligible places by rotation
-6. Calculate only eligible places by board size
+3. Add mid-game debug states
 
 ## NEXT
 
