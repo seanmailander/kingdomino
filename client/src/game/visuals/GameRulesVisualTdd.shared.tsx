@@ -14,6 +14,7 @@ import type { GameBonuses } from "../state/GameSession";
 import type { BoardPlacement } from "../state/Board";
 import { ConnectionManager } from "../state/ConnectionManager";
 import { LobbyFlow } from "../state/game.flow";
+import { AppFlowAdapter } from "../../App/AppFlowAdapter";
 import { TestConnection, type TestConnectionScenario } from "../state/connection.testing";
 import type { Direction } from "../state/types";
 
@@ -460,6 +461,7 @@ export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }
   const flow = useMemo(() => {
     const commit = buildCommitSequence(scenario.handshakes);
     return new LobbyFlow({
+      adapter: new AppFlowAdapter(),
       createConnectionManager: (connection) =>
         new ConnectionManager(connection.send, connection.waitFor, { commit }),
       shouldContinuePlaying: (completedRounds) =>
