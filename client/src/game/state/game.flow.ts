@@ -4,6 +4,7 @@ import { GameSession, Player } from "./GameSession";
 import type { GameEventBus, GameEventMap, CardId } from "./GameSession";
 import type { GameMessage, GameMessagePayload, GameMessageType } from "./game.messages";
 import { SoloConnection } from "./connection.solo";
+import { RandomAIPlayer } from "./ai.player";
 import {
   setCurrentSession,
   setRoom,
@@ -66,6 +67,7 @@ export class LobbyFlow {
   private session: GameSession | null = null;
   private connectionManager: ConnectionManager | null = null;
   private remainingDeck?: number[];
+  private aiPlayer: RandomAIPlayer | null = null;
   private readonly createConnectionManager: (connection: IGameConnection) => ConnectionManager;
   private readonly shouldContinuePlaying: (
     completedRounds: number,
@@ -91,7 +93,8 @@ export class LobbyFlow {
   }
 
   ReadySolo() {
-    this.ready(new SoloConnection());
+    this.aiPlayer = new RandomAIPlayer("them", "me", this.variant);
+    this.ready(new SoloConnection(this.aiPlayer));
   }
 
   ReadyMultiplayer() {
@@ -176,6 +179,7 @@ export class LobbyFlow {
     this.remainingDeck = remaining;
 
     session.beginRound(cardIds as [CardId, CardId, CardId, CardId]);
+    this.aiPlayer?.beginRound(cardIds as [CardId, CardId, CardId, CardId]);
 
     // Process actors sequentially until the round is complete
     while (session.currentRound !== null) {
@@ -257,6 +261,7 @@ export class LobbyFlow {
       const pickOrder = orderedIds.map((id) => this.session!.playerById(id)!);
 
       this.session.startGame(pickOrder);
+      this.aiPlayer?.startGame(orderedIds);
 
       // Play rounds until the deck is exhausted or the game is paused/exited
       let completedRounds = 0;
@@ -285,6 +290,7 @@ export class LobbyFlow {
       setRoom("Splash");
     } finally {
       connection.destroy();
+      this.aiPlayer = null;
       this.session = null;
       this.connectionManager = null;
       this.remainingDeck = [];
