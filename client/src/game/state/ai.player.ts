@@ -1,0 +1,93 @@
+import { GameSession, Player } from "./GameSession";
+import { findPlacementWithin5x5, findPlacementWithin7x7 } from "../gamelogic/board";
+import type { CardId, Direction } from "./types";
+import type { PlayerMoveMessage } from "./game.messages";
+import type { GameVariant } from "../gamelogic/cards";
+
+export class RandomAIPlayer {
+  private readonly aiSession: GameSession;
+  private readonly aiPlayerId: string;
+  private readonly humanPlayerId: string;
+
+  constructor(aiPlayerId: string, humanPlayerId: string, variant: GameVariant = "standard") {
+    this.aiPlayerId = aiPlayerId;
+    this.humanPlayerId = humanPlayerId;
+    this.aiSession = new GameSession({ variant });
+    this.aiSession.addPlayer(new Player(aiPlayerId, true));     // AI is "local" in its own session
+    this.aiSession.addPlayer(new Player(humanPlayerId, false)); // Human is "remote" in AI session
+  }
+
+  /** Called once after the trusted seed exchange establishes pick order. */
+  startGame(orderedPlayerIds: string[]): void {
+    const pickOrder = orderedPlayerIds.map((id) => this.aiSession.playerById(id)!);
+    this.aiSession.startGame(pickOrder);
+  }
+
+  /** Called at the start of each round with the same 4 cards as the human session. */
+  beginRound(cardIds: [CardId, CardId, CardId, CardId]): void {
+    this.aiSession.beginRound(cardIds);
+  }
+
+  /**
+   * Records the human player's completed pick+placement into the AI session.
+   * Must be called before generateMove() when the human acts before the AI.
+   */
+  receiveHumanMove(card: CardId, x: number, y: number, dir: Direction): void {
+    this.aiSession.handlePick(this.humanPlayerId, card);
+    this.aiSession.handlePlacement(this.humanPlayerId, x, y, dir);
+  }
+
+  /**
+   * Picks a random available card and finds a valid in-bounds placement.
+   * Falls back to a sentinel move (0, 0, "up") if no valid placement exists —
+   * identical to the pre-existing hardcoded stub. See spec for deferred handling.
+   */
+  generateMove(): PlayerMoveMessage {
+    const round = this.aiSession.currentRound!;
+    const boardSnapshot = this.aiSession.boardFor(this.aiPlayerId);
+    const findPlacement =
+      this.aiSession.variant === "mighty-duel"
+        ? findPlacementWithin7x7
+        : findPlacementWithin5x5;
+
+    const availableCardIds = round.deal
+      .snapshot()
+      .filter((slot) => slot.pickedBy === null)
+      .map((slot) => slot.cardId)
+      .sort(() => Math.random() - 0.5); // shuffle for randomness
+
+    for (const cardId of availableCardIds) {
+      const placement = findPlacement(boardSnapshot, cardId);
+      if (placement !== null) {
+        this.aiSession.handleLocalPick(cardId);
+        this.aiSession.handleLocalPlacement(placement.x, placement.y, placement.direction);
+        return {
+          playerId: this.aiPlayerId,
+          card: cardId,
+          x: placement.x,
+          y: placement.y,
+          direction: placement.direction,
+        };
+      }
+    }
+
+    // Degenerate fallback: no valid in-bounds placement found for any card
+    const firstCard = availableCardIds[0];
+    console.warn(
+      `RandomAIPlayer(${this.aiPlayerId}): no valid placement found for any available card — returning sentinel (0, 0, up)`,
+    );
+    this.aiSession.handleLocalPick(firstCard);
+    return {
+      playerId: this.aiPlayerId,
+      card: firstCard,
+      x: 0,
+      y: 0,
+      direction: "up" as Direction,
+    };
+  }
+
+  /** Clean up. No active external subscriptions in this implementation. */
+  destroy(): void {
+    // No-op: aiSession holds no external resources
+  }
+}
