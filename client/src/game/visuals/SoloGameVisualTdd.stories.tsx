@@ -1,128 +1,98 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, waitFor } from "storybook/test";
+import { expect, userEvent } from "storybook/test";
 
 import { App } from "../../App/App";
-import { resetAppState, triggerLobbyStart, useApp } from "../../App/store";
-import { findPlacementWithin5x5 } from "../gamelogic/board";
-import { LobbyFlow } from "../state/game.flow";
-import type { GameSession } from "../state/GameSession";
-
-/**
- * Auto-drives the local ("me") player when it is their turn.
- *
- * Uses setTimeout(0) to defer placement until LobbyFlow has registered its
- * place:made listener (avoids a race between the LocalAutoDriver's pick:made
- * handler and LobbyFlow's async loop registering the next waitForEvent).
- */
-function LocalAutoDriver({ session }: { session: GameSession | null }) {
-  useEffect(() => {
-    if (!session) return;
-
-    const autoPick = () => {
-      if (!session.isMyTurn()) return;
-      const snap = session.currentRound?.deal.snapshot();
-      const first = snap?.find((s) => s.pickedBy === null);
-      if (first) session.handleLocalPick(first.cardId);
-    };
-
-    const autoPlace = () => {
-      if (!session.isMyPlace()) return;
-      const cardId = session.localCardToPlace();
-      if (cardId == null) return;
-      const playerId = session.myPlayer()?.id;
-      if (playerId == null) return;
-      const board = session.boardFor(playerId);
-      const p = findPlacementWithin5x5(board, cardId);
-      if (p) session.handleLocalPlacement(p.x, p.y, p.direction);
-    };
-
-    // Register offPick BEFORE calling autoPick so pick:made correctly schedules deferred autoPlace
-    const offPick = session.events.on("pick:made", () => {
-      // Defer both to let LobbyFlow's async loop register its next listener first
-      setTimeout(autoPlace, 0);
-      setTimeout(autoPick, 0);
-    });
-
-    // Handle first round: round:started fires before this effect runs (React renders after the
-    // microtask chain completes), so call autoPick immediately to catch the missed event.
-    autoPick();
-
-    // For subsequent rounds, defer so LobbyFlow's waitForEvent(pick:made) registers first
-    const offRound = session.events.on("round:started", () => setTimeout(autoPick, 0));
-
-    return () => {
-      offRound();
-      offPick();
-    };
-  }, [session]);
-
-  return null;
-}
-
-function SoloGameHarness({ roundLimit }: { roundLimit: number }) {
-  const { session } = useApp();
-  const [gameEnded, setGameEnded] = useState(false);
-
-  const flow = useMemo(
-    () =>
-      new LobbyFlow({
-        shouldContinuePlaying: (completedRounds) => completedRounds < roundLimit,
-      }),
-    [roundLimit],
-  );
-
-  useEffect(() => {
-    resetAppState();
-    flow.ReadySolo();
-    triggerLobbyStart();
-  }, [flow]);
-
-  useEffect(() => {
-    if (!session) return;
-    return session.events.on("game:ended", () => setGameEnded(true));
-  }, [session]);
-
-  return (
-    <>
-      <App />
-      <LocalAutoDriver session={session} />
-      {gameEnded && <p data-testid="game-ended-indicator">Solo game complete</p>}
-    </>
-  );
-}
+import { resetAppState } from "../../App/store";
 
 const meta = {
   title: "Game/Solo AI Visual TDD",
-  component: SoloGameHarness,
+  component: App,
   tags: ["autodocs"],
-} satisfies Meta<typeof SoloGameHarness>;
+  beforeEach: resetAppState,
+} satisfies Meta<typeof App>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const SoloGameCompletesOneRound: Story = {
-  args: { roundLimit: 1 },
+async function playSoloGameToEnd(canvas: Parameters<NonNullable<Story["play"]>>[0]["canvas"], timeout: number) {
+  await userEvent.click(canvas.getByRole("button", { name: /start solo/i }));
+  await userEvent.click(await canvas.findByRole("button", { name: /start game/i }));
+
+  // Drive the game turn-by-turn using only rendered UI locators.
+  // Each await yields control so React can re-render between actions,
+  // preventing the double-click race where waitFor retries a stale DOM.
+  // orientationStep tracks how many times we've tried to change orientation:
+  //   0-3: rotate (4 directions), 4: flip, 5-8: rotate again (back through all 4)
+  let orientationStep = 0;
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    if (canvas.queryByTestId("game-over")) break;
+
+    const card = canvas.queryAllByTestId("available-card")[0];
+    if (card) {
+      orientationStep = 0;
+      await userEvent.click(card);
+      // Yield to let React flush the pick re-render before next iteration
+      await new Promise((r) => setTimeout(r, 0));
+      continue;
+    }
+
+    const tile = canvas.queryAllByTestId("valid-placement")[0];
+    if (tile) {
+      orientationStep = 0;
+      await userEvent.click(tile);
+      await new Promise((r) => setTimeout(r, 0));
+      continue;
+    }
+
+    // No valid placement with current orientation — try rotating (4 directions) then flipping then rotating again
+    if (orientationStep < 4) {
+      orientationStep++;
+      const rotateBtn = canvas.queryAllByRole("button", { name: /rotate card/i })[0];
+      if (rotateBtn) {
+        await userEvent.click(rotateBtn);
+        await new Promise((r) => setTimeout(r, 0));
+        continue;
+      }
+    } else if (orientationStep === 4) {
+      orientationStep++;
+      const flipBtn = canvas.queryAllByRole("button", { name: /flip card/i })[0];
+      if (flipBtn) {
+        await userEvent.click(flipBtn);
+        await new Promise((r) => setTimeout(r, 0));
+        continue;
+      }
+    } else if (orientationStep < 9) {
+      orientationStep++;
+      const rotateBtn = canvas.queryAllByRole("button", { name: /rotate card/i })[0];
+      if (rotateBtn) {
+        await userEvent.click(rotateBtn);
+        await new Promise((r) => setTimeout(r, 0));
+        continue;
+      }
+    }
+
+    // All 8 orientations tried with no valid placement — discard if possible, otherwise poll.
+    const discardBtn = canvas.queryByRole("button", { name: /discard card/i });
+    if (discardBtn) {
+      orientationStep = 0;
+      await userEvent.click(discardBtn);
+      await new Promise((r) => setTimeout(r, 0));
+      continue;
+    }
+
+    // AI is processing. Poll every 100ms.
+    await new Promise((r) => setTimeout(r, 100));
+  }
+
+  await expect(canvas.getByTestId("game-over")).toBeVisible();
+}
+
+export const SoloGamePlaysToCompletion: Story = {
   play: async ({ canvas }) => {
-    await waitFor(
-      async () => {
-        await expect(canvas.getByTestId("game-ended-indicator")).toBeVisible();
-      },
-      { timeout: 15000 },
-    );
+    await playSoloGameToEnd(canvas, 60000);
     await expect(canvas.getByText(/Kingdomino/i)).toBeVisible();
   },
 };
 
-export const SoloGameCompletesTwoRounds: Story = {
-  args: { roundLimit: 2 },
-  play: async ({ canvas }) => {
-    await waitFor(
-      async () => {
-        await expect(canvas.getByTestId("game-ended-indicator")).toBeVisible();
-      },
-      { timeout: 30000 },
-    );
-    await expect(canvas.getByText(/Kingdomino/i)).toBeVisible();
-  },
-};

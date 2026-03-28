@@ -5,18 +5,6 @@ import type { GameEventBus, GameEventMap, CardId } from "./GameSession";
 import type { GameMessage, GameMessagePayload, GameMessageType } from "./game.messages";
 import { SoloConnection } from "./connection.solo";
 import { RandomAIPlayer } from "./ai.player";
-import {
-  setCurrentSession,
-  setRoom,
-  getRoom,
-  onceRoomIsNot,
-  awaitLobbyStart,
-  awaitLobbyLeave,
-  awaitPauseIntent,
-  awaitResumeIntent,
-  resetAppState,
-} from "../../App/store";
-import { Lobby, Game, Splash, GamePaused } from "../../App/AppExtras";
 import type { GameVariant } from "../gamelogic/cards";
 import type { GameBonuses } from "./GameSession";
 
@@ -31,7 +19,27 @@ export interface IGameConnection {
   destroy: () => void;
 }
 
+/** Internal phase names used by LobbyFlow — independent of UI room constants. */
+export type FlowPhase = "splash" | "lobby" | "game" | "paused" | "ended";
+
+/**
+ * Adapter interface that decouples LobbyFlow from any specific UI framework or store.
+ * The App layer provides AppFlowAdapter; tests can provide a test double.
+ */
+export interface FlowAdapter {
+  setSession(session: GameSession | null): void;
+  setPhase(phase: FlowPhase): void;
+  getPhase(): FlowPhase;
+  oncePhaseIsNot(phase: FlowPhase): Promise<void>;
+  awaitStart(): Promise<void>;
+  awaitLeave(): Promise<void>;
+  awaitPause(): Promise<void>;
+  awaitResume(): Promise<void>;
+  reset(): void;
+}
+
 type LobbyFlowOptions = {
+  adapter: FlowAdapter;
   createConnectionManager?: (connection: IGameConnection) => ConnectionManager;
   shouldContinuePlaying?: (completedRounds: number, remainingDeck: readonly number[]) => boolean;
   variant?: GameVariant;
@@ -69,6 +77,7 @@ export class LobbyFlow {
   private remainingDeck?: number[];
   private aiPlayer: RandomAIPlayer | null = null;
   private soloConnection: SoloConnection | null = null;
+  private readonly adapter: FlowAdapter;
   private readonly createConnectionManager: (connection: IGameConnection) => ConnectionManager;
   private readonly shouldContinuePlaying: (
     completedRounds: number,
@@ -77,7 +86,8 @@ export class LobbyFlow {
   private readonly variant: GameVariant;
   private readonly bonuses: GameBonuses;
 
-  constructor(options: LobbyFlowOptions = {}) {
+  constructor(options: LobbyFlowOptions) {
+    this.adapter = options.adapter;
     this.createConnectionManager =
       options.createConnectionManager ??
       ((connection) => new ConnectionManager(connection.send, connection.waitFor));
@@ -102,51 +112,51 @@ export class LobbyFlow {
   ReadyMultiplayer() {
     // Multiplayer transport wiring is not implemented yet.
     // Keep this as a safe no-op until a transport is configured.
-    setCurrentSession(null);
-    setRoom(Splash);
+    this.adapter.setSession(null);
+    this.adapter.setPhase("splash");
   }
 
   private async handleLocalPauseRequest() {
-    if (getRoom() !== Game) return;
+    if (this.adapter.getPhase() !== "game") return;
     this.connectionManager!.sendPauseRequest();
     try {
       await this.connectionManager!.waitForPauseAck(CONTROL_TIMEOUT_MS);
     } catch {
       return; // Peer didn't ack in time — stay in Game, loop continues
     }
-    setRoom(GamePaused);
+    this.adapter.setPhase("paused");
   }
 
   private handleIncomingPauseRequest() {
-    if (getRoom() === GamePaused) {
+    if (this.adapter.getPhase() === "paused") {
       this.connectionManager!.sendPauseAck();
       return;
     }
-    if (getRoom() !== Game) return;
+    if (this.adapter.getPhase() !== "game") return;
     this.connectionManager!.sendPauseAck();
-    setRoom(GamePaused);
+    this.adapter.setPhase("paused");
   }
 
   private async handleLocalResumeRequest() {
-    if (getRoom() !== GamePaused) return;
+    if (this.adapter.getPhase() !== "paused") return;
     this.connectionManager!.sendResumeRequest();
     try {
       await this.connectionManager!.waitForResumeAck(CONTROL_TIMEOUT_MS);
     } catch {
       return; // Peer didn't ack in time — stay paused, loop continues
     }
-    setRoom(Game);
+    this.adapter.setPhase("game");
   }
 
   private handleIncomingResumeRequest() {
-    if (getRoom() !== GamePaused) return;
+    if (this.adapter.getPhase() !== "paused") return;
     this.connectionManager!.sendResumeAck();
-    setRoom(Game);
+    this.adapter.setPhase("game");
   }
 
   private handleIncomingExitRequest() {
     this.connectionManager!.sendExitAck();
-    resetAppState();
+    this.adapter.reset();
   }
 
   private async listenForControlMessages() {
@@ -155,13 +165,13 @@ export class LobbyFlow {
     // This is safe: connection's resolver map handles multiple concurrent waiters per type,
     // and each handler guards against wrong room state before acting.
     try {
-      while (getRoom() === Game || getRoom() === GamePaused) {
+      while (this.adapter.getPhase() === "game" || this.adapter.getPhase() === "paused") {
         await Promise.race([
           this.connectionManager!.waitForPauseRequest().then(() => this.handleIncomingPauseRequest()),
           this.connectionManager!.waitForResumeRequest().then(() => this.handleIncomingResumeRequest()),
           this.connectionManager!.waitForExitRequest().then(() => this.handleIncomingExitRequest()),
-          awaitPauseIntent().then(() => this.handleLocalPauseRequest()),
-          awaitResumeIntent().then(() => this.handleLocalResumeRequest()),
+          this.adapter.awaitPause().then(() => this.handleLocalPauseRequest()),
+          this.adapter.awaitResume().then(() => this.handleLocalResumeRequest()),
         ]);
       }
     } catch {
@@ -194,14 +204,14 @@ export class LobbyFlow {
         const pickOrPause = await Promise.race([
           waitForEvent(session.events, "pick:made", (e) => e.player.id === actor.id)
             .then((r) => ({ type: "pick" as const, r })),
-          onceRoomIsNot(Game).then(() => ({ type: "inactive" as const })),
+          this.adapter.oncePhaseIsNot("game").then(() => ({ type: "inactive" as const })),
         ]);
         if (pickOrPause.type === "inactive") return;
 
         const placeOrPause = await Promise.race([
           waitForEvent(session.events, "place:made", (e) => e.player.id === actor.id)
             .then((r) => ({ type: "place" as const, r })),
-          onceRoomIsNot(Game).then(() => ({ type: "inactive" as const })),
+          this.adapter.oncePhaseIsNot("game").then(() => ({ type: "inactive" as const })),
         ]);
         if (placeOrPause.type === "inactive") return;
 
@@ -220,7 +230,7 @@ export class LobbyFlow {
             (r) => ({ type: "move" as const, r }),
             () => ({ type: "inactive" as const }),
           ),
-          onceRoomIsNot(Game).then(() => ({ type: "inactive" as const })),
+          this.adapter.oncePhaseIsNot("game").then(() => ({ type: "inactive" as const })),
         ]);
         if (moveOrPause.type === "inactive") return;
 
@@ -238,22 +248,22 @@ export class LobbyFlow {
     try {
       this.session.addPlayer(new Player(connection.peerIdentifiers.me, true));
       this.session.addPlayer(new Player(connection.peerIdentifiers.them, false));
-      setCurrentSession(this.session);
-      setRoom(Lobby);
+      this.adapter.setSession(this.session);
+      this.adapter.setPhase("lobby");
 
       // Wait for "Start game" or "Leave game" from the Lobby UI — whichever fires first.
       const lobbyResult = await Promise.race([
-        awaitLobbyStart().then(() => "start" as const),
-        awaitLobbyLeave().then(() => "leave" as const),
+        this.adapter.awaitStart().then(() => "start" as const),
+        this.adapter.awaitLeave().then(() => "leave" as const),
       ]);
 
       if (lobbyResult === "leave") {
-        setCurrentSession(null);
-        setRoom("Splash");
+        this.adapter.setSession(null);
+        this.adapter.setPhase("splash");
         return;
       }
 
-      setRoom(Game);
+      this.adapter.setPhase("game");
 
       // Start listening for control messages immediately — before any async work
       void this.listenForControlMessages();
@@ -268,14 +278,14 @@ export class LobbyFlow {
 
       // Play rounds until the deck is exhausted or the game is paused/exited
       let completedRounds = 0;
-      while (getRoom() === Game || getRoom() === GamePaused) {
-        if (getRoom() === GamePaused) {
+      while (this.adapter.getPhase() === "game" || this.adapter.getPhase() === "paused") {
+        if (this.adapter.getPhase() === "paused") {
           // Suspended: wait for listenForControlMessages to resume or exit
-          await onceRoomIsNot(GamePaused);
+          await this.adapter.oncePhaseIsNot("paused");
           continue;
         }
         await this.playRound();
-        if (getRoom() !== Game) continue; // Paused or exited mid-round
+        if (this.adapter.getPhase() !== "game") continue; // Paused or exited mid-round
         completedRounds += 1;
         if (
           !this.remainingDeck?.length ||
@@ -283,14 +293,15 @@ export class LobbyFlow {
         ) break;
       }
 
-      if (getRoom() === Game) {
+      if (this.adapter.getPhase() === "game") {
         this.session.endGame();
+        this.adapter.setPhase("ended");
       }
     } catch (e) {
       // Connection error — reset to Splash
       console.error(e);
-      setCurrentSession(null);
-      setRoom("Splash");
+      this.adapter.setSession(null);
+      this.adapter.setPhase("splash");
     } finally {
       connection.destroy();
       this.aiPlayer = null;
@@ -303,4 +314,3 @@ export class LobbyFlow {
   }
 }
 
-export const gameLobby = new LobbyFlow();

@@ -1,6 +1,6 @@
 import React from "react";
 
-import { gameLobby } from "../game/state/game.flow";
+import { gameLobby } from "../App/gameLobby";
 
 export function Splash() {
   return (

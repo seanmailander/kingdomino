@@ -64,6 +64,7 @@ export default defineConfig(() => {
           ],
           test: {
             name: "storybook",
+            testTimeout: 90000,
             // Enable browser mode
             browser: {
               enabled: true,
