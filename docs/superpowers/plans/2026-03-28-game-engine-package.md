@@ -350,7 +350,7 @@ Expected: all gamelogic tests pass.
 
 - [ ] **Step 5: Move `commit`/`verify`/`combine` to engine utils.ts**
 
-These commitment/reveal functions currently live in `client/src/game/state/ConnectionManager.ts`. They are pure crypto utilities with no client dependency, so they belong in the engine. `kingdomino-commitment` will import them from here in Task 7.
+These commitment/reveal functions currently live in `client/src/game/gamelogic/utils.ts` (already being moved in Steps 1–8). However, the existing signatures in that file need to be **replaced** with cleaner ones that match what `CommitmentSeedProvider` (Task 7) will consume. The existing `commit()` takes no args and returns an object; the new version takes a pre-generated secret string and returns just the hash. Make these replacements in the engine copy of `utils.ts` after Step 1:
 
 In `packages/kingdomino-engine/src/gamelogic/utils.ts`, add the following exports (copy the implementations verbatim from `ConnectionManager.ts`):
 
@@ -1111,8 +1111,8 @@ import { generateDeck } from "./gamelogic/cards";
 
 startGame(): void {
   if (this._phase !== "lobby") throw new Error("Game not in lobby phase");
-  // Build the deck now so player count is known
-  this._remainingDeck = generateDeck(this._players.length, this._variant) as unknown as CardId[];
+  // Build the deck now so player count is known; generateDeck() always returns all 48 cards
+  this._remainingDeck = [...generateDeck()] as CardId[];
   this._phase = "playing";
   // Kick off async loop; errors surface via console and reset
   void this._runGameLoop();
@@ -1391,38 +1391,48 @@ describe("CommitmentSeedProvider", () => {
 - [ ] **Step 7: Create CommitmentSeedProvider.ts**
 
 Extract `buildTrustedSeed()` logic from `client/src/game/state/ConnectionManager.ts`. The algorithm:
-1. Generate local `(secret, commitment)` pair using Web Crypto SHA-1 hash
-2. Send `{ type: "COMMITTMENT", content: { committment } }` via transport
-3. Await `{ type: "COMMITTMENT" }` from peer
-4. Send `{ type: "REVEAL", content: { secret } }`
-5. Await `{ type: "REVEAL" }` from peer
-6. Verify peer's commitment matches their revealed secret
-7. Combine: `seed = H(mySecret XOR peerSecret)`
-8. Return combined seed as string
+1. Generate a random local secret (hex string) using `crypto.getRandomValues`
+2. Hash it via `commit(secret)` to get commitment
+3. Send `{ type: "COMMITTMENT", content: { committment } }` via transport
+4. Await `{ type: "COMMITTMENT" }` from peer
+5. Send `{ type: "REVEAL", content: { secret } }`
+6. Await `{ type: "REVEAL" }` from peer
+7. Verify peer's commitment matches their revealed secret via `verify(theirSecret, theirCommittment)`
+8. Combine both secrets via `combine(mySecret, theirSecret)` and return as seed string
+
+Note: The new engine `commit`/`verify`/`combine` signatures (from Task 2 Step 5) are:
+- `commit(secret: string): Promise<string>` — takes a pre-generated secret, returns hash
+- `verify(secret: string, commitment: string): Promise<boolean>`
+- `combine(a: string, b: string): string` — synchronous XOR of hex strings
 
 ```ts
 // packages/kingdomino-commitment/src/CommitmentSeedProvider.ts
+import { commit, verify, combine } from "kingdomino-engine";
 import type { SeedProvider } from "kingdomino-engine";
 import type { CommitmentTransport } from "./CommitmentTransport";
-// import { commit, verify, combine } from "kingdomino-engine"; // these are in engine utils
+
+const randomHex = (): string => {
+  const arr = new Uint8Array(32);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => b.toString(16).padStart(2, "0")).join("");
+};
 
 export class CommitmentSeedProvider implements SeedProvider {
   constructor(private readonly transport: CommitmentTransport) {}
 
   async nextSeed(): Promise<string> {
-    // Commitment scheme — same logic as ConnectionManager.buildTrustedSeed()
-    // import { commit, verify, combine } from "kingdomino-engine"
-    const { secret: mySecret, committment: myCommittment } = await commit();
+    const mySecret = randomHex();
+    const myCommittment = await commit(mySecret);
     this.transport.send({ type: "COMMITTMENT", content: { committment: myCommittment } });
 
     const { committment: theirCommittment } = await this.transport.waitFor<{ committment: string }>("COMMITTMENT");
     this.transport.send({ type: "REVEAL", content: { secret: mySecret } });
 
-    const { secret: theirSecret } = await this.transport.waitFor<{ secret: string | number }>("REVEAL");
+    const { secret: theirSecret } = await this.transport.waitFor<{ secret: string }>("REVEAL");
     const isValid = await verify(theirSecret, theirCommittment);
     if (!isValid) throw new Error("Remote commitment verification failed");
 
-    return combine(mySecret, Number(theirSecret));
+    return combine(mySecret, theirSecret);
   }
 }
 ```
@@ -1768,9 +1778,9 @@ private async relayRemoteMoves(session: GameSession, connection: IGameConnection
   while (session.phase === "playing" || session.phase === "paused") {
     const msg = await this.connectionManager!.waitForNextMoveMessage();
     if (!msg) break; // connection closed
-    if (msg.type === "pick")    session.pick(remoteId, msg.cardId);
-    if (msg.type === "place")   session.place(remoteId, msg.x, msg.y, msg.direction);
-    if (msg.type === "discard") session.discard(remoteId);
+    if (msg.type === "pick")    session.handlePick(remoteId, msg.cardId);
+    if (msg.type === "place")   session.handlePlacement(remoteId, msg.x, msg.y, msg.direction);
+    if (msg.type === "discard") session.handleDiscard(remoteId);
   }
 }
 ```
