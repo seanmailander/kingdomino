@@ -1,8 +1,8 @@
 import { computed, effect, signal } from "alien-signals";
 import { useEffect, useMemo, useState } from "react";
 
-import type { GameSession } from "../game/state/GameSession";
-import type { GameEventMap } from "../game/state/GameSession";
+import type { GameSession, GameEventMap } from "../game/state/GameSession";
+import type { GameEndedEntry } from "../game/gamelogic/winners";
 import { type Room, Splash, computeHint } from "./AppExtras";
 
 // ── Session signal ────────────────────────────────────────────────────────────
@@ -15,6 +15,12 @@ const sessionSignal = signal<GameSession | null>(null);
  */
 const versionSignal = signal(0);
 const bumpVersion = () => versionSignal(versionSignal() + 1);
+
+// ── Game-over scores signal ───────────────────────────────────────────────────
+
+const gameOverScoresSignal = signal<GameEndedEntry[]>([]);
+
+export const getGameOverScores = (): GameEndedEntry[] => gameOverScoresSignal();
 
 const ALL_EVENTS: ReadonlyArray<keyof GameEventMap> = [
   "player:joined",
@@ -37,6 +43,12 @@ export const setCurrentSession = (session: GameSession | null): void => {
   sessionUnsubscribers = [];
 
   if (session) {
+    // Capture game:ended payload before bumping version so data is ready when React re-renders
+    const unsubscribeEnded = session.events.on("game:ended", ({ scores }) => {
+      gameOverScoresSignal(scores);
+    });
+    sessionUnsubscribers.push(unsubscribeEnded);
+
     for (const event of ALL_EVENTS) {
       const unsubscribe = session.events.on(event, bumpVersion);
       // Capture unsubscribe functions so we can dispose them when the session changes.
@@ -162,6 +174,7 @@ export const triggerExitConfirm = (confirmed: boolean): void => {
 };
 
 export const resetAppState = (): void => {
+  gameOverScoresSignal([]);
   lobbyStartResolvers = [];
   lobbyLeaveResolvers = [];
   const pendingPause = pauseIntentResolvers;

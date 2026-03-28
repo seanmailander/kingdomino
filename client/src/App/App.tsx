@@ -4,7 +4,9 @@ import "./App.css";
 import { Splash as SplashComponent } from "../Splash/Splash";
 import { Lobby as LobbyComponent } from "../Lobby/Lobby";
 import { Game as GameComponent } from "../game/visuals/Game";
-import { useApp } from "./store";
+import { GameOverScreen } from "../game/visuals/GameOverScreen";
+import { determineWinners } from "../game/gamelogic/winners";
+import { useApp, getGameOverScores, resetAppState } from "./store";
 
 export function App() {
   const { session, room, hint } = useApp();
@@ -16,7 +18,12 @@ export function App() {
       {room === "Splash" && <SplashComponent />}
       {room === "Lobby" && <LobbyComponent session={session} />}
       {(room === "Game" || room === "GamePaused") && session && <GameComponent session={session} />}
-      {room === "GameEnded" && <div data-testid="game-over"><h2>Game over</h2></div>}
+      {room === "GameEnded" && (
+        <GameOverScreen
+          scores={determineWinners(getGameOverScores())}
+          onReturnToLobby={resetAppState}
+        />
+      )}
     </div>
   );
 }
