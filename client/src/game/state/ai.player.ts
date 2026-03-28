@@ -1,8 +1,8 @@
 import { GameSession, Player } from "./GameSession";
-import { findPlacementWithin5x5, findPlacementWithin7x7 } from "../gamelogic/board";
+import { findPlacementWithin5x5, findPlacementWithin7x7 } from "kingdomino-engine";
 import type { CardId, Direction } from "./types";
 import type { PlayerMoveMessage } from "./game.messages";
-import type { GameVariant } from "../gamelogic/cards";
+import type { GameVariant } from "kingdomino-engine";
 
 export class RandomAIPlayer {
   private readonly aiSession: GameSession;

@@ -5,7 +5,7 @@ import { Splash as SplashComponent } from "../Splash/Splash";
 import { Lobby as LobbyComponent } from "../Lobby/Lobby";
 import { Game as GameComponent } from "../game/visuals/Game";
 import { GameOverScreen } from "../game/visuals/GameOverScreen";
-import { determineWinners } from "../game/gamelogic/winners";
+import { determineWinners } from "kingdomino-engine";
 import { useApp, getGameOverScores, resetAppState } from "./store";
 
 export function App() {

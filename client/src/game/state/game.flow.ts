@@ -1,11 +1,11 @@
-import { chooseOrderFromSeed, getNextFourCards } from "../gamelogic/utils";
+import { chooseOrderFromSeed, getNextFourCards } from "kingdomino-engine";
 import { ConnectionManager } from "./ConnectionManager";
 import { GameSession, Player } from "./GameSession";
 import type { GameEventBus, GameEventMap, CardId } from "./GameSession";
 import type { GameMessage, GameMessagePayload, GameMessageType } from "./game.messages";
 import { SoloConnection } from "./connection.solo";
 import { RandomAIPlayer } from "./ai.player";
-import type { GameVariant } from "../gamelogic/cards";
+import type { GameVariant } from "kingdomino-engine";
 import type { GameBonuses } from "./GameSession";
 
 const CONTROL_TIMEOUT_MS = 5000;
@@ -283,7 +283,7 @@ export class LobbyFlow {
 
       // Determine first-round pick order from a shared cryptographic seed
       const firstSeed = await this.connectionManager.buildTrustedSeed();
-      const orderedIds = chooseOrderFromSeed(firstSeed, connection.peerIdentifiers);
+      const orderedIds = chooseOrderFromSeed(firstSeed, [connection.peerIdentifiers.me, connection.peerIdentifiers.them]);
       const pickOrder = orderedIds.map((id) => this.session!.playerById(id)!);
 
       this.session.startGame(pickOrder);

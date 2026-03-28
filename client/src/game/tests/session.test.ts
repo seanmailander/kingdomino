@@ -10,9 +10,9 @@
 // bob's lower slot means bob leads pick order in the next round.
 import { describe, expect, it } from "vitest";
 import { GameSession, Player } from "../state/GameSession";
-import { right, left } from "../gamelogic/cards";
-import { findPlacementWithin5x5 } from "../gamelogic/board";
-import { getNextFourCards } from "../gamelogic/utils";
+import { right, left } from "kingdomino-engine";
+import { findPlacementWithin5x5 } from "kingdomino-engine";
+import { getNextFourCards } from "kingdomino-engine";
 import type { Direction } from "../state/types";
 
 const makeSession = () => {

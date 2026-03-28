@@ -14,7 +14,7 @@ import {
 import { Splash, Lobby, Game, GamePaused, GameEnded } from "../../App/AppExtras";
 import { LobbyFlow } from "./game.flow";
 import { AppFlowAdapter } from "../../App/AppFlowAdapter";
-import { findPlacementWithin5x5 } from "../gamelogic/board";
+import { findPlacementWithin5x5 } from "kingdomino-engine";
 import {
   MOVE,
   type GameMessage,

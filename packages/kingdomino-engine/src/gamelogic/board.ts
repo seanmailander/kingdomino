@@ -1,7 +1,9 @@
-import type { BoardCell } from "../state/Board";
 import { validTiles, getCard, up, down, left, right } from "./cards";
-import type { Direction } from "../state/types";
-import type { CardId } from "../state/types";
+
+export type BoardCell = { tile?: number; value?: number };
+export type BoardGrid = ReadonlyArray<ReadonlyArray<BoardCell>>;
+export type Direction = typeof up | typeof down | typeof left | typeof right;
+export type CardId = number;
 
 type Board = ReadonlyArray<ReadonlyArray<BoardCell>>;
 type MutableBoard = BoardCell[][];

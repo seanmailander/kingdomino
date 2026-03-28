@@ -1,4 +1,4 @@
-import { hashIt } from "../gamelogic/utils";
+import { hashIt } from "kingdomino-engine";
 import {
   COMMITTMENT,
   MOVE,

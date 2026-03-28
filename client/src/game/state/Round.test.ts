@@ -1,6 +1,6 @@
 import { Deal, GameSession, Player, Round } from "./GameSession";
 import { describe, expect, it } from "vitest";
-import { left, right } from "../gamelogic/cards";
+import { left, right } from "kingdomino-engine";
 
 describe("Deal", () => {
   it("sorts slots by card id ascending", () => {

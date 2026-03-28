@@ -14,7 +14,7 @@ import {
   left,
   water,
   wood,
-} from "../gamelogic/cards";
+} from "kingdomino-engine";
 
 const placedCardsToBoard = (placements: BoardPlacement[] = []) =>
   new Board(placements).placedCardsToBoard();

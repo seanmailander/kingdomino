@@ -1,4 +1,4 @@
-import { up, down, left, right } from "../gamelogic/cards";
+import { up, down, left, right } from "kingdomino-engine";
 
 export type Direction = typeof up | typeof down | typeof left | typeof right;
 

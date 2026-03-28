@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn } from "storybook/test";
 import { Player } from "../state/Player";
-import { right } from "../gamelogic/cards";
+import { right } from "kingdomino-engine";
 import { GameOverScreen } from "./GameOverScreen";
 import type { ScoreEntry } from "./GameOverScreen";
 

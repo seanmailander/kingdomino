@@ -16,8 +16,20 @@ import {
   type GameMessagePayload,
   type GameMessageType,
 } from "./game.messages";
-import { commit } from "../gamelogic/utils";
 import type { RandomAIPlayer } from "./ai.player";
+
+// Old commitment protocol — kept for compatibility until Task 8
+const hashIt = async (input: string | number): Promise<string> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(String(input));
+  const hash = await crypto.subtle.digest("SHA-1", data);
+  return btoa(String.fromCharCode(...new Uint8Array(hash)));
+};
+const commit = async (): Promise<{ secret: number; committment: string }> => {
+  const { default: seedrandom } = await import("seedrandom");
+  const randomNumber = seedrandom().int32();
+  return { secret: randomNumber, committment: await hashIt(randomNumber) };
+};
 
 type AnyGameMessagePayload = {
   [MessageType in GameMessageType]: GameMessagePayload<MessageType>;

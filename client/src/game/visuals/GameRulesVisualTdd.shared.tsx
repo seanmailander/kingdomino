@@ -7,9 +7,9 @@ import {
   getEligiblePositions,
   getValidDirections,
   staysWithin5x5,
-} from "../gamelogic/board";
-import { hashIt } from "../gamelogic/utils";
-import type { GameVariant } from "../gamelogic/cards";
+  hashIt,
+} from "kingdomino-engine";
+import type { GameVariant } from "kingdomino-engine";
 import type { GameBonuses } from "../state/GameSession";
 import type { BoardPlacement } from "../state/Board";
 import { ConnectionManager } from "../state/ConnectionManager";

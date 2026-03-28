@@ -7,7 +7,7 @@ import { Game as GameRoom } from "../../App/AppExtras";
 
 import { Tile } from "./Tile";
 import { BoardOverlay } from "./BoardOverlay";
-import { up, down, left, right } from "../gamelogic/cards";
+import { up, down, left, right } from "kingdomino-engine";
 import type { Direction } from "../state/types";
 import { useKeypress } from "./useKeyPress";
 

@@ -10,8 +10,8 @@
 //   3  wood/wood    — no crowns
 //   6  water/water  — no crowns
 import { describe, expect, it } from "vitest";
-import { getEligiblePositions, getValidDirections, staysWithin5x5, staysWithin7x7 } from "../gamelogic/board";
-import { right, left } from "../gamelogic/cards";
+import { getEligiblePositions, getValidDirections, staysWithin5x5, staysWithin7x7 } from "kingdomino-engine";
+import { right, left } from "kingdomino-engine";
 import { Board, type BoardPlacement } from "../state/Board";
 
 const placedCardsToBoard = (placements: BoardPlacement[] = []) =>

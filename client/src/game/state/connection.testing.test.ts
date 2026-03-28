@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { right, left } from "../gamelogic/cards";
-import { hashIt } from "../gamelogic/utils";
+import { right, left } from "kingdomino-engine";
+import { hashIt } from "kingdomino-engine";
 import { ConnectionManager } from "./ConnectionManager";
 import { TestConnection } from "./connection.testing";
 

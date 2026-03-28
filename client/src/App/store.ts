@@ -2,7 +2,7 @@ import { computed, effect, signal } from "alien-signals";
 import { useEffect, useMemo, useState } from "react";
 
 import type { GameSession, GameEventMap } from "../game/state/GameSession";
-import type { GameEndedEntry } from "../game/gamelogic/winners";
+import type { GameEndedEntry } from "kingdomino-engine";
 import { type Room, Splash, computeHint } from "./AppExtras";
 
 // ── Session signal ────────────────────────────────────────────────────────────

@@ -6,7 +6,7 @@
  * UI adapters subscribe to typed events via GameEventBus.
  */
 
-import { getCard } from "../gamelogic/cards";
+import { getCard } from "kingdomino-engine";
 import {
   findPlacementWithin5x5,
   findPlacementWithin7x7,
@@ -14,13 +14,13 @@ import {
   getValidDirections,
   staysWithin5x5,
   staysWithin7x7,
-} from "../gamelogic/board";
+} from "kingdomino-engine";
 import type { PlayerId, CardId, Direction } from "./types";
 import type { BoardGrid } from "./Board";
 import { Player } from "./Player";
 import { Deal } from "./Deal";
 import { Round } from "./Round";
-import type { GameVariant } from "../gamelogic/cards";
+import type { GameVariant } from "kingdomino-engine";
 
 // Re-export sub-module classes and types for backward compatibility
 export type { BoardCell, BoardGrid } from "./Board";

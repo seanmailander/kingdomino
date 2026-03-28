@@ -1,4 +1,4 @@
-import { getNextFourCards } from "./utils";
+import { chooseOrderFromSeed, getNextFourCards } from "./utils";
 import { describe, expect, it } from "vitest";
 
 import { generateDeck } from "./cards";
@@ -55,5 +55,25 @@ describe("Shuffles deck", () => {
     // Assert
     expect(shuffle.remaining).toHaveLength(44);
     expect(recombinedDeck).toIncludeSameMembers(deck);
+  });
+});
+
+describe("chooseOrderFromSeed", () => {
+  it("returns a deterministic order for the same seed regardless of input order", () => {
+    const a = chooseOrderFromSeed("test-seed", ["alice", "bob"]);
+    const b = chooseOrderFromSeed("test-seed", ["bob", "alice"]);
+    expect(a).toEqual(b);
+    expect(a).toHaveLength(2);
+    expect(a).toContain("alice");
+    expect(a).toContain("bob");
+  });
+
+  it("returns different orders for different seeds", () => {
+    const results = new Set<string>();
+    // With enough different seeds, we expect at least two different orderings
+    for (let i = 0; i < 20; i++) {
+      results.add(chooseOrderFromSeed(`seed-${i}`, ["alice", "bob"]).join(","));
+    }
+    expect(results.size).toBeGreaterThan(1);
   });
 });

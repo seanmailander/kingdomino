@@ -1,26 +1,47 @@
 import { describe, expect, it } from "vitest";
-import { Player } from "../state/Player";
-import { right } from "../gamelogic/cards";
+import { right, up, down, left, getCard, castle } from "./cards";
 import { determineWinners } from "./winners";
+import { getEmptyBoard, largestRegion, totalCrowns } from "./board";
+import type { WinnersPlayer } from "./winners";
 
 // card 0: grain/grain, no crowns — places 2 tiles adjacent to castle
 // card 18: grain(1 crown)/wood — adds a crown to the grain region
 // card 44: mine(2 crowns)/grain — 2 crowns
 
-function makePlayer(id: string): Player {
-  return new Player(id, true);
+const xDir: Record<string, number> = { [up]: 0, [right]: 1, [down]: 0, [left]: -1 };
+const yDir: Record<string, number> = { [up]: -1, [right]: 0, [down]: 1, [left]: 0 };
+
+function buildBoard(placements: Array<{ card: number; x: number; y: number; direction: string }>) {
+  const board = getEmptyBoard() as { tile?: number; value?: number }[][];
+  board[6][6] = { tile: castle };
+  for (const { card, x, y, direction } of placements) {
+    const xB = x + xDir[direction];
+    const yB = y + yDir[direction];
+    if (xB < 0 || xB > 12 || yB < 0 || yB > 12) continue;
+    const { tiles: [{ tile: tileA, value: valueA }, { tile: tileB, value: valueB }] } = getCard(card);
+    board[y][x] = { tile: tileA, value: valueA };
+    board[yB][xB] = { tile: tileB, value: valueB };
+  }
+  return board;
 }
 
-function makePlayerWithOneTile(id: string): Player {
-  const p = new Player(id, true);
-  p.applyPlacement(0, 7, 6, right); // 2-tile grain region, 0 crowns
-  return p;
+function makePlayer(id: string, placements: Array<{ card: number; x: number; y: number; direction: string }> = []): WinnersPlayer {
+  const grid = buildBoard(placements);
+  return {
+    id,
+    board: {
+      largestPropertySize: () => largestRegion(grid),
+      totalCrowns: () => totalCrowns(grid),
+    },
+  };
 }
 
-function makePlayerWithCrown(id: string): Player {
-  const p = new Player(id, true);
-  p.applyPlacement(18, 7, 6, right); // grain(1 crown)/wood → 1 crown
-  return p;
+function makePlayerWithOneTile(id: string): WinnersPlayer {
+  return makePlayer(id, [{ card: 0, x: 7, y: 6, direction: right }]); // 2-tile grain region, 0 crowns
+}
+
+function makePlayerWithCrown(id: string): WinnersPlayer {
+  return makePlayer(id, [{ card: 18, x: 7, y: 6, direction: right }]); // grain(1 crown)/wood → 1 crown
 }
 
 describe("determineWinners", () => {

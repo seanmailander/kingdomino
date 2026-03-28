@@ -17,13 +17,13 @@ import { describe, expect, it } from "vitest";
 import { Board } from "../state/Board";
 import { GameSession, Player } from "../state/GameSession";
 import type { GameEventMap } from "../state/GameSession";
-import { right, left, down, up } from "../gamelogic/cards";
+import { right, left, down, up } from "kingdomino-engine";
 import {
   scoreBoard,
   largestRegion,
   totalCrowns as totalCrownsGrid,
   isCastleCentered as isCastleCenteredGrid,
-} from "../gamelogic/board";
+} from "kingdomino-engine";
 
 describe("Pure scoring functions in gamelogic/board", () => {
   it("scoreBoard returns 0 for an empty board", () => {

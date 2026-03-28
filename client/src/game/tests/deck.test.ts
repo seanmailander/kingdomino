@@ -1,7 +1,7 @@
 // Section 1 — Deck
 import { describe, expect, it } from "vitest";
-import { generateCardMap, generateDeck } from "../gamelogic/cards";
-import { getNextFourCards } from "../gamelogic/utils";
+import { generateCardMap, generateDeck } from "kingdomino-engine";
+import { getNextFourCards } from "kingdomino-engine";
 
 describe("Deck", () => {
   it("a fresh deck contains exactly 48 cards", () => {

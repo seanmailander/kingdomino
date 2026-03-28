@@ -1,4 +1,18 @@
-import { commit, verify, combine } from "../gamelogic/utils";
+// Old commitment protocol — kept for compatibility until Task 8
+const hashIt = async (input: string | number): Promise<string> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(String(input));
+  const hash = await crypto.subtle.digest("SHA-1", data);
+  return btoa(String.fromCharCode(...new Uint8Array(hash)));
+};
+const commit = async (): Promise<{ secret: number; committment: string }> => {
+  const { default: seedrandom } = await import("seedrandom");
+  const randomNumber = seedrandom().int32();
+  return { secret: randomNumber, committment: await hashIt(randomNumber) };
+};
+const verify = async (secret: string | number, committment: string): Promise<boolean> =>
+  (await hashIt(secret)) === committment;
+const combine = async (a: number, b: number): Promise<string> => hashIt(a ^ b);
 import {
   COMMITTMENT,
   REVEAL,

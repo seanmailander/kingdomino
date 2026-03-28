@@ -2,8 +2,6 @@ import seedrandom from "seedrandom";
 
 import { generateDeck } from "./cards";
 
-type PeerIdentifiers = { me: string; them: string };
-
 // Make a predictable pseudorandom number generator.
 // https://stackoverflow.com/a/12646864
 const seededShuffle = (seed: string | number) => {
@@ -26,24 +24,22 @@ export const hashIt = async (input: string | number): Promise<string> => {
   return hashString;
 };
 
-export const commit = async (): Promise<{ secret: number; committment: string }> => {
-  const randomNumber = seedrandom().int32();
-  const hashString = await hashIt(randomNumber);
-
-  return {
-    secret: randomNumber,
-    committment: hashString,
-  };
+// Commitment protocol utilities
+export const commit = async (secret: string): Promise<string> => {
+  const data = new TextEncoder().encode(secret);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 };
 
-export const verify = async (secret: string | number, committment: string): Promise<boolean> => {
-  const hashString = await hashIt(secret);
-  return committment === hashString;
-};
+export const verify = async (secret: string, commitment: string): Promise<boolean> =>
+  (await commit(secret)) === commitment;
 
-export const combine = async (a: number, b: number): Promise<string> => {
-  const combinedRandom = a ^ b;
-  return hashIt(combinedRandom);
+export const combine = (a: string, b: string): string => {
+  const aNum = BigInt("0x" + a);
+  const bNum = BigInt("0x" + b);
+  return (aNum ^ bNum).toString(16).padStart(64, "0");
 };
 
 export const getNextFourCards = (
@@ -59,12 +55,8 @@ export const getNextFourCards = (
   };
 };
 
-export const chooseOrderFromSeed = (seed: string, peerIdentifiers: PeerIdentifiers) => {
-  const { me, them } = peerIdentifiers;
-
-  const seededRandom = seedrandom(seed);
-  const invertOrder = seededRandom() < 0.5;
-  const [first, second] = me < them ? [me, them] : [them, me];
-
-  return invertOrder ? ([second, first] as const) : ([first, second] as const);
+export const chooseOrderFromSeed = (seed: string, playerIds: readonly string[]): string[] => {
+  // Sort for determinism (both peers start from the same canonical order)
+  const sorted = [...playerIds].sort();
+  return seededShuffle(seed)(sorted);
 };

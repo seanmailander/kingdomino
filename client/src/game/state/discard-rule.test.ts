@@ -10,7 +10,7 @@
 // or mine; with only grain/water/grass neighbours, it is unplaceable.
 import { describe, expect, it } from "vitest";
 import { GameSession, Player } from "./GameSession";
-import { left, right } from "../gamelogic/cards";
+import { left, right } from "kingdomino-engine";
 
 const BLOCKED_CARD = 46 as const; // marsh/mine — requires marsh or mine adjacency
 

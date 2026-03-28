@@ -1,7 +1,17 @@
-import type { Player } from "../state/Player";
+/** Minimal board interface required by the winners module */
+export type WinnersBoard = {
+  largestPropertySize(): number;
+  totalCrowns(): number;
+};
+
+/** Minimal player interface required by the winners module */
+export type WinnersPlayer = {
+  id: string;
+  board: WinnersBoard;
+};
 
 export type GameEndedEntry = {
-  player: Player;
+  player: WinnersPlayer;
   score: number;
   bonuses: { middleKingdom: number; harmony: number };
 };

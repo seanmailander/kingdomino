@@ -1,4 +1,4 @@
-import type { ScoreEntry } from "../gamelogic/winners";
+import type { ScoreEntry } from "kingdomino-engine";
 
 import "./GameOverScreen.css";
 

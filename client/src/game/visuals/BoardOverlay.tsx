@@ -4,7 +4,7 @@ import { useBoardPosition } from "./useBoardPosition";
 
 import { Tile } from "./Tile";
 import { Board } from "../state/Board";
-import { getFlippedPosition } from "../gamelogic/board";
+import { getFlippedPosition } from "kingdomino-engine";
 import type { CardId, Direction } from "../state/types";
 
 type BoardOverlayProps = {

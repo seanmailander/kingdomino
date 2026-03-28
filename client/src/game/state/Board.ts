@@ -1,11 +1,11 @@
-import { getEmptyBoard } from "../gamelogic/board";
 import {
+  getEmptyBoard,
   scoreBoard,
   largestRegion,
   totalCrowns as computeTotalCrowns,
   isCastleCentered as computeIsCastleCentered,
-} from "../gamelogic/board";
-import { castle, getCard, up, down, left, right } from "../gamelogic/cards";
+} from "kingdomino-engine";
+import { castle, getCard, up, down, left, right } from "kingdomino-engine";
 import type { Direction, CardId } from "./types";
 
 /** Legacy cell format used by board.ts utilities and visual components */

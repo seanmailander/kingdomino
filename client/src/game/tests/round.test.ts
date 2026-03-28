@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { Deal } from "../state/Deal";
 import { Round } from "../state/Round";
 import { Player } from "../state/Player";
-import { right, left } from "../gamelogic/cards";
+import { right, left } from "kingdomino-engine";
 
 // Helpers
 const alice = () => new Player("alice", true);
