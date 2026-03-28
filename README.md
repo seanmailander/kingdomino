@@ -30,7 +30,7 @@ See [research](./RESEARCH.md) for more info
 
 ### Simplify DevX
 
-- couch coop (local visual take turns)
+- couch coop (local second player uses right-hand board, no WebRTC needed)
 - full game loop (menu, start, pause, exit) ✅
 - e2e tests over local UI
 
@@ -49,7 +49,9 @@ See [research](./RESEARCH.md) for more info
 
 ## NOW
 
-1. Calculate only eligible places by neighbors
+1. Split pick from move — both are independent player actions; decouple in game state and connection interface
+2. Normalize `notifyLocalDiscard` into the standard send/waitFor message pipeline (remove special-case handling)
+3. Calculate only eligible places by neighbors
 2. Add mid-game debug states
 3. Calculate only eligible places by rotation
 4. Calculate only eligible places by board size
