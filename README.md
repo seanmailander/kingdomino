@@ -23,6 +23,12 @@ See [research](./RESEARCH.md) for more info
 - Connectivity is bare-bones, but works
 - Deck is shuffled in a "fair" way
 - Players can pick cards and take turns making moves
+- Full game loop: pause, resume, and exit controls synchronized across peers
+- Solo play with a RandomAI opponent (no WebRTC needed for single-player)
+- Only eligible placement positions are offered (by neighbors, rotation, and board bounds)
+- Unplaceable dominoes are automatically discarded
+- Games are scored and winners are displayed
+- Client-only development workflow: Vitest unit/integration tests + Storybook visual TDD
 
 # TODO
 
@@ -30,28 +36,31 @@ See [research](./RESEARCH.md) for more info
 
 ### Simplify DevX
 
- - create a workflow for client-only development
-   - play without competition
-   - HMR
-   - typesafety
-   - linting
-   - tests
- - create a workflow for game state testing
-   - reload game state
-   - admin panel to select state
-   
+- couch coop (local second player uses right-hand board, no WebRTC needed)
+- e2e tests over local UI
+
+- create a workflow for game state testing
+  - reload game state
+  - admin panel to select state
+
+- make an e2e test for multiplayer that simulates two parallel browsers
+- plan for reusable test scaffolds for the game (like the page fixture model) that can be invoked from e2e or integration or unit tests
+
 ## NOW
 
-1. Calculate only eligible places by neighbors
-2. Add mid-game debug states
-3. Calculate only eligible places by rotation
-4. Calculate only eligible places by board size
+1. Split pick from move — both are independent player actions; decouple in game state and connection interface
+2. Normalize `notifyLocalDiscard` into the standard send/waitFor message pipeline (remove special-case handling)
+3. Add mid-game debug states
 
 ## NEXT
 
 1. Display card value via crown overlay
-2. Provide a score at end of game
-3. Prompt to play again at end of game
+4. Visual hint for card picked by other player, should not be pickable
+5. Lobby to pick game style (ai, remote, couch) and player count (2,3,4)
+6. Extract GameSession as an externalizable package, with a strict API surface (command, query, observe) and limited dependencies
+  - players (local, remote, couch, ai) would not be included
+  - transports (local, remote) would not be included
+  - produce a flow diagram (mermaid) of game states, based upon commands + events
 
 ## NIRVANA
 
