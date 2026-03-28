@@ -86,6 +86,16 @@ export class RandomAIPlayer {
     };
   }
 
+  /** Returns true if the AI is the current actor and should move immediately. */
+  isFirstToAct(): boolean {
+    return this.aiSession.isMyTurn();
+  }
+
+  /** Returns true if the AI session currently has an active round. */
+  hasActiveRound(): boolean {
+    return this.aiSession.currentRound !== null;
+  }
+
   /** Clean up. No active external subscriptions in this implementation. */
   destroy(): void {
     // No-op: aiSession holds no external resources

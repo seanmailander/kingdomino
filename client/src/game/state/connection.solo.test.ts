@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SoloConnection } from "./connection.solo";
 import { RandomAIPlayer } from "./ai.player";
-import { MOVE, PAUSE_ACK, RESUME_ACK, revealMessage } from "./game.messages";
+import { MOVE, PAUSE_ACK, RESUME_ACK } from "./game.messages";
 import { pauseRequestMessage, resumeRequestMessage } from "./game.messages";
 
 const makeAiPlayer = () => {
@@ -27,8 +27,8 @@ describe("SoloConnection control messages", () => {
   });
 });
 
-describe("SoloConnection — emitOpponentMove delegates to RandomAIPlayer", () => {
-  it("emits a MOVE message with a valid card from the deal after REVEAL", async () => {
+describe("SoloConnection — notifyRoundStarted delegates to RandomAIPlayer", () => {
+  it("emits a MOVE message with a valid card from the deal when AI acts first", async () => {
     const ai = new RandomAIPlayer("them", "me");
     ai.startGame(["them", "me"]); // AI picks first
     ai.beginRound([4, 22, 28, 46]);
@@ -36,8 +36,8 @@ describe("SoloConnection — emitOpponentMove delegates to RandomAIPlayer", () =
     const conn = new SoloConnection(ai);
     const move = conn.waitFor(MOVE);
 
-    // Trigger the REVEAL → emitOpponentMove chain
-    conn.send(revealMessage("test-secret"));
+    // Trigger the AI's first move after round has started
+    conn.notifyRoundStarted();
 
     const payload = await move;
     expect([4, 22, 28, 46]).toContain(payload.move.card);

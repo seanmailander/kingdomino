@@ -68,6 +68,7 @@ export class LobbyFlow {
   private connectionManager: ConnectionManager | null = null;
   private remainingDeck?: number[];
   private aiPlayer: RandomAIPlayer | null = null;
+  private soloConnection: SoloConnection | null = null;
   private readonly createConnectionManager: (connection: IGameConnection) => ConnectionManager;
   private readonly shouldContinuePlaying: (
     completedRounds: number,
@@ -94,7 +95,8 @@ export class LobbyFlow {
 
   ReadySolo() {
     this.aiPlayer = new RandomAIPlayer("them", "me", this.variant);
-    this.ready(new SoloConnection(this.aiPlayer));
+    this.soloConnection = new SoloConnection(this.aiPlayer);
+    this.ready(this.soloConnection);
   }
 
   ReadyMultiplayer() {
@@ -180,6 +182,7 @@ export class LobbyFlow {
 
     session.beginRound(cardIds as [CardId, CardId, CardId, CardId]);
     this.aiPlayer?.beginRound(cardIds as [CardId, CardId, CardId, CardId]);
+    this.soloConnection?.notifyRoundStarted();
 
     // Process actors sequentially until the round is complete
     while (session.currentRound !== null) {
@@ -291,6 +294,7 @@ export class LobbyFlow {
     } finally {
       connection.destroy();
       this.aiPlayer = null;
+      this.soloConnection = null;
       this.session = null;
       this.connectionManager = null;
       this.remainingDeck = [];

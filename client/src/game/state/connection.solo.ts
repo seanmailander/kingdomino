@@ -97,7 +97,9 @@ export class SoloConnection {
         return;
       case REVEAL:
         this.emitIncoming(REVEAL, revealMessage(String(secret)).content);
-        this.emitOpponentMove();
+        // Don't emit AI move here — REVEAL fires twice per game (pick-order seed + round-card
+        // seed), and beginRound() hasn't been called yet at that point. Instead,
+        // LobbyFlow calls notifyRoundStarted() after beginRound().
         return;
       case MOVE:
         this.aiPlayer.receiveHumanMove(
@@ -106,7 +108,10 @@ export class SoloConnection {
           message.content.move.y,
           message.content.move.direction,
         );
-        this.emitOpponentMove();
+        // Only emit if the round is still active — the human's last pick ends the round.
+        if (this.aiPlayer.hasActiveRound()) {
+          this.emitOpponentMove();
+        }
         return;
       case PAUSE_REQUEST:
         this.emitIncoming(PAUSE_ACK, undefined);
@@ -128,7 +133,15 @@ export class SoloConnection {
     }
   }
 
+  /** Called by LobbyFlow after beginRound(): emits the AI's first move if AI acts first. */
+  notifyRoundStarted(): void {
+    if (this.aiPlayer.isFirstToAct()) {
+      this.emitOpponentMove();
+    }
+  }
+
   private emitOpponentMove() {
+    if (!this.aiPlayer.hasActiveRound()) return;
     const move = this.aiPlayer.generateMove();
     this.emitIncoming(MOVE, moveMessage(move).content);
   }
