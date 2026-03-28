@@ -58,6 +58,11 @@ See [research](./RESEARCH.md) for more info
 2. Provide a score at end of game
 3. Prompt to play again at end of game
 4. Visual hint for card picked by other player, should not be pickable
+5. Lobby to pick game style (ai, remote, couch) and player count (2,3,4)
+6. Extract GameSession as an externalizable package, with a strict API surface (command, query, observe) and limited dependencies
+  - players (local, remote, couch, ai) would not be included
+  - transports (local, remote) would not be included
+  - produce a flow diagram (mermaid) of game states, based upon commands + events
 
 ## NIRVANA
 
