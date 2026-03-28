@@ -17,6 +17,8 @@ export interface IGameConnection {
   send: (message: GameMessage) => void;
   waitFor: <T extends GameMessageType>(messageType: T) => Promise<GameMessagePayload<T>>;
   destroy: () => void;
+  /** Solo-only: notifies the AI that the human discarded their card this turn. */
+  notifyLocalDiscard?: (cardId: CardId) => void;
 }
 
 /** Internal phase names used by LobbyFlow — independent of UI room constants. */
@@ -211,19 +213,26 @@ export class LobbyFlow {
         const placeOrPause = await Promise.race([
           waitForEvent(session.events, "place:made", (e) => e.player.id === actor.id)
             .then((r) => ({ type: "place" as const, r })),
+          waitForEvent(session.events, "discard:made", (e) => e.player.id === actor.id)
+            .then((r) => ({ type: "discard" as const, r })),
           this.adapter.oncePhaseIsNot("game").then(() => ({ type: "inactive" as const })),
         ]);
         if (placeOrPause.type === "inactive") return;
 
-        // Send move to peer
-        const placeEvent = placeOrPause.r;
-        connectionManager.sendMove({
-          playerId: actor.id,
-          card: placeEvent.cardId,
-          x: placeEvent.x,
-          y: placeEvent.y,
-          direction: placeEvent.direction,
-        });
+        if (placeOrPause.type === "discard") {
+          // Human couldn't place — notify AI (solo mode) so it can advance its own session
+          this.soloConnection?.notifyLocalDiscard(placeOrPause.r.cardId);
+        } else {
+          // Send place move to peer
+          const placeEvent = placeOrPause.r;
+          connectionManager.sendMove({
+            playerId: actor.id,
+            card: placeEvent.cardId,
+            x: placeEvent.x,
+            y: placeEvent.y,
+            direction: placeEvent.direction,
+          });
+        }
       } else {
         const moveOrPause = await Promise.race([
           connectionManager.waitForMove().then(
@@ -236,7 +245,11 @@ export class LobbyFlow {
 
         const { move } = moveOrPause.r;
         session.handlePick(move.playerId, move.card);
-        session.handlePlacement(move.playerId, move.x, move.y, move.direction);
+        if (move.discard) {
+          session.handleDiscard(move.playerId);
+        } else {
+          session.handlePlacement(move.playerId, move.x, move.y, move.direction);
+        }
       }
     }
   }

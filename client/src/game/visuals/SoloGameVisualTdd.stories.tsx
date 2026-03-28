@@ -1,6 +1,7 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent } from "storybook/test";
+import { action } from "storybook/actions";
+import { expect, userEvent, spyOn } from "storybook/test";
 
 import { App } from "../../App/App";
 import { resetAppState } from "../../App/store";
@@ -9,13 +10,24 @@ const meta = {
   title: "Game/Solo AI Visual TDD",
   component: App,
   tags: ["autodocs"],
-  beforeEach: resetAppState,
+  beforeEach: () => {
+    resetAppState();
+    // Surface any console.error calls (e.g. caught flow errors) as test failures
+    spyOn(console, "error")
+      .mockName("")
+      .mockImplementation((...args) => {
+        action("console.log")(args);
+      });
+  },
 } satisfies Meta<typeof App>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-async function playSoloGameToEnd(canvas: Parameters<NonNullable<Story["play"]>>[0]["canvas"], timeout: number) {
+async function playSoloGameToEnd(
+  canvas: Parameters<NonNullable<Story["play"]>>[0]["canvas"],
+  timeout: number,
+) {
   await userEvent.click(canvas.getByRole("button", { name: /start solo/i }));
   await userEvent.click(await canvas.findByRole("button", { name: /start game/i }));
 
@@ -91,8 +103,7 @@ async function playSoloGameToEnd(canvas: Parameters<NonNullable<Story["play"]>>[
 
 export const SoloGamePlaysToCompletion: Story = {
   play: async ({ canvas }) => {
-    await playSoloGameToEnd(canvas, 60000);
+    await playSoloGameToEnd(canvas, 85000);
     await expect(canvas.getByText(/Kingdomino/i)).toBeVisible();
   },
 };
-

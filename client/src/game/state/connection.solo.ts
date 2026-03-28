@@ -140,6 +140,14 @@ export class SoloConnection {
     }
   }
 
+  /** Called by LobbyFlow when the human discards: advances AI session and triggers AI move if needed. */
+  notifyLocalDiscard(cardId: number): void {
+    this.aiPlayer.receiveHumanDiscard(cardId);
+    if (this.aiPlayer.hasActiveRound()) {
+      this.emitOpponentMove();
+    }
+  }
+
   private emitOpponentMove() {
     if (!this.aiPlayer.hasActiveRound()) return;
     const move = this.aiPlayer.generateMove();

@@ -37,6 +37,12 @@ export class RandomAIPlayer {
     this.aiSession.handlePlacement(this.humanPlayerId, x, y, dir);
   }
 
+  /** Records the human player's discard into the AI session (human picked but couldn't place). */
+  receiveHumanDiscard(card: CardId): void {
+    this.aiSession.handlePick(this.humanPlayerId, card);
+    this.aiSession.handleDiscard(this.humanPlayerId);
+  }
+
   /**
    * Picks a random available card and finds a valid in-bounds placement.
    * Falls back to a sentinel move (0, 0, "up") if no valid placement exists —
@@ -71,18 +77,17 @@ export class RandomAIPlayer {
       }
     }
 
-    // Degenerate fallback: no valid in-bounds placement found for any card
+    // Degenerate fallback: no valid in-bounds placement found for any card — discard
     const firstCard = availableCardIds[0];
-    console.warn(
-      `RandomAIPlayer(${this.aiPlayerId}): no valid placement found for any available card — returning sentinel (0, 0, up)`,
-    );
     this.aiSession.handleLocalPick(firstCard);
+    this.aiSession.handleLocalDiscard();
     return {
       playerId: this.aiPlayerId,
       card: firstCard,
       x: 0,
       y: 0,
       direction: "up" as Direction,
+      discard: true,
     };
   }
 

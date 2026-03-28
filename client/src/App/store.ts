@@ -22,6 +22,7 @@ const ALL_EVENTS: ReadonlyArray<keyof GameEventMap> = [
   "round:started",
   "pick:made",
   "place:made",
+  "discard:made",
   "round:complete",
   "game:ended",
 ];

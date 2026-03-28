@@ -11,4 +11,5 @@ export type MovePayload = {
   x: number;
   y: number;
   direction: Direction;
+  discard?: true;
 };
