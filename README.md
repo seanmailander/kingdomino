@@ -27,7 +27,7 @@ See [research](./RESEARCH.md) for more info
 - Solo play with a RandomAI opponent (no WebRTC needed for single-player)
 - Only eligible placement positions are offered (by neighbors, rotation, and board bounds)
 - Unplaceable dominoes are automatically discarded
-- Scoring algorithm implemented (BFS flood-fill: region size × crowns) with end-of-game ranking and tie-break resolution
+- Games are scored and winners are displayed
 - Client-only development workflow: Vitest unit/integration tests + Storybook visual TDD
 
 # TODO
@@ -55,8 +55,6 @@ See [research](./RESEARCH.md) for more info
 ## NEXT
 
 1. Display card value via crown overlay
-2. Provide a score at end of game
-3. Prompt to play again at end of game
 4. Visual hint for card picked by other player, should not be pickable
 5. Lobby to pick game style (ai, remote, couch) and player count (2,3,4)
 6. Extract GameSession as an externalizable package, with a strict API surface (command, query, observe) and limited dependencies
