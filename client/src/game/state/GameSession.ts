@@ -335,6 +335,29 @@ export class GameSession {
     return this._currentRound.deal.pickedCardFor(me) ?? undefined;
   }
 
+  /** Eligible anchor positions for the local player's card-to-place. Returns [] when not in placing phase. */
+  localEligiblePositions(): Array<{ x: number; y: number }> {
+    const me = this.myPlayer();
+    if (!me || !this._currentRound || this._currentRound.phase !== "placing") return [];
+    if (this._currentRound.currentActor?.id !== me.id) return [];
+    const cardId = this._currentRound.deal.pickedCardFor(me);
+    if (cardId === null) return [];
+    return getEligiblePositions(me.board.snapshot(), cardId);
+  }
+
+  /** Valid placement directions for the local player's card at grid position (x, y). Returns [] when not in placing phase. */
+  localValidDirectionsAt(x: number, y: number): Direction[] {
+    const me = this.myPlayer();
+    if (!me || !this._currentRound || this._currentRound.phase !== "placing") return [];
+    if (this._currentRound.currentActor?.id !== me.id) return [];
+    const cardId = this._currentRound.deal.pickedCardFor(me);
+    if (cardId === null) return [];
+    const board = me.board.snapshot();
+    return getValidDirections(board, cardId, x, y).filter((d) =>
+      this._staysWithinBounds(board, x, y, d),
+    );
+  }
+
   /**
    * Returns the 4 deal cards in canonical (sorted) order as card-info objects.
    * Compatible with the existing getCard() return format used by visual components.

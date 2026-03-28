@@ -96,6 +96,37 @@ describe("GameSession — turn flow", () => {
     expect(session.localCardToPlace()).toBe(26);
   });
 
+  it("localEligiblePositions returns empty array when not in placing phase", () => {
+    const { session } = makeSession();
+    session.beginRound([0, 1, 2, 3]);
+    // Still in picking phase — no eligible positions
+    expect(session.localEligiblePositions()).toEqual([]);
+  });
+
+  it("localEligiblePositions returns positions after local player picks", () => {
+    const { session } = makeSession();
+    session.beginRound([0, 1, 2, 3]);
+    session.handleLocalPick(0);
+    // Now in placing phase — castle-adjacent positions should be eligible
+    const positions = session.localEligiblePositions();
+    expect(positions.length).toBeGreaterThan(0);
+  });
+
+  it("localValidDirectionsAt returns empty array when not in placing phase", () => {
+    const { session } = makeSession();
+    session.beginRound([0, 1, 2, 3]);
+    expect(session.localValidDirectionsAt(7, 6)).toEqual([]);
+  });
+
+  it("localValidDirectionsAt returns valid directions after local player picks", () => {
+    const { session } = makeSession();
+    session.beginRound([0, 1, 2, 3]);
+    session.handleLocalPick(0);
+    // Castle-adjacent (7,6) should have valid directions for card 0 (grain/grain)
+    const directions = session.localValidDirectionsAt(7, 6);
+    expect(directions.length).toBeGreaterThan(0);
+  });
+
   it("after the local player places, it becomes the next player's turn", () => {
     const { session, bob } = makeSession();
     session.beginRound([3, 26, 32, 34]);

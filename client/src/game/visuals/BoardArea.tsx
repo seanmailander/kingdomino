@@ -7,7 +7,6 @@ import { Game as GameRoom } from "../../App/AppExtras";
 
 import { Tile } from "./Tile";
 import { BoardOverlay } from "./BoardOverlay";
-import { getEligiblePositions, getValidDirections } from "../gamelogic/board";
 import { up, down, left, right } from "../gamelogic/cards";
 import type { Direction } from "../state/types";
 import { useKeypress } from "./useKeyPress";
@@ -15,6 +14,7 @@ import { useKeypress } from "./useKeyPress";
 type BoardSquareProps = {
   handleClick: () => void;
   children: React.ReactNode;
+  testId?: string;
 };
 
 type BoardAreaProps = {
@@ -23,8 +23,8 @@ type BoardAreaProps = {
   isMe: boolean;
 };
 
-function BoardSquare({ handleClick, children }: BoardSquareProps) {
-  return <div onClick={handleClick}>{children}</div>;
+function BoardSquare({ handleClick, children, testId }: BoardSquareProps) {
+  return <div onClick={handleClick} data-testid={testId}>{children}</div>;
 }
 
 const rotateLookup: Record<Direction, Direction> = {
@@ -38,9 +38,9 @@ export function BoardArea({ session, playerId, isMe }: BoardAreaProps) {
   const { room } = useApp();
   const isActive = room === GameRoom;
 
+  const isMyPlace = session.isMyPlace();
   const myBoard = session.boardFor(playerId);
   const cardId = session.localCardToPlace();
-  const isMyPlace = session.isMyPlace();
 
   const [direction, setDirection] = useState<Direction>(right);
   const [flipped, setFlipped] = useState(false);
@@ -54,13 +54,12 @@ export function BoardArea({ session, playerId, isMe }: BoardAreaProps) {
     }
   };
 
-  const eligiblePositions = getEligiblePositions(myBoard, cardId);
+  const eligiblePositions = session.localEligiblePositions();
   const isValidTile = (x: number, y: number) =>
     eligiblePositions.some((pos) => pos.x === x && pos.y === y);
 
   const isValidDirection = (x: number, y: number, nextDirection: Direction) =>
-    cardId !== undefined &&
-    getValidDirections(myBoard, cardId, x, y).some((d) => d === nextDirection);
+    session.localValidDirectionsAt(x, y).some((d) => d === nextDirection);
 
   // TODO: this is forcing keypress to re-add listeners on ever change of direction
   // is there an easier way?
@@ -86,7 +85,11 @@ export function BoardArea({ session, playerId, isMe }: BoardAreaProps) {
           )}
           {myBoard.map((row, y) =>
             row.map(({ tile, value }, x) => (
-              <BoardSquare key={`${y},${x}`} handleClick={handleClick(x, y)}>
+              <BoardSquare
+                key={`${y},${x}`}
+                handleClick={handleClick(x, y)}
+                testId={isMe && isMyPlace && isValidTile(x, y) && isValidDirection(x, y, direction) ? "valid-placement" : undefined}
+              >
                 <Tile
                   tile={tile}
                   value={value}
