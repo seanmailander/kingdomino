@@ -16,6 +16,7 @@ export function App() {
       {room === "Splash" && <SplashComponent />}
       {room === "Lobby" && <LobbyComponent session={session} />}
       {(room === "Game" || room === "GamePaused") && session && <GameComponent session={session} />}
+      {room === "GameEnded" && <div data-testid="game-over"><h2>Game over</h2></div>}
     </div>
   );
 }
