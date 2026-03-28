@@ -1,5 +1,6 @@
 {
   "name": "kingdomino",
+  "workspaces": ["client", "packages/*"],
   "version": "1.0.0",
   "description": "Recreate the Kingdomino board game",
   "homepage": "https://github.com/seanmailander/kingdomino#readme",
