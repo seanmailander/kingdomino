@@ -104,3 +104,27 @@ Quality Guardrails
 - Do not invent component props, variants, or IDs. Use only documented APIs.
 - If a required component or prop is not documented, report it instead of guessing.
 - Do not report completion while story tests are failing.
+
+---
+
+# Documentation Map
+
+Use this map to navigate all project documentation without filesystem exploration.
+
+## Top-Level Index
+- [`docs/README.md`](docs/README.md) — Hub: links to every doc file in the project
+
+## Code Conventions & Architecture
+- [`client/src/CLAUDE.md`](client/src/CLAUDE.md) — TypeScript conventions for client/src (typing, exports, OOP vs pure)
+- [`client/src/game/readme.md`](client/src/game/readme.md) — Game module architecture: logic / state / visuals layers and their dependencies
+- [`client/src/game/testing.md`](client/src/game/testing.md) — Test plan: 50+ domain-driven scenarios across deck, placement, scoring, rounds
+
+## Client & Server Setup
+- [`client/README.md`](client/README.md) — Dev scripts: start, build, test, preview
+- [`server/README.md`](server/README.md) — Signaling server: purpose, scripts, key files
+
+## Agent Skills
+- [`.agents/skills/README.md`](.agents/skills/README.md) — Index of all skills with when-to-invoke summaries and workflow
+
+## Design History
+- [`docs/superpowers/README.md`](docs/superpowers/README.md) — Index of all specs and implementation plans with status
