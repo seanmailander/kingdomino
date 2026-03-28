@@ -37,6 +37,7 @@ packages/
       GameEvent.ts       ← named discriminated union of all in-game events
       GameSession.ts     ← orchestrator: state + flow loop
       GameEventBus.ts    ← typed pub/sub
+      SeedProvider.ts    ← interface: nextSeed(): Promise<number> (re-exported by kingdomino-commitment)
       Player.ts          ← domain entity (id + Board, no isLocal)
       Board.ts
       Round.ts
@@ -48,9 +49,9 @@ packages/
 
   kingdomino-commitment/
     src/
-      SeedProvider.ts    ← interface: nextSeed(): Promise<number>
-      CommitmentScheme.ts ← peer-to-peer commit/reveal protocol
+      CommitmentScheme.ts   ← peer-to-peer commit/reveal protocol
       RandomSeedProvider.ts ← deterministic/random seed (solo + tests)
+      # SeedProvider interface lives in kingdomino-engine, re-exported here
     index.ts
     package.json
     tsconfig.json
@@ -152,11 +153,11 @@ export type GamePhase = "lobby" | "playing" | "paused" | "finished";
 
 | Method | Phase | Description |
 |--------|-------|-------------|
-| `addPlayer(id: PlayerId): void` | lobby | Register a participant |
-| `startGame(pickOrder: PlayerId[]): void` | lobby → playing | Begin the game; triggers internal round loop |
+| `addPlayer(player: Player): void` | lobby | Register a participant |
+| `startGame(): void` | lobby → playing | Begin the game; engine uses first seed from `SeedProvider` to determine pick order, then triggers the internal round loop |
 | `handlePick(playerId, cardId): void` | playing | Record a pick (from UI or peer) |
 | `handleLocalPick(cardId): void` | playing | Convenience: pick for local player |
-| `handlePlacement(playerId, x, y, direction): void` | playing | Record a placement |
+| `handlePlacement(playerId, x, y, direction): void` | playing | Record a placement. `cardId` is **not a parameter** — the engine tracks which card each player picked and derives it internally. |
 | `handleLocalPlacement(x, y, direction): void` | playing | Convenience: place for local player |
 | `handleDiscard(playerId): void` | playing | Record a discard (no valid placement) |
 | `handleLocalDiscard(): void` | playing | Convenience: discard for local player |
@@ -182,7 +183,9 @@ export type GamePhase = "lobby" | "playing" | "paused" | "finished";
 | `localEligiblePositions()` | `Array<{x, y}>` |
 | `localValidDirectionsAt(x, y)` | `Direction[]` |
 | `hasLocalValidPlacement()` | `boolean` |
-| `deal()` | `CardInfo[]` |
+
+> **Design note:** These `local*` queries are UI-facing conveniences that live in the engine intentionally. They depend only on pure game logic (board state + card rules) and `localPlayerId`, not on any UI framework or network concern. Keeping them in the engine avoids duplicating placement-validation logic in the client.
+| `deal()` | `CardInfo[]` — the current round's 4 face-up cards in sorted order (empty when no active round). Shape: `{ id: CardId; tiles: [{ tile: number; value: number }, { tile: number; value: number }] }` (same as existing `getCard()` return type) |
 | `boardFor(playerId)` | `BoardGrid` |
 
 ### Observe (events)
@@ -197,14 +200,22 @@ session.events.on("pick:made", ({ player, cardId }) => { ... });
 When `startGame()` is called, the session internally runs:
 
 ```
-while (seedProvider can supply more seeds):
-  seed = await seedProvider.nextSeed()
-  cards = getNextFourCards(seed, remainingDeck)
-  [start round, wait for round:complete]
-→ emit game:ended
+seed₀ = await seedProvider.nextSeed()         // first seed: determines pick order
+pickOrder = chooseOrderFromSeed(seed₀, playerIds)
+emit game:started
+
+while (remainingDeck.length > 0):             // deck exhausted = termination condition
+  seedₙ = await seedProvider.nextSeed()
+  { next: cards, remaining } = getNextFourCards(seedₙ, remainingDeck)
+  remainingDeck = remaining
+  beginRound(cards)                            // internal
+  await round:complete
+  [if paused: suspend until game:resumed]
+
+emit game:ended
 ```
 
-Pause/resume is handled inside the loop: if `game:paused` is emitted, the loop suspends until `game:resumed`.
+**Termination condition:** the deck is exhausted when `remainingDeck.length === 0` after dealing the current round's 4 cards. The full deck size is determined by player count and variant (e.g. 24 cards / 4 per round = 6 rounds for 2-player standard). The engine determines the initial deck by calling a `buildDeck(playerCount, variant)` pure function from `gamelogic/`.
 
 ---
 
@@ -227,11 +238,31 @@ export class Player {
 
 ---
 
+## Round Sequencing Model
+
+GameSession processes actors **sequentially, interleaved** — not batch:
+> Each player **picks then immediately places** before the next player picks.
+
+```
+alice picks card 26
+alice places card 26 at (7, 6)
+bob picks card 3
+bob places card 3 at (5, 6)
+→ round:complete
+```
+
+This is the intended model. Batch (all-pick then all-place) is NOT the design.
+
+---
+
 ## `kingdomino-commitment` Package
 
-### SeedProvider Interface (re-exported from engine)
+### SeedProvider Interface
+
+`SeedProvider` is defined in the **engine** package and re-exported from `kingdomino-commitment`. Consumers should import the interface from the engine (`kingdomino-engine`) and implementations from the commitment package (`kingdomino-commitment`).
 
 ```ts
+// In kingdomino-engine — the canonical interface
 export interface SeedProvider {
   nextSeed(): Promise<number>;
 }
@@ -241,19 +272,42 @@ export interface SeedProvider {
 
 | Class | Use Case |
 |-------|----------|
-| `CommitmentSeedProvider` | P2P fairness: commit/reveal scheme over any `IGameConnection` |
+| `CommitmentSeedProvider` | P2P fairness: commit/reveal scheme over a `CommitmentTransport` |
 | `RandomSeedProvider` | Solo play + tests: deterministic or random local seed |
 
-The commitment/reveal logic currently in `ConnectionManager` (`buildTrustedSeed`) migrates here.
+`CommitmentSeedProvider` does **not** depend on `IGameConnection` (a client type). Instead, the commitment package defines its own narrow transport interface:
+
+```ts
+// In kingdomino-commitment — defines only what seed exchange needs
+export interface CommitmentTransport {
+  send(message: { type: string; content?: unknown }): void;
+  waitFor<T>(messageType: string): Promise<T>;
+}
+```
+
+`IGameConnection` in the client already satisfies this shape — no adapter needed. `CommitmentSeedProvider` is constructed with a `CommitmentTransport`:
+
+```ts
+new CommitmentSeedProvider(connection as CommitmentTransport)
+```
+
+This keeps the commitment package free of client imports.
 
 ---
 
 ## `game.messages.ts` Simplification
 
-`MoveGameMessage` and `MovePayload` are **removed** — replaced by `GameEvent` types from the engine.  
-What remains is renamed `ControlMessage`:
+`MoveGameMessage` and `MovePayload` are replaced with a `MoveMessage` discriminated union that mirrors `GameEvent` using plain serializable IDs (no `Player` objects). What was one opaque `MOVE` message becomes three typed messages:
 
 ```ts
+// Move wire messages — mirror GameEvent but with playerId instead of Player objects
+// cardId is only on PickMessage; place/discard derive it from the engine's internal pick record
+export type PickMessage    = { type: "pick:made";    playerId: PlayerId; cardId: CardId };
+export type PlaceMessage   = { type: "place:made";   playerId: PlayerId; x: number; y: number; direction: Direction };
+export type DiscardMessage = { type: "discard:made"; playerId: PlayerId };
+export type MoveMessage    = PickMessage | PlaceMessage | DiscardMessage;
+
+// Control messages (unchanged except renamed from GameMessage)
 export type ControlMessage =
   | StartGameMessage          // START
   | CommittmentGameMessage    // COMMITTMENT
@@ -264,23 +318,40 @@ export type ControlMessage =
   | ResumeAckMessage          // CONTROL_RESUME_ACK
   | ExitRequestMessage        // CONTROL_EXIT_REQUEST
   | ExitAckMessage;           // CONTROL_EXIT_ACK
+
+export type WireMessage = MoveMessage | ControlMessage;
 ```
 
-The `MOVE` message disappears because peer moves flow through `session.handlePick/handlePlacement` — the transport layer serializes/deserializes `PickMadeEvent` / `PlaceMadeEvent` / `DiscardMadeEvent` directly.
+On receipt, the transport calls the appropriate session command:
+
+```ts
+// transport on receive (wireMsg: WireMessage):
+if (wireMsg.type === "pick:made")
+  session.handlePick(wireMsg.playerId, wireMsg.cardId);
+else if (wireMsg.type === "place:made")
+  session.handlePlacement(wireMsg.playerId, wireMsg.x, wireMsg.y, wireMsg.direction);
+else if (wireMsg.type === "discard:made")
+  session.handleDiscard(wireMsg.playerId);
+// control messages handled by ConnectionManager as before
+```
+
+Player objects are never serialized over the wire. The engine resolves the full `Player` state from its internal map via `playerId`.
 
 ---
 
 ## LobbyFlow Simplification
 
-After extraction, `LobbyFlow` becomes lobby-only:
+After extraction, `LobbyFlow` becomes lobby-only (pseudo-code):
 
 ```ts
+// pseudo-code — adapter and connection wiring omitted for clarity
 class LobbyFlow {
   async run(connection: IGameConnection) {
     const session = new GameSession({
       variant, bonuses,
       localPlayerId: connection.peerIdentifiers.me,
       seedProvider: new CommitmentSeedProvider(connection),
+      // SeedProvider drives both pick-order (first seed) and all round card distributions
     });
 
     session.addPlayer(new Player(connection.peerIdentifiers.me));
@@ -295,17 +366,16 @@ class LobbyFlow {
     if (result === "leave") { adapter.setPhase("splash"); return; }
 
     adapter.setPhase("game");
-    const firstSeed = await connectionManager.buildTrustedSeed();
-    const pickOrder = chooseOrderFromSeed(firstSeed, connection.peerIdentifiers);
-    
-    session.startGame(pickOrder); // engine takes over: deals rounds, ends game
+    session.startGame(); // engine: gets first seed → pick order → deals all rounds → game:ended
     await waitForEvent(session.events, "game:ended");
     adapter.setPhase("ended");
   }
 }
 ```
 
-Pause/resume, round sequencing, and end detection all move into the engine.
+`startGame()` takes no arguments — the engine calls `seedProvider.nextSeed()` as its first action to determine pick order via `chooseOrderFromSeed`. All subsequent seeds come from the same provider for round dealing.
+
+Pause/resume, round sequencing, pick-order determination, and end detection all move into the engine.
 
 ---
 
@@ -315,14 +385,14 @@ Pause/resume, round sequencing, and end detection all move into the engine.
 stateDiagram-v2
     [*] --> lobby : new GameSession()
 
-    lobby --> playing : startGame(pickOrder)\n[command]\nemits: game:started
+    lobby --> playing : startGame()\n[command]\nemits: game:started
 
     state playing {
         [*] --> round_picking : beginRound(cards)\n[internal]\nemits: round:started
         round_picking --> round_placing : handlePick(playerId, cardId)\n[command]\nemits: pick:made
         round_placing --> round_picking : handlePlacement(...)\n[command]\nemits: place:made
         round_placing --> round_picking : handleDiscard(playerId)\n[command]\nemits: discard:made
-        round_picking --> [*] : all players placed/discarded\nemits: round:complete
+        round_placing --> [*] : last actor placed/discarded\n(all players in pick order have placed or discarded)\nemits: round:complete
     }
 
     playing --> paused : pause()\n[command]\nemits: game:paused
@@ -356,6 +426,7 @@ stateDiagram-v2
 - Remove `isLocal` from `Player`; add `localPlayerId` to `GameSession`
 
 ### Phase 4 — Engine-owned game loop
+> ⚠️ **Depends on Phase 3** (GameSession must be in engine first). Phase 5 depends on Phase 4 (commitment package consumes `SeedProvider` from engine). Execute Phases 3 → 4 → 5 in order.
 - Add `SeedProvider` interface to engine
 - Add internal game loop to `GameSession` (called by `startGame()`)
 - Remove `beginRound()` and `endGame()` from public API
@@ -373,9 +444,9 @@ stateDiagram-v2
 - Remove `game.messages.ts` MOVE handling from connection implementations
 
 ### Phase 7 — Verification
-- All existing tests pass
+- All existing tests pass. Tests are expected to be green at the start of each phase and green again at its end; red mid-phase is acceptable but must not be left red when the phase is declared complete.
 - Engine package has no client imports
-- Commitment package has no engine or client imports
+- Commitment package has no client imports (engine imports are expected — it re-exports `SeedProvider`)
 - `endGame()` and `beginRound()` are private (no external callers)
 
 ---
