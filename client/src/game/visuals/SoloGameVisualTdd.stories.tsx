@@ -37,12 +37,19 @@ function LocalAutoDriver({ session }: { session: GameSession | null }) {
       if (p) session.handleLocalPlacement(p.x, p.y, p.direction);
     };
 
-    const offRound = session.events.on("round:started", autoPick);
+    // Register offPick BEFORE calling autoPick so pick:made correctly schedules deferred autoPlace
     const offPick = session.events.on("pick:made", () => {
       // Defer both to let LobbyFlow's async loop register its next listener first
       setTimeout(autoPlace, 0);
       setTimeout(autoPick, 0);
     });
+
+    // Handle first round: round:started fires before this effect runs (React renders after the
+    // microtask chain completes), so call autoPick immediately to catch the missed event.
+    autoPick();
+
+    // For subsequent rounds, defer so LobbyFlow's waitForEvent(pick:made) registers first
+    const offRound = session.events.on("round:started", () => setTimeout(autoPick, 0));
 
     return () => {
       offRound();
