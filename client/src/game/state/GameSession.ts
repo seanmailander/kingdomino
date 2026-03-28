@@ -358,6 +358,16 @@ export class GameSession {
     );
   }
 
+  /** Returns true if the local player has any valid placement for their picked card within kingdom bounds. */
+  hasLocalValidPlacement(): boolean {
+    const me = this.myPlayer();
+    if (!me || !this._currentRound || this._currentRound.phase !== "placing") return false;
+    if (this._currentRound.currentActor?.id !== me.id) return false;
+    const cardId = this._currentRound.deal.pickedCardFor(me);
+    if (cardId === null) return false;
+    return this._findPlacementWithinBounds(me.board.snapshot(), cardId) !== null;
+  }
+
   /**
    * Returns the 4 deal cards in canonical (sorted) order as card-info objects.
    * Compatible with the existing getCard() return format used by visual components.

@@ -103,7 +103,7 @@ export function BoardArea({ session, playerId, isMe }: BoardAreaProps) {
         <div className="rotator">
           <button onClick={handleRotate}>Rotate card</button>
           <button onClick={handleFlip}>Flip card</button>
-          {isMe && isMyPlace && eligiblePositions.length === 0 && (
+          {isMe && isMyPlace && !session.hasLocalValidPlacement() && (
             <button onClick={() => session.handleLocalDiscard()}>Discard card</button>
           )}
         </div>
