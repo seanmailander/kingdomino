@@ -18,6 +18,54 @@ import { Board } from "../state/Board";
 import { GameSession, Player } from "../state/GameSession";
 import type { GameEventMap } from "../state/GameSession";
 import { right, left, down, up } from "../gamelogic/cards";
+import {
+  scoreBoard,
+  largestRegion,
+  totalCrowns as totalCrownsGrid,
+  isCastleCentered as isCastleCenteredGrid,
+} from "../gamelogic/board";
+
+describe("Pure scoring functions in gamelogic/board", () => {
+  it("scoreBoard returns 0 for an empty board", () => {
+    expect(scoreBoard(new Board().snapshot())).toBe(0);
+  });
+
+  it("scoreBoard computes region-size × crown-count", () => {
+    // card 0: grain/grain at (7,6)right, card 18: grain(1cr)/wood at (9,6)right
+    // 3-cell grain region × 1 crown = 3
+    const grid = new Board().place(0, 7, 6, right).place(18, 9, 6, right).snapshot();
+    expect(scoreBoard(grid)).toBe(3);
+  });
+
+  it("largestRegion returns 0 for an empty board", () => {
+    expect(largestRegion(new Board().snapshot())).toBe(0);
+  });
+
+  it("largestRegion returns the size of the largest contiguous terrain region", () => {
+    // card 0: grain/grain → 2-cell region
+    const grid = new Board().place(0, 7, 6, right).snapshot();
+    expect(largestRegion(grid)).toBe(2);
+  });
+
+  it("totalCrownsGrid returns 0 for an empty board", () => {
+    expect(totalCrownsGrid(new Board().snapshot())).toBe(0);
+  });
+
+  it("totalCrownsGrid sums all crown values", () => {
+    // card 18: grain(1cr)/wood(0cr), card 44: mine(2cr)/grain(0cr) → 3 crowns
+    const grid = new Board().place(18, 7, 6, right).place(44, 5, 6, left).snapshot();
+    expect(totalCrownsGrid(grid)).toBe(3);
+  });
+
+  it("isCastleCenteredGrid returns true for an empty board", () => {
+    expect(isCastleCenteredGrid(new Board().snapshot())).toBe(true);
+  });
+
+  it("isCastleCenteredGrid returns false for asymmetric placement", () => {
+    const grid = new Board().place(0, 7, 6, right).snapshot();
+    expect(isCastleCenteredGrid(grid)).toBe(false);
+  });
+});
 
 describe("Tie-break helpers", () => {
   it("largestPropertySize returns 0 for an empty board", () => {

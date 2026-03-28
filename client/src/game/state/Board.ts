@@ -1,4 +1,10 @@
 import { getEmptyBoard } from "../gamelogic/board";
+import {
+  scoreBoard,
+  largestRegion,
+  totalCrowns as computeTotalCrowns,
+  isCastleCentered as computeIsCastleCentered,
+} from "../gamelogic/board";
 import { castle, getCard, up, down, left, right } from "../gamelogic/cards";
 import type { Direction, CardId } from "./types";
 
@@ -90,135 +96,24 @@ export class Board {
   }
 
   score(): number {
-    const grid = this.snapshot();
-    const size = grid.length;
-    const visited = Array.from({ length: size }, () => new Array<boolean>(size).fill(false));
-    let total = 0;
-
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        const cell = grid[y][x];
-        // castle (tile===0) and empty cells don't score
-        if (visited[y][x] || !cell?.tile) continue;
-
-        const terrain = cell.tile;
-        const queue: [number, number][] = [[x, y]];
-        let regionSize = 0;
-        let regionCrowns = 0;
-
-        while (queue.length > 0) {
-          const [cx, cy] = queue.pop()!;
-          if (visited[cy][cx]) continue;
-          visited[cy][cx] = true;
-          regionSize++;
-          regionCrowns += grid[cy][cx]?.value ?? 0;
-
-          const neighbors: [number, number][] = [
-            [cx + 1, cy],
-            [cx - 1, cy],
-            [cx, cy + 1],
-            [cx, cy - 1],
-          ];
-          for (const [nx, ny] of neighbors) {
-            if (
-              nx >= 0 &&
-              nx < size &&
-              ny >= 0 &&
-              ny < size &&
-              !visited[ny][nx] &&
-              grid[ny][nx]?.tile === terrain
-            ) {
-              queue.push([nx, ny]);
-            }
-          }
-        }
-
-        total += regionSize * regionCrowns;
-      }
-    }
-    return total;
+    return scoreBoard(this.snapshot());
   }
 
   /** Size of the largest single contiguous terrain region (castle excluded). */
   largestPropertySize(): number {
-    const grid = this.snapshot();
-    const size = grid.length;
-    const visited = Array.from({ length: size }, () => new Array<boolean>(size).fill(false));
-    let maxSize = 0;
-
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        const cell = grid[y][x];
-        if (visited[y][x] || !cell?.tile) continue;
-
-        const terrain = cell.tile;
-        const queue: [number, number][] = [[x, y]];
-        let regionSize = 0;
-
-        while (queue.length > 0) {
-          const [cx, cy] = queue.pop()!;
-          if (visited[cy][cx]) continue;
-          visited[cy][cx] = true;
-          regionSize++;
-
-          const neighbors: [number, number][] = [
-            [cx + 1, cy],
-            [cx - 1, cy],
-            [cx, cy + 1],
-            [cx, cy - 1],
-          ];
-          for (const [nx, ny] of neighbors) {
-            if (
-              nx >= 0 &&
-              nx < size &&
-              ny >= 0 &&
-              ny < size &&
-              !visited[ny][nx] &&
-              grid[ny][nx]?.tile === terrain
-            ) {
-              queue.push([nx, ny]);
-            }
-          }
-        }
-
-        if (regionSize > maxSize) maxSize = regionSize;
-      }
-    }
-    return maxSize;
+    return largestRegion(this.snapshot());
   }
 
   /** Sum of all crown values across all terrain tiles (castle excluded). */
   totalCrowns(): number {
-    const grid = this.snapshot();
-    let total = 0;
-    for (const row of grid) {
-      for (const cell of row) {
-        if (cell?.tile) total += cell.value ?? 0;
-      }
-    }
-    return total;
+    return computeTotalCrowns(this.snapshot());
   }
 
   /** Returns true if the castle (at grid position 6,6) is at the center of the
    * bounding box of all placed tiles. Centered means minX + maxX == 12 AND
    * minY + maxY == 12 (since the castle sits at col=6, row=6, i.e. 6×2=12). */
   isCastleCentered(): boolean {
-    const CASTLE_X = 6;
-    const CASTLE_Y = 6;
-    const grid = this.snapshot();
-    let minX = CASTLE_X, maxX = CASTLE_X;
-    let minY = CASTLE_Y, maxY = CASTLE_Y;
-    for (let y = 0; y < grid.length; y++) {
-      for (let x = 0; x < grid[y].length; x++) {
-        if (grid[y][x]?.tile !== undefined) {
-          if (x < minX) minX = x;
-          if (x > maxX) maxX = x;
-          if (y < minY) minY = y;
-          if (y > maxY) maxY = y;
-        }
-      }
-    }
-    return minX + maxX === CASTLE_X * 2 && minY + maxY === CASTLE_Y * 2;
+    return computeIsCastleCentered(this.snapshot());
   }
 
   get placements(): ReadonlyArray<BoardPlacement> {

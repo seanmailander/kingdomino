@@ -191,3 +191,105 @@ export const findPlacementWithin7x7 = (
   board: Board,
   cardId: CardId,
 ): { x: number; y: number; direction: Direction } | null => findPlacementWithinBounds(board, cardId, 7);
+
+// ── Pure scoring functions ────────────────────────────────────────────────────
+// These are pure functions over a board grid snapshot.
+// Board.ts methods delegate to these for testability and reuse.
+
+/** BFS flood-fill: score = Σ(regionSize × regionCrowns). Castle (tile===0) and empty cells excluded. */
+export const scoreBoard = (grid: Board): number => {
+  const size = grid.length;
+  const visited = Array.from({ length: size }, () => new Array<boolean>(size).fill(false));
+  let total = 0;
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const cell = grid[y][x];
+      if (visited[y][x] || !cell?.tile) continue;
+
+      const terrain = cell.tile;
+      const queue: [number, number][] = [[x, y]];
+      let regionSize = 0;
+      let regionCrowns = 0;
+
+      while (queue.length > 0) {
+        const [cx, cy] = queue.pop()!;
+        if (visited[cy][cx]) continue;
+        visited[cy][cx] = true;
+        regionSize++;
+        regionCrowns += grid[cy][cx]?.value ?? 0;
+
+        for (const [nx, ny] of [[cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]] as [number, number][]) {
+          if (nx >= 0 && nx < size && ny >= 0 && ny < size && !visited[ny][nx] && grid[ny][nx]?.tile === terrain) {
+            queue.push([nx, ny]);
+          }
+        }
+      }
+
+      total += regionSize * regionCrowns;
+    }
+  }
+  return total;
+};
+
+/** BFS flood-fill: size of the largest single contiguous terrain region (castle excluded). */
+export const largestRegion = (grid: Board): number => {
+  const size = grid.length;
+  const visited = Array.from({ length: size }, () => new Array<boolean>(size).fill(false));
+  let maxSize = 0;
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const cell = grid[y][x];
+      if (visited[y][x] || !cell?.tile) continue;
+
+      const terrain = cell.tile;
+      const queue: [number, number][] = [[x, y]];
+      let regionSize = 0;
+
+      while (queue.length > 0) {
+        const [cx, cy] = queue.pop()!;
+        if (visited[cy][cx]) continue;
+        visited[cy][cx] = true;
+        regionSize++;
+
+        for (const [nx, ny] of [[cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]] as [number, number][]) {
+          if (nx >= 0 && nx < size && ny >= 0 && ny < size && !visited[ny][nx] && grid[ny][nx]?.tile === terrain) {
+            queue.push([nx, ny]);
+          }
+        }
+      }
+
+      if (regionSize > maxSize) maxSize = regionSize;
+    }
+  }
+  return maxSize;
+};
+
+/** Sum of all crown values across all terrain tiles (castle excluded). */
+export const totalCrowns = (grid: Board): number => {
+  let total = 0;
+  for (const row of grid) {
+    for (const cell of row) {
+      if (cell?.tile) total += cell.value ?? 0;
+    }
+  }
+  return total;
+};
+
+/** True if the castle at (6,6) is at the center of the bounding box of all placed tiles. */
+export const isCastleCentered = (grid: Board): boolean => {
+  const CASTLE = 6;
+  let minX = CASTLE, maxX = CASTLE, minY = CASTLE, maxY = CASTLE;
+  for (let y = 0; y < grid.length; y++) {
+    for (let x = 0; x < grid[y].length; x++) {
+      if (grid[y][x]?.tile !== undefined) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  return minX + maxX === CASTLE * 2 && minY + maxY === CASTLE * 2;
+};
