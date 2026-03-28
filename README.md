@@ -52,15 +52,16 @@ See [research](./RESEARCH.md) for more info
 1. Split pick from move — both are independent player actions; decouple in game state and connection interface
 2. Normalize `notifyLocalDiscard` into the standard send/waitFor message pipeline (remove special-case handling)
 3. Calculate only eligible places by neighbors
-2. Add mid-game debug states
-3. Calculate only eligible places by rotation
-4. Calculate only eligible places by board size
+4. Add mid-game debug states
+5. Calculate only eligible places by rotation
+6. Calculate only eligible places by board size
 
 ## NEXT
 
 1. Display card value via crown overlay
 2. Provide a score at end of game
 3. Prompt to play again at end of game
+4. Visual hint for card picked by other player, should not be pickable
 
 ## NIRVANA
 
