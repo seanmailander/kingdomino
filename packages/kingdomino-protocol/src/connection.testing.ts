@@ -1,3 +1,9 @@
+// TODO: TestConnection is a scripted IGameConnection-shaped test double.
+// Under the actor model (architecture-report §9.4), the correct shape is a
+// TestRosterFactory that produces scripted PlayerActor instances — one per
+// player slot — rather than a single connection object that pretends to be
+// a remote peer. The handshake-interleaved move emission here is a consequence
+// of the IGameConnection coupling and would be unnecessary with per-actor scripting.
 import { commit } from "kingdomino-engine";
 import {
   COMMITTMENT,

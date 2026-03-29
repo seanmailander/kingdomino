@@ -1,3 +1,9 @@
+// TODO: MultiplayerConnection serves as the transport layer for
+// RemotePlayerActor (architecture-report §9.4). It owns the raw send/receive
+// primitives and the per-message-type queuing. A future rename/restructure may
+// move this to a transport-focused module (e.g. peer.transport.ts) to clarify
+// that MultiplayerConnection is not itself a PlayerActor — it is a building
+// block that RemotePlayerActor wraps.
 import {
   COMMITTMENT,
   PICK,

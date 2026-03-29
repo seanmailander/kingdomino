@@ -1,3 +1,11 @@
+// TODO: RandomAIPlayer uses a shadow GameSession to track game state and
+// generate moves. This is the legacy design (per architecture-report §9.3).
+// Under the proposed actor model (§9.4), this should be replaced with:
+//   - MoveStrategy interface: pure function (availableCards, boardSnapshot) → move
+//   - RandomMoveStrategy: stateless implementation of MoveStrategy
+//   - AIPlayerActor: implements PlayerActor, delegates move computation to a MoveStrategy
+// The shadow session approach is tightly coupled to the 1:1 IGameConnection
+// shape and cannot compose cleanly in N-player or mixed-mode games.
 import { GameSession, Player } from "kingdomino-engine";
 import { findPlacementWithin5x5, findPlacementWithin7x7 } from "kingdomino-engine";
 import type { CardId, Direction } from "kingdomino-engine";
