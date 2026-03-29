@@ -55,12 +55,11 @@ type PlayerSlotConfig = { type: PlayerSlotType; peerId?: string }
 **Props:**
 ```ts
 type LobbyProps = {
-  session: GameSession | null
   onStart: (config: RosterConfig) => void
   onLeave: () => void
 }
 ```
-The component calls `onStart` and `onLeave` rather than importing store actions directly, making it fully testable in isolation.
+The component calls `onStart` and `onLeave` rather than importing store actions directly, making it fully testable in isolation. (The `session` prop is not needed for the lobby UI — the lobby operates before a session is created.)
 
 **UI zones:**
 
@@ -121,21 +120,39 @@ export interface RosterFactory {
 }
 ```
 
-### Changes to `store.ts`
+### Changes to `FlowAdapter` and `store.ts`
 
-`triggerLobbyStart` signature changes from `() => void` to `(config: RosterConfig) => void`. Resolvers receive the config object instead of `undefined`. `awaitLobbyStart()` in `LobbyFlow` returns `RosterConfig`.
+`FlowAdapter.awaitStart()` return type changes from `Promise<void>` to `Promise<RosterConfig>`.
+
+In `store.ts`:
+- `triggerLobbyStart` signature changes from `() => void` to `(config: RosterConfig) => void`
+- Resolvers now resolve with `config` (not `undefined`)
+- `AppFlowAdapter.awaitStart()` resolves from the same resolver queue, returning the `RosterConfig`
 
 ### Changes to `LobbyFlow` constructor
 
+The existing `LobbyFlowOptions` fields:
+
+| Field | Change |
+|---|---|
+| `adapter` | Retained (unchanged) |
+| `rosterFactory` | **NEW** — replaces `createConnectionManager` and `createSeedProvider` |
+| `variant` | Retained — passed through to `GameSession` via `rosterFactory.build()` result |
+| `bonuses` | Retained — same |
+| `createConnectionManager` | **Removed** — superseded by `rosterFactory` |
+| `createSeedProvider` | **Removed** — superseded by `rosterFactory` (factory selects `RandomSeedProvider` vs `CommitmentSeedProvider`) |
+
+Updated type:
 ```ts
 type LobbyFlowOptions = {
   adapter: FlowAdapter
   rosterFactory: RosterFactory   // NEW
+  variant?: GameVariant          // retained
+  bonuses?: GameBonuses          // retained
 }
 ```
 
-`LobbyFlow.awaitLobbyStart()` → returns `RosterConfig`  
-`LobbyFlow` then calls `rosterFactory.build(config)` and uses the resulting players and seed provider to initialise the game.
+`LobbyFlow` calls `this.adapter.awaitStart()` → receives `RosterConfig` → calls `rosterFactory.build(config)` → uses result to initialise the game.
 
 ---
 
@@ -166,14 +183,20 @@ Already implemented in `kingdomino-protocol`. The `DefaultRosterFactory` constru
 ### `DefaultRosterFactory`
 
 The concrete implementation living in the client. For each slot:
-- `'local'` → `new LocalPlayerActor(...)`
-- `'couch'` → `new CouchPlayerActor(...)`
-- `'ai'` → `new AIPlayerActor(new RandomAIPlayer(...))`
-- `'remote'` → `await PeerSession.connect(slot.peerId!)` → `new RemotePlayerActor(conn)`
+- `'local'` → `new LocalPlayerActor(generatedId, ...)`
+- `'couch'` → `new CouchPlayerActor(generatedId, ...)`
+- `'ai'` → `new AIPlayerActor(generatedId, new RandomAIPlayer(...))`
+- `'remote'` → `await peerSession.connect(slot.peerId!)` → `new ConnectionManager(conn)` → `new RemotePlayerActor(slot.peerId!, manager)`
+  - `PlayerId` for a remote player is their PeerJS peer ID — the value typed into the UI's peer-code input
+  - `MultiplayerConnection` (returned by `PeerSession.connect`) is wrapped with `new ConnectionManager(conn)` from `kingdomino-protocol` before passing to `RemotePlayerActor`
+
+> **Note:** `PeerSession.connect()` is fully implemented in `kingdomino-lobby`. The factory catches its rejection and re-throws with a descriptive message.
 
 Seed provider selection:
 - Any remote slot present → `CommitmentSeedProvider`
 - All-local roster → `RandomSeedProvider`
+
+> **Known design hole:** `RandomAIPlayer(aiId, humanId, variant)` takes a `humanId`. In a 3–4 player game with multiple AI slots, "humanId" is ambiguous. The initial implementation passes the first non-AI player's ID and leaves a `// TODO: redesign AIPlayerActor for N-player games` comment.
 
 ---
 
@@ -227,6 +250,6 @@ In `client/src/game/state/RosterFactory.test.ts`:
 |---|---|
 | `UIIntentBus` (Seam 7) | `LocalPlayerActor` uses resolver arrays with a TODO |
 | `HandoffGate` UI screen | `CouchPlayerActor` uses a no-op gate with a TODO |
-| `PeerSession.connect()` | May need implementation in `kingdomino-lobby` |
+| `RosterConfig`'s TypeScript type `[PlayerSlotConfig, PlayerSlotConfig, ...PlayerSlotConfig[]]` does not enforce the max-4 upper bound. Add a runtime guard in `DefaultRosterFactory.build()` that throws if `config.length > 4`. |
 | AI shadow-session refactor | Wrapped as-is in `AIPlayerActor` with a TODO |
 | 3–4 player engine support | `GameSession.addPlayer()` accepts N players; untested beyond 2 |
