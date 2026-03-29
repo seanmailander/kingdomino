@@ -1,21 +1,16 @@
 import React from "react";
 
-import { useDispatch } from "react-redux";
-import { startMulti, startSolo } from "../Game/game.actions";
+import { gameLobby } from "../App/gameLobby";
 
-function Splash() {
-  const dispatch = useDispatch();
-
+export function Splash() {
   return (
     <>
-      <button aria-label="Join lobby" onClick={() => dispatch(startMulti())}>
+      <button aria-label="Join lobby" disabled title="Multiplayer coming soon">
         Ready for a game with friends?
       </button>
-      <button aria-label="Start solo" onClick={() => dispatch(startSolo())}>
+      <button aria-label="Start solo" onClick={() => gameLobby.ReadySolo()}>
         Ready for a game on your own?
       </button>
     </>
   );
 }
-
-export default Splash;

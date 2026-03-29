@@ -1,23 +1,24 @@
 import React from "react";
 
-import { useSelector, useDispatch } from "react-redux";
-import { getPlayers, getHasEnoughPlayers } from "../Game/game.slice";
+import { triggerLobbyStart, triggerLobbyLeave } from "../App/store";
+import type { GameSession } from "../game/state/GameSession";
 
-import { connectionReset, gameStarted } from "../Game/game.actions";
+type LobbyProps = {
+  session: GameSession | null;
+};
 
-function Lobby() {
-  const players = useSelector(getPlayers);
-  const hasEnoughPlayers = useSelector(getHasEnoughPlayers);
-  const dispatch = useDispatch();
+export function Lobby({ session }: LobbyProps) {
+  const players = session?.players ?? [];
+  const hasEnoughPlayers = session?.hasEnoughPlayers() ?? false;
 
   const startGame = hasEnoughPlayers && (
     <>
       Ready!
-      <button aria-label="Start game" onClick={() => dispatch(gameStarted())}>
+      <button aria-label="Start game" onClick={triggerLobbyStart}>
         Start game
       </button>
       <br />
-      <button aria-label="Leave game" onClick={() => dispatch(connectionReset())}>
+      <button aria-label="Leave game" onClick={triggerLobbyLeave}>
         Leave game
       </button>
     </>
@@ -27,12 +28,10 @@ function Lobby() {
 
   return (
     <>
-      Players: {JSON.stringify(players)}
+      Players: {JSON.stringify(players.map((p) => ({ playerId: p.id, isMe: p.isLocal })))}
       <br />
       {waitingForPlayers}
       {startGame}
     </>
   );
 }
-
-export default Lobby;

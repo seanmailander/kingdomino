@@ -2,17 +2,25 @@
   "chat.tools.terminal.autoApprove": {
     "npm run -s build": true,
     "npm install": true,
-    "npx tsc": true
+    "npx tsc": true,
+    "npx vitest": true,
+    "npm run tscheck": true,
+    "npm run -s tscheck": true,
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll.oxc": "always",
   },
   "oxc.fmt.configPath": ".oxfmtrc.json",
+  "oxc.useExecPath": true, // No global node for me so use VSCode's node
   "editor.defaultFormatter": "oxc.oxc-vscode",
   "editor.formatOnSave": true,
+  "editor.formatOnSaveMode": "file", // oxfmt can only format whole files
   "[javascript]": {
     "editor.defaultFormatter": "oxc.oxc-vscode",
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
   },
   "[typescript]": {
     "editor.defaultFormatter": "oxc.oxc-vscode",
-    "editor.formatOnSave": true
-  }
+    "editor.formatOnSave": true,
+  },
 }

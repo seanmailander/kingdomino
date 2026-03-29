@@ -1,25 +1,29 @@
 import React from "react";
-import { useSelector } from "react-redux";
 
 import "./App.css";
-import SplashComponent from "../Splash/Splash";
-import LobbyComponent from "../Lobby/Lobby";
-import GameComponent from "../Game/Game";
+import { Splash as SplashComponent } from "../Splash/Splash";
+import { Lobby as LobbyComponent } from "../Lobby/Lobby";
+import { Game as GameComponent } from "../game/visuals/Game";
+import { GameOverScreen } from "../game/visuals/GameOverScreen";
+import { determineWinners } from "../game/gamelogic/winners";
+import { useApp, getGameOverScores, resetAppState } from "./store";
 
-import { getRoom, getHint } from "./app.slice";
+export function App() {
+  const { session, room, hint } = useApp();
 
-function App() {
-  const room = useSelector(getRoom);
-  const hint = useSelector(getHint);
   return (
     <div className="App">
       <h1>Kingdomino</h1>
-      <h5>{hint}</h5>
+      <p>{hint}</p>
       {room === "Splash" && <SplashComponent />}
-      {room === "Lobby" && <LobbyComponent />}
-      {room === "Game" && <GameComponent />}
+      {room === "Lobby" && <LobbyComponent session={session} />}
+      {(room === "Game" || room === "GamePaused") && session && <GameComponent session={session} />}
+      {room === "GameEnded" && (
+        <GameOverScreen
+          scores={determineWinners(getGameOverScores())}
+          onReturnToLobby={resetAppState}
+        />
+      )}
     </div>
   );
 }
-
-export default App;
