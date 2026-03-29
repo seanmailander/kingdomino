@@ -5,7 +5,23 @@ import { hashIt } from "kingdomino-engine";
 import { ConnectionManager } from "./ConnectionManager";
 import { TestConnection } from "./connection.testing";
 
+const HANDSHAKE_LOCAL_SECRET = 7;
+const HANDSHAKE_REMOTE_SECRET = 101;
+
 describe("TestConnection", () => {
+  it("produces a stable combined seed for fixed secrets (snapshot — run updateSnapshot on intentional RNG changes)", async () => {
+    // Snapshot the output of buildTrustedSeed with a fixed seed to catch changes to RNG
+    const localCommit = async () => ({
+      secret: HANDSHAKE_LOCAL_SECRET,
+      committment: await hashIt(HANDSHAKE_LOCAL_SECRET),
+    });
+    const connection = new TestConnection({
+      scenario: { handshakes: [{ secret: HANDSHAKE_REMOTE_SECRET }], moves: [] },
+    });
+    const manager = new ConnectionManager(connection.send, connection.waitFor, { commit: localCommit });
+    expect(await manager.buildTrustedSeed()).toMatchSnapshot();
+  });
+
   it("satisfies the trusted-seed handshake through ConnectionManager", async () => {
     const connection = new TestConnection({
       scenario: {

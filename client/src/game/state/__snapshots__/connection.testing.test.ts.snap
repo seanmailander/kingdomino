@@ -1,0 +1,3 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`TestConnection > produces a stable combined seed for fixed secrets (snapshot — run updateSnapshot on intentional RNG changes) 1`] = `"Mb2bn197M45BtWGDovMAi1QdfIQ="`;
