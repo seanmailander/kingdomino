@@ -10,7 +10,8 @@
     "tscheck": "tsc --noEmit"
   },
   "dependencies": {
-    "kingdomino-protocol": "*"
+    "kingdomino-protocol": "*",
+    "peerjs": "^1.5.4"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
