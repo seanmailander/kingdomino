@@ -14,7 +14,7 @@ import type { GameBonuses } from "kingdomino-engine";
 import type { BoardPlacement } from "kingdomino-engine";
 import { LobbyFlow } from "../state/game.flow";
 import { AppFlowAdapter } from "../../App/AppFlowAdapter";
-import { TestConnection, type TestConnectionScenario } from "../state/connection.testing";
+import { TestConnection, type TestConnectionScenario } from "kingdomino-protocol";
 import type { Direction } from "kingdomino-engine";
 
 type HandshakeScript = {

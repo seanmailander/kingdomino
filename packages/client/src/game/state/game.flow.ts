@@ -1,13 +1,12 @@
 import { CommitmentSeedProvider, RandomSeedProvider } from "kingdomino-commitment";
 import type { CommitmentTransport } from "kingdomino-commitment";
 import type { SeedProvider } from "kingdomino-engine";
-import { ConnectionManager } from "./ConnectionManager";
+import { ConnectionManager, RandomAIPlayer } from "kingdomino-protocol";
 import { GameSession, Player } from "kingdomino-engine";
 import type { GameEventBus, GameEvent, CardId } from "kingdomino-engine";
-import type { WireMessage, WireMessagePayload, WireMessageType } from "./game.messages";
-import { PICK, PLACE, DISCARD } from "./game.messages";
+import type { WireMessage, WireMessagePayload, WireMessageType } from "kingdomino-protocol";
+import { PICK, PLACE, DISCARD } from "kingdomino-protocol";
 import { SoloConnection } from "./connection.solo";
-import { RandomAIPlayer } from "./ai.player";
 import type { GameVariant } from "kingdomino-engine";
 import type { GameBonuses } from "kingdomino-engine";
 

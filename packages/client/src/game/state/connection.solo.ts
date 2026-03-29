@@ -20,8 +20,8 @@ import {
   type WireMessage,
   type WireMessagePayload,
   type WireMessageType,
-} from "./game.messages";
-import type { RandomAIPlayer } from "./ai.player";
+} from "kingdomino-protocol";
+import type { RandomAIPlayer } from "kingdomino-protocol";
 import type { CardId } from "kingdomino-engine";
 
 type AnyWireMessagePayload = {

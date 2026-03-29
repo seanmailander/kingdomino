@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SoloConnection } from "./connection.solo";
-import { RandomAIPlayer } from "./ai.player";
-import { PICK, PLACE, PAUSE_ACK, RESUME_ACK } from "./game.messages";
-import { pauseRequestMessage, resumeRequestMessage } from "./game.messages";
+import { RandomAIPlayer, PICK, PLACE, PAUSE_ACK, RESUME_ACK, pauseRequestMessage, resumeRequestMessage } from "kingdomino-protocol";
 
 const makeAiPlayer = () => {
   const ai = new RandomAIPlayer("them", "me");

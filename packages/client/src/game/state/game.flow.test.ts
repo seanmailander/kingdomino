@@ -19,8 +19,8 @@ import {
   type WireMessage,
   type WireMessagePayload,
   type WireMessageType,
-} from "./game.messages";
-import { TestConnection } from "./connection.testing";
+  TestConnection,
+} from "kingdomino-protocol";
 
 class StubConnection {
   readonly peerIdentifiers = {
