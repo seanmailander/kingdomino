@@ -217,17 +217,21 @@ export type RuleScenarioProps = {
 class SequentialSeedProvider implements SeedProvider {
   private readonly seeds: Promise<string>[];
   private index = 0;
+  private readonly onExhausted?: () => void;
 
-  constructor(handshakes: ReadonlyArray<HandshakeScript>) {
+  constructor(handshakes: ReadonlyArray<HandshakeScript>, onExhausted?: () => void) {
     this.seeds = handshakes.map(({ localSecret, remoteSecret }) =>
       hashIt(localSecret ^ remoteSecret),
     );
+    this.onExhausted = onExhausted;
   }
 
   async nextSeed(): Promise<string> {
     const seed = await this.seeds[this.index];
     if (seed === undefined) {
-      throw new Error(`SequentialSeedProvider: no seed for exchange ${this.index + 1}`);
+      // Seeds exhausted — signal the scenario end and block the engine loop.
+      this.onExhausted?.();
+      return new Promise<string>(() => { /* never resolves */ });
     }
     this.index++;
     return seed;
@@ -514,9 +518,10 @@ export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }
   const flow = useMemo(() => {
     return new LobbyFlow({
       adapter: new AppFlowAdapter(),
-      createSeedProvider: () => new SequentialSeedProvider(scenario.handshakes),
-      shouldContinuePlaying: (completedRounds) =>
-        scenario.roundLimit === undefined || completedRounds < scenario.roundLimit,
+      createSeedProvider: () => new SequentialSeedProvider(
+        scenario.handshakes,
+        () => getCurrentSession()?.endGame(),
+      ),
       variant: scenario.variant,
       bonuses: scenario.bonuses,
     });

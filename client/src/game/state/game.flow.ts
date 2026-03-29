@@ -1,4 +1,3 @@
-import { chooseOrderFromSeed, getNextFourCards } from "kingdomino-engine";
 import { CommitmentSeedProvider, RandomSeedProvider } from "kingdomino-commitment";
 import type { CommitmentTransport } from "kingdomino-commitment";
 import type { SeedProvider } from "kingdomino-engine";
@@ -6,7 +5,7 @@ import { ConnectionManager } from "./ConnectionManager";
 import { GameSession, Player } from "kingdomino-engine";
 import type { GameEventBus, GameEvent, CardId } from "kingdomino-engine";
 import type { WireMessage, WireMessagePayload, WireMessageType } from "./game.messages";
-import { PLACE } from "./game.messages";
+import { PICK, PLACE, DISCARD } from "./game.messages";
 import { SoloConnection } from "./connection.solo";
 import { RandomAIPlayer } from "./ai.player";
 import type { GameVariant } from "kingdomino-engine";
@@ -46,7 +45,6 @@ type LobbyFlowOptions = {
   adapter: FlowAdapter;
   createConnectionManager?: (connection: IGameConnection) => ConnectionManager;
   createSeedProvider?: (connection: IGameConnection) => SeedProvider;
-  shouldContinuePlaying?: (completedRounds: number, remainingDeck: readonly number[]) => boolean;
   variant?: GameVariant;
   bonuses?: GameBonuses;
 };
@@ -79,16 +77,11 @@ export class LobbyFlow {
   private isRunning = false;
   private session: GameSession | null = null;
   private connectionManager: ConnectionManager | null = null;
-  private remainingDeck?: number[];
   private aiPlayer: RandomAIPlayer | null = null;
   private soloConnection: SoloConnection | null = null;
   private readonly adapter: FlowAdapter;
   private readonly createConnectionManager: (connection: IGameConnection) => ConnectionManager;
   private readonly createSeedProvider: ((connection: IGameConnection) => SeedProvider) | undefined;
-  private readonly shouldContinuePlaying: (
-    completedRounds: number,
-    remainingDeck: readonly number[],
-  ) => boolean;
   private readonly variant: GameVariant;
   private readonly bonuses: GameBonuses;
 
@@ -98,8 +91,6 @@ export class LobbyFlow {
       options.createConnectionManager ??
       ((connection) => new ConnectionManager(connection.send, connection.waitFor));
     this.createSeedProvider = options.createSeedProvider;
-    this.shouldContinuePlaying =
-      options.shouldContinuePlaying ?? ((_, remainingDeck) => remainingDeck.length > 0);
     this.variant = options.variant ?? "standard";
     this.bonuses = options.bonuses ?? {};
   }
@@ -125,136 +116,27 @@ export class LobbyFlow {
     this.adapter.setPhase("splash");
   }
 
-  private async handleLocalPauseRequest() {
-    if (this.adapter.getPhase() !== "game") return;
-    this.connectionManager!.sendPauseRequest();
+  private listenForControlMessages(session: GameSession): void {
+    void this.connectionManager!.waitForPauseRequest().then(() => {
+      if (session.phase === "playing") session.pause();
+    });
+    void this.connectionManager!.waitForResumeRequest().then(() => {
+      if (session.phase === "paused") session.resume();
+    });
+    void this.connectionManager!.waitForExitRequest().then(() => this.adapter.reset());
+  }
+
+  private async relayRemoteMoves(session: GameSession, connection: IGameConnection): Promise<void> {
+    const remoteId = connection.peerIdentifiers.them;
     try {
-      await this.connectionManager!.waitForPauseAck(CONTROL_TIMEOUT_MS);
-    } catch {
-      return; // Peer didn't ack in time — stay in Game, loop continues
-    }
-    this.adapter.setPhase("paused");
-  }
-
-  private handleIncomingPauseRequest() {
-    if (this.adapter.getPhase() === "paused") {
-      this.connectionManager!.sendPauseAck();
-      return;
-    }
-    if (this.adapter.getPhase() !== "game") return;
-    this.connectionManager!.sendPauseAck();
-    this.adapter.setPhase("paused");
-  }
-
-  private async handleLocalResumeRequest() {
-    if (this.adapter.getPhase() !== "paused") return;
-    this.connectionManager!.sendResumeRequest();
-    try {
-      await this.connectionManager!.waitForResumeAck(CONTROL_TIMEOUT_MS);
-    } catch {
-      return; // Peer didn't ack in time — stay paused, loop continues
-    }
-    this.adapter.setPhase("game");
-  }
-
-  private handleIncomingResumeRequest() {
-    if (this.adapter.getPhase() !== "paused") return;
-    this.connectionManager!.sendResumeAck();
-    this.adapter.setPhase("game");
-  }
-
-  private handleIncomingExitRequest() {
-    this.connectionManager!.sendExitAck();
-    this.adapter.reset();
-  }
-
-  private async listenForControlMessages() {
-    // Each loop iteration creates new waitFor promises. When Promise.race resolves one,
-    // the other two remain pending until the connection is destroyed (which rejects them).
-    // This is safe: connection's resolver map handles multiple concurrent waiters per type,
-    // and each handler guards against wrong room state before acting.
-    try {
-      while (this.adapter.getPhase() === "game" || this.adapter.getPhase() === "paused") {
-        await Promise.race([
-          this.connectionManager!.waitForPauseRequest().then(() => this.handleIncomingPauseRequest()),
-          this.connectionManager!.waitForResumeRequest().then(() => this.handleIncomingResumeRequest()),
-          this.connectionManager!.waitForExitRequest().then(() => this.handleIncomingExitRequest()),
-          this.adapter.awaitPause().then(() => this.handleLocalPauseRequest()),
-          this.adapter.awaitResume().then(() => this.handleLocalResumeRequest()),
-        ]);
+      while (session.phase === "playing" || session.phase === "paused") {
+        const msg = await this.connectionManager!.waitForNextMoveMessage();
+        if (msg.type === PICK)    session.handlePick(remoteId, msg.cardId);
+        if (msg.type === PLACE)   session.handlePlacement(remoteId, msg.x, msg.y, msg.direction);
+        if (msg.type === DISCARD) session.handleDiscard(remoteId);
       }
     } catch {
-      // Connection destroyed or flow ended — stop silently
-    }
-  }
-
-  private async playRound(seedProvider: SeedProvider) {
-    const { session, connectionManager } = this;
-    if (!session || !connectionManager) throw new Error("LobbyFlow: no active game");
-
-    const trustedSeed = await seedProvider.nextSeed();
-    const { next: cardIds, remaining } = getNextFourCards(
-      trustedSeed,
-      this.remainingDeck ? this.remainingDeck : undefined,
-    );
-    this.remainingDeck = remaining;
-
-    session.beginRound(cardIds as [CardId, CardId, CardId, CardId]);
-    this.aiPlayer?.beginRound(cardIds as [CardId, CardId, CardId, CardId]);
-    this.soloConnection?.notifyRoundStarted();
-
-    // Process actors sequentially until the round is complete
-    while (session.currentRound !== null) {
-      const round = session.currentRound;
-      const actor = round.currentActor;
-      if (!actor) break;
-
-      if (actor.id === session.myPlayer()?.id) {
-        const pickOrPause = await Promise.race([
-          waitForEvent(session.events, "pick:made", (e) => e.player.id === actor.id)
-            .then((r) => ({ type: "pick" as const, r })),
-          this.adapter.oncePhaseIsNot("game").then(() => ({ type: "inactive" as const })),
-        ]);
-        if (pickOrPause.type === "inactive") return;
-        connectionManager.sendPick(actor.id, pickOrPause.r.cardId);
-
-        const placeOrPause = await Promise.race([
-          waitForEvent(session.events, "place:made", (e) => e.player.id === actor.id)
-            .then((r) => ({ type: "place" as const, r })),
-          waitForEvent(session.events, "discard:made", (e) => e.player.id === actor.id)
-            .then((r) => ({ type: "discard" as const, r })),
-          this.adapter.oncePhaseIsNot("game").then(() => ({ type: "inactive" as const })),
-        ]);
-        if (placeOrPause.type === "inactive") return;
-
-        if (placeOrPause.type === "discard") {
-          connectionManager.sendDiscard(actor.id);
-        } else {
-          const placeEvent = placeOrPause.r;
-          connectionManager.sendPlace(actor.id, placeEvent.x, placeEvent.y, placeEvent.direction);
-        }
-      } else {
-        // waitForPickAndPlacement pre-registers all handlers before the first await,
-        // so we only yield ONCE to get pick+place together — React batches them in one render.
-        const moveOrEnded = await Promise.race([
-          connectionManager.waitForPickAndPlacement(),
-          this.adapter.oncePhaseIsNot("game").then((): null => null),
-        ]);
-        if (!moveOrEnded) return;
-
-        // Apply pick + place/discard atomically so React batches them into one render
-        session.handlePick(moveOrEnded.pick.playerId, moveOrEnded.pick.cardId);
-        if (moveOrEnded.place.type === PLACE) {
-          session.handlePlacement(
-            moveOrEnded.place.playerId,
-            moveOrEnded.place.x,
-            moveOrEnded.place.y,
-            moveOrEnded.place.direction,
-          );
-        } else {
-          session.handleDiscard(moveOrEnded.place.playerId);
-        }
-      }
+      // Connection destroyed or game ended
     }
   }
 
@@ -263,16 +145,22 @@ export class LobbyFlow {
       ?? this.createSeedProvider?.(connection)
       ?? new CommitmentSeedProvider(connection as unknown as CommitmentTransport);
 
-    this.session = new GameSession({ variant: this.variant, bonuses: this.bonuses, localPlayerId: connection.peerIdentifiers.me });
+    const session = new GameSession({
+      variant: this.variant,
+      bonuses: this.bonuses,
+      localPlayerId: connection.peerIdentifiers.me,
+      seedProvider,
+    });
+    this.session = session;
     this.connectionManager = this.createConnectionManager(connection);
 
     try {
-      this.session.addPlayer(new Player(connection.peerIdentifiers.me));
-      this.session.addPlayer(new Player(connection.peerIdentifiers.them));
-      this.adapter.setSession(this.session);
+      session.addPlayer(new Player(connection.peerIdentifiers.me));
+      session.addPlayer(new Player(connection.peerIdentifiers.them));
+      this.adapter.setSession(session);
       this.adapter.setPhase("lobby");
 
-      // Wait for "Start game" or "Leave game" from the Lobby UI — whichever fires first.
+      // Lobby phase: race start vs leave
       const lobbyResult = await Promise.race([
         this.adapter.awaitStart().then(() => "start" as const),
         this.adapter.awaitLeave().then(() => "leave" as const),
@@ -286,41 +174,69 @@ export class LobbyFlow {
 
       this.adapter.setPhase("game");
 
-      // Start listening for control messages immediately — before any async work
-      void this.listenForControlMessages();
+      // Sync engine phase changes to adapter
+      session.events.on("game:paused",  () => this.adapter.setPhase("paused"));
+      session.events.on("game:resumed", () => this.adapter.setPhase("game"));
 
-      // Determine first-round pick order from a shared cryptographic seed
-      const firstSeed = await seedProvider.nextSeed();
-      const orderedIds = chooseOrderFromSeed(firstSeed, [connection.peerIdentifiers.me, connection.peerIdentifiers.them]);
-      const pickOrder = orderedIds.map((id) => this.session!.playerById(id)!);
+      // Wire local pause intent → peer handshake → engine
+      void this.adapter.awaitPause().then(async () => {
+        if (!this.connectionManager) return;
+        this.connectionManager.sendPauseRequest();
+        try {
+          await this.connectionManager.waitForPauseAck(CONTROL_TIMEOUT_MS);
+          session.pause();
+        } catch { /* peer didn't ack in time — stay in game */ }
+      });
 
-      this.session.startGame();
-      this.session.setPickOrder(pickOrder);
-      this.aiPlayer?.startGame(orderedIds);
+      // Wire local resume intent → peer handshake → engine
+      void this.adapter.awaitResume().then(async () => {
+        if (!this.connectionManager) return;
+        this.connectionManager.sendResumeRequest();
+        try {
+          await this.connectionManager.waitForResumeAck(CONTROL_TIMEOUT_MS);
+          session.resume();
+        } catch { /* peer didn't ack in time — stay paused */ }
+      });
 
-      // Play rounds until the deck is exhausted or the game is paused/exited
-      let completedRounds = 0;
-      while (this.adapter.getPhase() === "game" || this.adapter.getPhase() === "paused") {
-        if (this.adapter.getPhase() === "paused") {
-          // Suspended: wait for listenForControlMessages to resume or exit
-          await this.adapter.oncePhaseIsNot("paused");
-          continue;
-        }
-        await this.playRound(seedProvider);
-        if (this.adapter.getPhase() !== "game") continue; // Paused or exited mid-round
-        completedRounds += 1;
-        if (
-          !this.remainingDeck?.length ||
-          !this.shouldContinuePlaying(completedRounds, this.remainingDeck)
-        ) break;
+      // Wire in-game leave → send exit to peer and reset
+      void this.adapter.awaitLeave().then(() => {
+        this.connectionManager?.sendExitRequest();
+        this.adapter.reset();
+      });
+
+      // Wire incoming control messages (pause/resume/exit from peer)
+      this.listenForControlMessages(session);
+
+      // Wire AI for solo mode: notify AI when game starts and each round begins
+      if (this.aiPlayer && this.soloConnection) {
+        const aiPlayer = this.aiPlayer;
+        const soloConn = this.soloConnection;
+        session.events.on("game:started", ({ pickOrder }) => {
+          aiPlayer.startGame(pickOrder.map((p) => p.id));
+        });
+        session.events.on("round:started", ({ round }) => {
+          const cardIds = round.deal.snapshot().map((s) => s.cardId) as [CardId, CardId, CardId, CardId];
+          aiPlayer.beginRound(cardIds);
+          soloConn.notifyRoundStarted();
+        });
       }
 
-      if (this.adapter.getPhase() === "game") {
-        this.session.endGame();
-        this.adapter.setPhase("ended");
-      }
+      // Engine drives all rounds via SeedProvider
+      session.startGame();
+
+      // Relay local moves to peer
+      const localId = connection.peerIdentifiers.me;
+      const off1 = session.events.on("pick:made",    (e) => { if (e.player.id === localId) this.connectionManager!.sendPick(e.player.id, e.cardId); });
+      const off2 = session.events.on("place:made",   (e) => { if (e.player.id === localId) this.connectionManager!.sendPlace(e.player.id, e.x, e.y, e.direction); });
+      const off3 = session.events.on("discard:made", (e) => { if (e.player.id === localId) this.connectionManager!.sendDiscard(e.player.id); });
+
+      // Feed remote moves into engine
+      void this.relayRemoteMoves(session, connection);
+
+      await waitForEvent(session.events, "game:ended");
+      off1(); off2(); off3();
+      this.adapter.setPhase("ended");
     } catch (e) {
-      // Connection error — reset to Splash
       console.error(e);
       this.adapter.setSession(null);
       this.adapter.setPhase("splash");
@@ -330,7 +246,6 @@ export class LobbyFlow {
       this.soloConnection = null;
       this.session = null;
       this.connectionManager = null;
-      this.remainingDeck = [];
       this.isRunning = false;
     }
   }

@@ -175,7 +175,7 @@ describe("LobbyFlow game completion", () => {
 
     // Use ReadySolo so the AI (SoloConnection + RandomAIPlayer) handles the remote
     // player automatically. shouldContinuePlaying stops after 1 completed round.
-    const flow = new LobbyFlow({ adapter: new AppFlowAdapter(), shouldContinuePlaying: (n) => n < 1 });
+    const flow = new LobbyFlow({ adapter: new AppFlowAdapter() });
     flow.ReadySolo();
 
     await vi.waitFor(() => expect(getRoom()).toBe(Lobby));

@@ -29,6 +29,8 @@ const ALL_EVENTS: ReadonlyArray<GameEvent["type"]> = [
   "place:made",
   "discard:made",
   "round:complete",
+  "game:paused",
+  "game:resumed",
   "game:ended",
 ];
 
