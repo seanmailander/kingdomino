@@ -26,13 +26,13 @@ Three packages have been extracted into `packages/`: `chacha-rng` (deterministic
 
 ### 2.1 Player ID (`PlayerId = string`)
 
-| Aspect | Detail |
-|--------|--------|
-| **Defined** | `packages/kingdomino-engine/src/types.ts` |
-| **Created** | Connection layer: `connection.peerIdentifiers.me` (PeerJS assigns peer IDs) |
-| **Owned** | `Player` class holds it as `readonly id: PlayerId` |
-| **Registered** | `GameSession._players[]` via `addPlayer()` during lobby phase |
-| **Shared** | Passed in all wire messages (`PickMessage`, `PlaceMessage`, `DiscardMessage`) |
+| Aspect         | Detail                                                                        |
+| -------------- | ----------------------------------------------------------------------------- |
+| **Defined**    | `packages/kingdomino-engine/src/types.ts`                                     |
+| **Created**    | Connection layer: `connection.peerIdentifiers.me` (PeerJS assigns peer IDs)   |
+| **Owned**      | `Player` class holds it as `readonly id: PlayerId`                            |
+| **Registered** | `GameSession._players[]` via `addPlayer()` during lobby phase                 |
+| **Shared**     | Passed in all wire messages (`PickMessage`, `PlaceMessage`, `DiscardMessage`) |
 
 The player ID is the PeerJS-assigned peer ID — it originates outside the game engine, from the network layer. This creates an implicit coupling: player identity is transport-derived, not game-generated.
 
@@ -49,56 +49,56 @@ Player B:  reveal Rb  (verify: H(Rb) == Hb)
 Shared:    seed = H(Ra || Rb)  [deterministic, same both sides]
 ```
 
-| Aspect | Detail |
-|--------|--------|
-| **Interface** | `SeedProvider { nextSeed(): Promise<string> }` |
-| **Solo impl** | `RandomSeedProvider` — local random hex, no exchange needed |
-| **Multiplayer impl** | `CommitmentSeedProvider` — runs the commitment protocol over the wire |
-| **Wire messages** | `COMMITTMENT { committment: string }` / `REVEAL { secret: string }` |
-| **Owned by** | `GameSession` holds a reference; seed is consumed per-round in `_runGameLoop()` |
-| **Scope** | One seed per round (re-committed every 4-card deal to prevent future-knowledge attacks) |
+| Aspect               | Detail                                                                                  |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| **Interface**        | `SeedProvider { nextSeed(): Promise<string> }`                                          |
+| **Solo impl**        | `RandomSeedProvider` — local random hex, no exchange needed                             |
+| **Multiplayer impl** | `CommitmentSeedProvider` — runs the commitment protocol over the wire                   |
+| **Wire messages**    | `COMMITTMENT { committment: string }` / `REVEAL { secret: string }`                     |
+| **Owned by**         | `GameSession` holds a reference; seed is consumed per-round in `_runGameLoop()`         |
+| **Scope**            | One seed per round (re-committed every 4-card deal to prevent future-knowledge attacks) |
 
 The seed is ephemeral — it's consumed to shuffle the deck, never stored long-term.
 
 ### 2.3 Board Placements
 
-| Aspect | Detail |
-|--------|--------|
-| **Type** | `BoardPlacement = { card: CardId; x: number; y: number; direction: Direction }` |
-| **Storage** | `Board._placements: BoardPlacement[]` (append-only history) + `Board._board: 13×13 grid` |
-| **Owned by** | Each `Player` owns exactly one `Board` instance |
-| **Mutated by** | `GameSession.handlePlacement()` → `player.applyPlacement()` → `board.place()` |
-| **Read by** | `board.snapshot()` for visuals/AI; `board.score()` for scoring; `board.isCastleCentered()` for bonuses |
+| Aspect         | Detail                                                                                                 |
+| -------------- | ------------------------------------------------------------------------------------------------------ |
+| **Type**       | `BoardPlacement = { card: CardId; x: number; y: number; direction: Direction }`                        |
+| **Storage**    | `Board._placements: BoardPlacement[]` (append-only history) + `Board._board: 13×13 grid`               |
+| **Owned by**   | Each `Player` owns exactly one `Board` instance                                                        |
+| **Mutated by** | `GameSession.handlePlacement()` → `player.applyPlacement()` → `board.place()`                          |
+| **Read by**    | `board.snapshot()` for visuals/AI; `board.score()` for scoring; `board.isCastleCentered()` for bonuses |
 
 ### 2.4 Deck State
 
-| Aspect | Detail |
-|--------|--------|
-| **Type** | `CardId[]` (numbers) |
-| **Owned by** | `GameSession._remainingDeck` (private) — sole owner |
-| **Created** | `generateDeck()` on `startGame()` |
+| Aspect       | Detail                                                                            |
+| ------------ | --------------------------------------------------------------------------------- |
+| **Type**     | `CardId[]` (numbers)                                                              |
+| **Owned by** | `GameSession._remainingDeck` (private) — sole owner                               |
+| **Created**  | `generateDeck()` on `startGame()`                                                 |
 | **Consumed** | 4 cards per round via `getNextFourCards(seed, remainingDeck)` in `_runGameLoop()` |
-| **Exposed** | Never directly; only the current round's `Deal` (4 slots) is visible externally |
+| **Exposed**  | Never directly; only the current round's `Deal` (4 slots) is visible externally   |
 
 ### 2.5 Game Phase
 
 Phase state is mirrored at three layers — a key source of fragility:
 
-| Layer | Type | Owner |
-|-------|------|-------|
-| Engine | `"lobby" \| "playing" \| "paused" \| "finished"` | `GameSession._phase` |
-| Orchestration | `"splash" \| "lobby" \| "game" \| "paused" \| "ended"` | `LobbyFlow` (implicit, via adapter) |
-| UI | `"Splash" \| "Lobby" \| "Game" \| "GamePaused" \| "GameEnded"` | `store.ts` `roomSignal` |
+| Layer         | Type                                                           | Owner                               |
+| ------------- | -------------------------------------------------------------- | ----------------------------------- |
+| Engine        | `"lobby" \| "playing" \| "paused" \| "finished"`               | `GameSession._phase`                |
+| Orchestration | `"splash" \| "lobby" \| "game" \| "paused" \| "ended"`         | `LobbyFlow` (implicit, via adapter) |
+| UI            | `"Splash" \| "Lobby" \| "Game" \| "GamePaused" \| "GameEnded"` | `store.ts` `roomSignal`             |
 
 These three phase spaces are manually kept in sync through the `FlowAdapter` translation layer.
 
 ### 2.6 Current Round State
 
-| Object | Owns | Type |
-|--------|------|------|
-| `GameSession` | `_currentRound` | `Round \| null` |
-| `Round` | `_deal`, `_phase`, `_playerQueue` | Phase + 4-card deal + remaining-to-place queue |
-| `Deal` | `_slots[]` | `{ cardId, pickedBy: Player \| null }[]` |
+| Object        | Owns                              | Type                                           |
+| ------------- | --------------------------------- | ---------------------------------------------- |
+| `GameSession` | `_currentRound`                   | `Round \| null`                                |
+| `Round`       | `_deal`, `_phase`, `_playerQueue` | Phase + 4-card deal + remaining-to-place queue |
+| `Deal`        | `_slots[]`                        | `{ cardId, pickedBy: Player \| null }[]`       |
 
 ---
 
@@ -158,6 +158,7 @@ Browser / PeerJS
 ### UI↔Engine Communication Boundary
 
 **UI → Engine** (via Promise resolver queues in store.ts):
+
 ```
 Button click in Lobby component
   → triggerLobbyStart()  [store.ts]
@@ -167,6 +168,7 @@ Button click in Lobby component
 ```
 
 **Engine → UI** (via GameEventBus → signals):
+
 ```
 session.handlePlacement()
   → fires "place:made" event
@@ -237,9 +239,9 @@ See Section 9.2 (`kingdomino-commitment`) and Section 9.9 for how this fits the 
 
 ### Seam 5: `RandomAIPlayer` Creates Its Own `GameSession` (No Injection)
 
-The shadow-`GameSession` pattern in `RandomAIPlayer` is an artefact of the 1:1 `IGameConnection` model. Under the `PlayerActor` / `MoveStrategy` model proposed in Section 8.2, an AI actor is a stateless strategy object that receives a game snapshot and returns a move — no internal session required. This becomes a first-class type in the protocol package.
+The shadow-`GameSession` pattern in `RandomAIPlayer` is an artefact of the 1:1 `IGameConnection` model. Under the `PlayerActor` model proposed in Section 8.2, an AI actor is a stateless strategy object that receives a game snapshot and returns a move — no internal session required. This becomes a first-class type in the protocol package.
 
-See Section 8.2 (`AIPlayerActor` / `MoveStrategy`) and Section 9.4 (`kingdomino-protocol`) for full treatment.
+See Section 8.2 (`AIPlayerActor`) and Section 9.4 (`kingdomino-protocol`) for full treatment.
 
 ---
 
@@ -259,7 +261,16 @@ See Section 8.4 (`RosterFactory`), Section 9.4 (`kingdomino-protocol`), Section 
 
 ```typescript
 interface UIIntentBus {
-  on(intent: "lobby:start" | "lobby:leave" | "pause" | "resume" | "exit-confirmed" | "exit-cancelled", cb: () => void): () => void;
+  on(
+    intent:
+      | "lobby:start"
+      | "lobby:leave"
+      | "pause"
+      | "resume"
+      | "exit-confirmed"
+      | "exit-cancelled",
+    cb: () => void,
+  ): () => void;
   emit(intent: string, payload?: unknown): void;
 }
 ```
@@ -277,8 +288,13 @@ interface UIIntentBus {
 ```typescript
 class SubscriptionScope {
   private subs: Array<() => void> = [];
-  add(unsub: () => void): void { this.subs.push(unsub); }
-  disposeAll(): void { this.subs.forEach(fn => fn()); this.subs = []; }
+  add(unsub: () => void): void {
+    this.subs.push(unsub);
+  }
+  disposeAll(): void {
+    this.subs.forEach((fn) => fn());
+    this.subs = [];
+  }
 }
 ```
 
@@ -316,14 +332,14 @@ See Section 9.8 for the authoritative module relationship map.
 
 Seams 3, 4, 5, 6, and 10 dissolve naturally through the package restructuring described in Sections 8 and 9. The remaining seams are genuine application-layer concerns that belong in the client and must be addressed there directly.
 
-| Priority | Seam | Pattern | Benefit |
-|----------|------|---------|---------|
-| **1 — Highest** | Seam 2: UI directly calls session methods | `GameCommands` dispatch layer | Enables logging, undo, replay, testing |
-| **2** | Seam 7: Global resolver arrays | `UIIntentBus` event emitter | Eliminates hidden async state, simplifies cleanup |
-| **3** | Seam 8: Inconsistent subscription cleanup | `SubscriptionScope` | Eliminates memory leaks, clarifies teardown |
-| **4** | Seam 1: Phase triplicated across layers | Single source + pure projections | Eliminates sync bugs on new phase additions |
-| **5** | Seam 9: Components check room state | Prop/context capability flag | Makes components reusable in Storybook and tests |
-| — | Seams 3, 4, 5, 6, 10 | Resolved by package restructuring | See Sections 8 and 9 |
+| Priority        | Seam                                      | Pattern                           | Benefit                                           |
+| --------------- | ----------------------------------------- | --------------------------------- | ------------------------------------------------- |
+| **1 — Highest** | Seam 2: UI directly calls session methods | `GameCommands` dispatch layer     | Enables logging, undo, replay, testing            |
+| **2**           | Seam 7: Global resolver arrays            | `UIIntentBus` event emitter       | Eliminates hidden async state, simplifies cleanup |
+| **3**           | Seam 8: Inconsistent subscription cleanup | `SubscriptionScope`               | Eliminates memory leaks, clarifies teardown       |
+| **4**           | Seam 1: Phase triplicated across layers   | Single source + pure projections  | Eliminates sync bugs on new phase additions       |
+| **5**           | Seam 9: Components check room state       | Prop/context capability flag      | Makes components reusable in Storybook and tests  |
+| —               | Seams 3, 4, 5, 6, 10                      | Resolved by package restructuring | See Sections 8 and 9                              |
 
 ---
 
@@ -357,18 +373,19 @@ The original Seam 6 framing was "LobbyFlow constructs connections directly — f
 
 More importantly, `IGameConnection` bundles four unrelated concerns into one interface:
 
-| Concern | Purpose |
-|---------|---------|
-| **Player identity** | Who the two participants are |
-| **Seed exchange** | Cryptographic commitment/reveal protocol |
-| **Move transport** | Delivering picks, placements, and discards for all players |
-| **Control protocol** | Pause, resume, and exit handshakes |
+| Concern              | Purpose                                                    |
+| -------------------- | ---------------------------------------------------------- |
+| **Player identity**  | Who the two participants are                               |
+| **Seed exchange**    | Cryptographic commitment/reveal protocol                   |
+| **Move transport**   | Delivering picks, placements, and discards for all players |
+| **Control protocol** | Pause, resume, and exit handshakes                         |
 
 These concerns have different lifetimes, different participants, and different reasons to change. Bundling them is what makes the factory approach insufficient on its own — you can't just swap out the whole connection for a different game mode; you need to compose independent pieces.
 
 ### 8.2 The Missing Abstraction: Per-Player Actor
 
 In any game configuration, each player slot has exactly one source of moves:
+
 - A **local player** produces moves from UI input on this device
 - A **couch player** also produces moves from UI input, but only after a device-handoff step
 - A **remote player** produces moves arriving over the network
@@ -404,12 +421,12 @@ The purpose of the commitment protocol is to prevent any participant from biasin
 
 This maps cleanly onto actor types:
 
-| Actor type | Trust level | Rationale |
-|------------|-------------|-----------|
-| Local | Trusted | Same device, same operator |
-| Couch | Trusted | Same device — couch players cannot independently observe or manipulate the seed |
-| AI | Trusted | Locally computed, deterministic — no separate agency |
-| Remote | **Untrusted** | Different device, different operator, could behave adversarially |
+| Actor type | Trust level   | Rationale                                                                       |
+| ---------- | ------------- | ------------------------------------------------------------------------------- |
+| Local      | Trusted       | Same device, same operator                                                      |
+| Couch      | Trusted       | Same device — couch players cannot independently observe or manipulate the seed |
+| AI         | Trusted       | Locally computed, deterministic — no separate agency                            |
+| Remote     | **Untrusted** | Different device, different operator, could behave adversarially                |
 
 The rule for seed selection therefore becomes: **use the commitment protocol if and only if the roster contains at least one remote actor.** All-local rosters (any combination of local, couch, and AI) use a simple local random source because there is no untrusted party to commit against.
 
@@ -428,6 +445,7 @@ No special-casing in `LobbyFlow`, no new game phase, no changes to the engine.
 ### 8.7 How the Module Relationships Change
 
 **Current structure** — everything coupled through `IGameConnection`:
+
 ```
 LobbyFlow
   ├─ creates: SoloConnection (bundles AI + seed + moves + control)
@@ -436,6 +454,7 @@ LobbyFlow
 ```
 
 **Proposed structure** — concerns separated, composed at the factory:
+
 ```
 LobbyFlow
   depends on: RosterFactory (interface), GameDriver (module), FlowAdapter (interface)
@@ -452,21 +471,21 @@ PlayerActor (interface, 4 implementations)
   Local   — bridges UI input commands to the driver's turn request
   Couch   — same as Local, plus a HandoffGate (narrow UI interface) before each turn
   Remote  — bridges incoming network messages to the driver's turn request
-  AI      — delegates to a stateless MoveStrategy (pure function over board snapshot)
+  AI      — manages local state to determine next moves
 ```
 
 The dependency arrows are all inward toward interfaces, never outward toward concrete implementations. The factory is the only module that touches concrete classes — and it exists precisely to encapsulate that construction knowledge.
 
 ### 8.8 What This Unlocks
 
-| Capability | Why it becomes possible |
-|------------|------------------------|
-| 3- or 4-player games | `GameDriver` iterates over N actors; engine is already player-count agnostic |
-| Couch mode | New `CouchActor` implementation; nothing else changes |
-| Mixed AI + remote | Roster has multiple actor types; driver treats them identically |
-| New AI strategies | New `MoveStrategy` implementation injected into the AI actor |
-| Testing any configuration | `TestRosterFactory` produces scripted actors with no network or UI |
-| Adding a spectator slot | New actor type that produces no moves; driver skips it |
+| Capability                | Why it becomes possible                                                      |
+| ------------------------- | ---------------------------------------------------------------------------- |
+| 3- or 4-player games      | `GameDriver` iterates over N actors; engine is already player-count agnostic |
+| Couch mode                | New `CouchActor` implementation; nothing else changes                        |
+| Mixed AI + remote         | Roster has multiple actor types; driver treats them identically              |
+| New AI strategies         | AI actor could have new strategies or variants                               |
+| Testing any configuration | `TestRosterFactory` produces scripted actors with no network or UI           |
+| Adding a spectator slot   | New actor type that produces no moves; driver skips it                       |
 
 The key is that the driver and the engine are fully decoupled from the question "where do moves come from." That question belongs entirely to the actor layer, configured by the factory.
 
@@ -498,27 +517,27 @@ The monorepo already has three packages extracted, and their boundaries are well
 
 **`kingdomino-commitment`** — the cryptographic seed commitment protocol. It depends on a narrow `CommitmentTransport` interface (four methods) and on the `SeedProvider` interface from the engine. It is correctly decoupled from any specific transport or connection type.
 
-However, the observer persona immediately reveals a boundary question about this package: an observer does not participate in seed commitment at all. The commitment protocol is for game *participants* — it is not universal to all clients. The bot and the alternative UI client need it; the observer does not. This is an important nuance: **commitment is a participant concern, not a game concern**.
+However, the observer persona immediately reveals a boundary question about this package: an observer does not participate in seed commitment at all. The commitment protocol is for game _participants_ — it is not universal to all clients. The bot and the alternative UI client need it; the observer does not. This is an important nuance: **commitment is a participant concern, not a game concern**.
 
 ### 9.3 The Gap: What Remains Locked Inside the Client
 
 Everything in `client/src/game/state/` is currently trapped in the client application, yet most of it is universally needed. This directory contains:
 
-| File | Universal? | Reason |
-|------|-----------|--------|
-| `game.messages.ts` | **Yes** | Defines the wire vocabulary (PICK, PLACE, DISCARD, COMMITTMENT, REVEAL, control messages) — any two Kingdomino clients must speak the same protocol |
-| `ConnectionManager.ts` | **Yes** | Typed protocol adapter over raw send/receive — any client communicating with peers needs this |
-| `connection.multiplayer.ts` | **Yes** | The WebRTC peer transport — any client connecting to a remote peer uses this |
-| `ai.player.ts` | **Yes** (in principle) | Move generation from board state — a bot, a solo game, or a mixed game all need AI-driven moves; the current implementation has coupling problems (shadow session) but the *concern* is universal |
-| `game.flow.ts` | **No** | App-specific orchestration tightly coupled to `FlowAdapter`, resolver arrays, and the React store |
-| `connection.solo.ts` | **No** | A legacy seam: pretends the AI is a remote peer to satisfy the 1:1 `IGameConnection` abstraction; belongs to the current architecture's workarounds, not to any future package |
-| `connection.testing.ts` | **No** (as-is) | Tied to the current `IGameConnection` shape; under the actor model this becomes a `TestRosterFactory` producing scripted actors, useful as a test utility in the protocol package |
+| File                        | Universal?             | Reason                                                                                                                                                                                            |
+| --------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `game.messages.ts`          | **Yes**                | Defines the wire vocabulary (PICK, PLACE, DISCARD, COMMITTMENT, REVEAL, control messages) — any two Kingdomino clients must speak the same protocol                                               |
+| `ConnectionManager.ts`      | **Yes**                | Typed protocol adapter over raw send/receive — any client communicating with peers needs this                                                                                                     |
+| `connection.multiplayer.ts` | **Yes**                | The WebRTC peer transport — any client connecting to a remote peer uses this                                                                                                                      |
+| `ai.player.ts`              | **Yes** (in principle) | Move generation from board state — a bot, a solo game, or a mixed game all need AI-driven moves; the current implementation has coupling problems (shadow session) but the _concern_ is universal |
+| `game.flow.ts`              | **No**                 | App-specific orchestration tightly coupled to `FlowAdapter`, resolver arrays, and the React store                                                                                                 |
+| `connection.solo.ts`        | **No**                 | A legacy seam: pretends the AI is a remote peer to satisfy the 1:1 `IGameConnection` abstraction; belongs to the current architecture's workarounds, not to any future package                    |
+| `connection.testing.ts`     | **No** (as-is)         | Tied to the current `IGameConnection` shape; under the actor model this becomes a `TestRosterFactory` producing scripted actors, useful as a test utility in the protocol package                 |
 
 The most egregious misplacement is `game.messages.ts`. The wire protocol definition is the shared vocabulary that makes two Kingdomino clients interoperable. A bot author needs to know these message types. An observer needs to receive and decode them. Yet the definition currently lives deep inside a single client application.
 
 ### 9.4 A Fifth Package: The Participation Protocol
 
-The three existing packages handle the *game domain* and *cryptographic fairness*. What they do not cover is the *shared language and mechanics of participating in a game over a network*. This is a distinct concern that deserves its own package.
+The three existing packages handle the _game domain_ and _cryptographic fairness_. What they do not cover is the _shared language and mechanics of participating in a game over a network_. This is a distinct concern that deserves its own package.
 
 Call it `kingdomino-protocol`. Its contents would be drawn from what is currently scattered in `client/src/game/state/`:
 
@@ -527,7 +546,6 @@ Call it `kingdomino-protocol`. Its contents would be drawn from what is currentl
 - **The `PlayerActor` interface** — the contract for anything that can produce moves for a player slot (proposed in Section 8)
 - **`RemotePlayerActor`** — the universal implementation for receiving moves from a network peer (proposed; derived from `connection.multiplayer.ts`)
 - **`GameDriver`** — the explicit turn-loop runner that asks actors for moves and feeds them into the engine (proposed in Section 8.3)
-- **`MoveStrategy` interface and `RandomMoveStrategy`** — the stateless move-generation contract (proposed replacement for the coupled parts of `ai.player.ts`)
 
 This package depends on `kingdomino-engine` (for game types) and has no dependency on `kingdomino-commitment` (seed exchange is separate from move exchange). A bot author would install `kingdomino-engine` + `kingdomino-commitment` + `kingdomino-protocol` and have everything needed to play autonomously. An observer would install `kingdomino-engine` + `kingdomino-protocol` and omit commitment entirely.
 
@@ -551,7 +569,7 @@ The boundary is clean: the lobby package produces connections; the protocol pack
 
 After the five universal packages, three things genuinely belong in the client application and nowhere else:
 
-**`LocalPlayerActor`** — how the local human produces moves. This is necessarily coupled to the UI framework's input system. A React app awaits a click event. A terminal app awaits a keystroke. A native app awaits a touch. The *interface* is universal (it is `PlayerActor`); the implementation is framework-specific.
+**`LocalPlayerActor`** — how the local human produces moves. This is necessarily coupled to the UI framework's input system. A React app awaits a click event. A terminal app awaits a keystroke. A native app awaits a touch. The _interface_ is universal (it is `PlayerActor`); the implementation is framework-specific.
 
 **`CouchPlayerActor`** — the same as `LocalPlayerActor`, plus the `HandoffGate` — an interface to the UI layer that shows a "pass the device" screen. Both the actor and the gate are specific to a shared-screen UI client.
 
@@ -566,7 +584,7 @@ After the five universal packages, three things genuinely belong in the client a
 ```
 chacha-rng  (zero deps)
   └── no Kingdomino knowledge; pure RNG algorithm
-  
+
 kingdomino-engine  (depends on: chacha-rng)
   └── game domain: rules, board, cards, session, events
       consumed by: all clients, bots, observers, and the engine tests themselves
@@ -577,7 +595,7 @@ kingdomino-commitment  (depends on: kingdomino-engine)
 
 kingdomino-protocol  (depends on: kingdomino-engine)
   └── wire message vocabulary, ConnectionManager, PlayerActor interface,
-      RemotePlayerActor, GameDriver, MoveStrategy interface
+      RemotePlayerActor, GameDriver interface
       consumed by: all active game clients (UI clients, bots)
       not needed by: observers (who receive but do not produce moves)
 
@@ -645,9 +663,9 @@ If a peer disappears between "selected in lobby" and "game start," that failure 
 
 The key structural point: no single module handles all disconnection cases, because disconnection means different things at different stages. The clean separation is:
 
-| Stage | Who detects | Who decides outcome |
-|-------|-------------|---------------------|
-| Pre-game (lobby/factory) | `RosterFactory` build fails | `LobbyFlow` → return to lobby |
-| In-game, move transport | `RemotePlayerActor` rejects | `GameDriver` surfaces to `LobbyFlow` |
-| In-game, control channel | `ControlChannel` signals | `LobbyFlow` → end or error state |
-| Clean exit (by peer choice) | `ControlChannel` receives exit request | `LobbyFlow` → agreed teardown |
+| Stage                       | Who detects                            | Who decides outcome                  |
+| --------------------------- | -------------------------------------- | ------------------------------------ |
+| Pre-game (lobby/factory)    | `RosterFactory` build fails            | `LobbyFlow` → return to lobby        |
+| In-game, move transport     | `RemotePlayerActor` rejects            | `GameDriver` surfaces to `LobbyFlow` |
+| In-game, control channel    | `ControlChannel` signals               | `LobbyFlow` → end or error state     |
+| Clean exit (by peer choice) | `ControlChannel` receives exit request | `LobbyFlow` → agreed teardown        |
