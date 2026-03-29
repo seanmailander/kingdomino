@@ -256,7 +256,7 @@ function ScriptedLocalPlayer({
     }
 
     const actor = round.currentActor;
-    if (!actor?.isLocal) {
+    if (!actor || actor.id !== session.myPlayer()?.id) {
       return;
     }
 
@@ -434,7 +434,7 @@ function StoryStatePanel({ scriptLog }: { scriptLog: ReadonlyArray<string> }) {
           {session?.players.map((player) => (
             <tr key={player.id}>
               <th scope="row">{player.id}</th>
-              <td>{player.isLocal ? "yes" : "no"}</td>
+              <td>{player.id === session?.myPlayer()?.id ? "yes" : "no"}</td>
               <td>{player.board.placements.length}</td>
               <td>{player.score()}</td>
             </tr>

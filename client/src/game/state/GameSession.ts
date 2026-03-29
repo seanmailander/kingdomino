@@ -99,11 +99,13 @@ export class GameSession {
   private _currentRound: Round | null = null;
   private readonly _variant: GameVariant;
   private readonly _bonuses: GameBonuses;
+  private readonly _localPlayerId: PlayerId | undefined;
   private readonly _discardedPlayerIds = new Set<string>();
 
-  constructor({ variant = "standard", bonuses = {} }: { variant?: GameVariant; bonuses?: GameBonuses } = {}) {
+  constructor({ variant = "standard", bonuses = {}, localPlayerId }: { variant?: GameVariant; bonuses?: GameBonuses; localPlayerId?: PlayerId } = {}) {
     this._variant = variant;
     this._bonuses = bonuses;
+    this._localPlayerId = localPlayerId;
   }
 
   private _staysWithinBounds(board: BoardGrid, x: number, y: number, direction: Direction): boolean {
@@ -298,7 +300,7 @@ export class GameSession {
   }
 
   myPlayer(): Player | undefined {
-    return this._players.find((p) => p.isLocal);
+    return this._players.find((p) => p.id === this._localPlayerId);
   }
 
   playerById(id: PlayerId): Player | undefined {

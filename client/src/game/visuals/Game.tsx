@@ -52,7 +52,7 @@ export function Game({ session }: GameProps) {
       </div>
       <div className="boards">
         {players.map((player) => (
-          <BoardArea key={player.id} session={session} playerId={player.id} isMe={player.isLocal} />
+          <BoardArea key={player.id} session={session} playerId={player.id} isMe={session.myPlayer()?.id === player.id} />
         ))}
       </div>
     </>
