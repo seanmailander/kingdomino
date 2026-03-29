@@ -5,7 +5,7 @@ import { BoardArea } from "./BoardArea";
 import { Card } from "./Card";
 import { PauseOverlay } from "./PauseOverlay";
 import { ExitConfirmDialog } from "./ExitConfirmDialog";
-import type { GameSession } from "../state/GameSession";
+import type { GameSession } from "kingdomino-engine";
 import { useApp } from "../../App/store";
 import { triggerPauseIntent, triggerResumeIntent, triggerExitConfirm } from "../../App/store";
 import { Game as GameRoom, GamePaused } from "../../App/AppExtras";

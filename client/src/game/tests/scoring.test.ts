@@ -15,8 +15,8 @@
 //  46  marsh/mine(2cr)   — crown on tileB  [fourthTwelve[10]: getTile(marsh, mine, _, twoCrown)]
 import { describe, expect, it } from "vitest";
 import { Board } from "kingdomino-engine";
-import { GameSession, Player } from "../state/GameSession";
-import type { GameEventMap } from "../state/GameSession";
+import { GameSession, Player } from "kingdomino-engine";
+import type { GameEndedEvent } from "kingdomino-engine";
 import { right, left, down, up } from "kingdomino-engine";
 import {
   scoreBoard,
@@ -186,7 +186,7 @@ describe("Bonus scoring in GameSession.endGame()", () => {
   it("no bonuses applied when bonus config is empty", () => {
     const { session, me } = makeSessionWithBonuses({});
     me.board.place(0, 7, 6, right).place(0, 5, 6, left); // symmetric, would qualify for MK
-    let result: GameEventMap["game:ended"] | undefined;
+    let result: GameEndedEvent | undefined;
     session.events.on("game:ended", (data) => {
       result = data;
     });
@@ -200,7 +200,7 @@ describe("Bonus scoring in GameSession.endGame()", () => {
   it("Middle Kingdom +10 when enabled and castle is centered", () => {
     const { session, me } = makeSessionWithBonuses({ middleKingdom: true });
     me.board.place(0, 7, 6, right).place(0, 5, 6, left); // symmetric
-    let result: GameEventMap["game:ended"] | undefined;
+    let result: GameEndedEvent | undefined;
     session.events.on("game:ended", (data) => {
       result = data;
     });
@@ -213,7 +213,7 @@ describe("Bonus scoring in GameSession.endGame()", () => {
   it("no Middle Kingdom bonus when castle is not centered", () => {
     const { session, me } = makeSessionWithBonuses({ middleKingdom: true });
     me.board.place(0, 7, 6, right); // only east — asymmetric
-    let result: GameEventMap["game:ended"] | undefined;
+    let result: GameEndedEvent | undefined;
     session.events.on("game:ended", (data) => {
       result = data;
     });
@@ -224,7 +224,7 @@ describe("Bonus scoring in GameSession.endGame()", () => {
 
   it("Harmony +5 when enabled and player never discarded", () => {
     const { session } = makeSessionWithBonuses({ harmony: true });
-    let result: GameEventMap["game:ended"] | undefined;
+    let result: GameEndedEvent | undefined;
     session.events.on("game:ended", (data) => {
       result = data;
     });
@@ -251,7 +251,7 @@ describe("Bonus scoring in GameSession.endGame()", () => {
     session.handlePick(them.id, 2); // them picks card 2
     session.handlePlacement(them.id, 7, 6, right); // them places; round complete
 
-    let result: GameEventMap["game:ended"] | undefined;
+    let result: GameEndedEvent | undefined;
     session.events.on("game:ended", (data) => {
       result = data;
     });
@@ -265,7 +265,7 @@ describe("Bonus scoring in GameSession.endGame()", () => {
   it("both Middle Kingdom and Harmony bonuses stack for +15", () => {
     const { session, me } = makeSessionWithBonuses({ middleKingdom: true, harmony: true });
     me.board.place(0, 7, 6, right).place(0, 5, 6, left); // symmetric, no discards
-    let result: GameEventMap["game:ended"] | undefined;
+    let result: GameEndedEvent | undefined;
     session.events.on("game:ended", (data) => {
       result = data;
     });

@@ -1,7 +1,7 @@
 import React from "react";
 
 import "./Card.css";
-import type { GameSession } from "../state/GameSession";
+import type { GameSession } from "kingdomino-engine";
 import { useApp } from "../../App/store";
 import { Game as GameRoom } from "../../App/AppExtras";
 

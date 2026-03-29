@@ -9,7 +9,7 @@
 // Card 46 (marsh/mine, type = marsh^mine = 48) requires adjacency to marsh
 // or mine; with only grain/water/grass neighbours, it is unplaceable.
 import { describe, expect, it } from "vitest";
-import { GameSession, Player } from "./GameSession";
+import { GameSession, Player } from "kingdomino-engine";
 import { left, right } from "kingdomino-engine";
 
 const BLOCKED_CARD = 46 as const; // marsh/mine — requires marsh or mine adjacency

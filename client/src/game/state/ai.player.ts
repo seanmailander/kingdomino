@@ -1,4 +1,4 @@
-import { GameSession, Player } from "./GameSession";
+import { GameSession, Player } from "kingdomino-engine";
 import { findPlacementWithin5x5, findPlacementWithin7x7 } from "kingdomino-engine";
 import type { CardId, Direction } from "kingdomino-engine";
 import type { PlayerMoveMessage } from "./game.messages";

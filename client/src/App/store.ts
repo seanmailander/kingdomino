@@ -1,7 +1,7 @@
 import { computed, effect, signal } from "alien-signals";
 import { useEffect, useMemo, useState } from "react";
 
-import type { GameSession, GameEventMap } from "../game/state/GameSession";
+import type { GameSession, GameEvent } from "kingdomino-engine";
 import type { GameEndedEntry } from "kingdomino-engine";
 import { type Room, Splash, computeHint } from "./AppExtras";
 
@@ -22,8 +22,7 @@ const gameOverScoresSignal = signal<GameEndedEntry[]>([]);
 
 export const getGameOverScores = (): GameEndedEntry[] => gameOverScoresSignal();
 
-const ALL_EVENTS: ReadonlyArray<keyof GameEventMap> = [
-  "player:joined",
+const ALL_EVENTS: ReadonlyArray<GameEvent["type"]> = [
   "game:started",
   "round:started",
   "pick:made",

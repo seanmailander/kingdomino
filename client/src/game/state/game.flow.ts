@@ -1,12 +1,12 @@
 import { chooseOrderFromSeed, getNextFourCards } from "kingdomino-engine";
 import { ConnectionManager } from "./ConnectionManager";
-import { GameSession, Player } from "./GameSession";
-import type { GameEventBus, GameEventMap, CardId } from "./GameSession";
+import { GameSession, Player } from "kingdomino-engine";
+import type { GameEventBus, GameEvent, CardId } from "kingdomino-engine";
 import type { GameMessage, GameMessagePayload, GameMessageType } from "./game.messages";
 import { SoloConnection } from "./connection.solo";
 import { RandomAIPlayer } from "./ai.player";
 import type { GameVariant } from "kingdomino-engine";
-import type { GameBonuses } from "./GameSession";
+import type { GameBonuses } from "kingdomino-engine";
 
 const CONTROL_TIMEOUT_MS = 5000;
 
@@ -55,11 +55,11 @@ type LobbyFlowOptions = {
  * The listener is registered synchronously, so there is no race between
  * an awaited operation completing and the next waitForEvent() call.
  */
-function waitForEvent<K extends keyof GameEventMap>(
+function waitForEvent<T extends GameEvent["type"]>(
   bus: GameEventBus,
-  event: K,
-  predicate?: (data: GameEventMap[K]) => boolean,
-): Promise<GameEventMap[K]> {
+  event: T,
+  predicate?: (data: Extract<GameEvent, { type: T }>) => boolean,
+): Promise<Extract<GameEvent, { type: T }>> {
   return new Promise((resolve) => {
     const off = bus.on(event, (data) => {
       if (!predicate || predicate(data)) {

@@ -1,7 +1,7 @@
 import React from "react";
 
 import { triggerLobbyStart, triggerLobbyLeave } from "../App/store";
-import type { GameSession } from "../game/state/GameSession";
+import type { GameSession } from "kingdomino-engine";
 
 type LobbyProps = {
   session: GameSession | null;

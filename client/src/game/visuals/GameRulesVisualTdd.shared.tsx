@@ -10,7 +10,7 @@ import {
   hashIt,
 } from "kingdomino-engine";
 import type { GameVariant } from "kingdomino-engine";
-import type { GameBonuses } from "../state/GameSession";
+import type { GameBonuses } from "kingdomino-engine";
 import type { BoardPlacement } from "kingdomino-engine";
 import { ConnectionManager } from "../state/ConnectionManager";
 import { LobbyFlow } from "../state/game.flow";

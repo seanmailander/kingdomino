@@ -9,3 +9,12 @@ export type { BoardCell, BoardGrid, BoardPlacement } from "./Board";
 export { Round } from "./Round";
 export type { RoundPhase } from "./Round";
 export { Deal } from "./Deal";
+export type {
+  GameEvent, GameScore,
+  GameStartedEvent, RoundStartedEvent, PickMadeEvent, PlaceMadeEvent,
+  DiscardMadeEvent, RoundCompleteEvent, GamePausedEvent, GameResumedEvent,
+  GameEndedEvent
+} from "./GameEvent";
+export { GameEventBus } from "./GameEventBus";
+export { GameSession } from "./GameSession";
+export type { GamePhase, GameBonuses } from "./GameSession";

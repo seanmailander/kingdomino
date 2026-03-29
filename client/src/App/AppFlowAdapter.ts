@@ -11,7 +11,7 @@ import {
 } from "./store";
 import { Lobby, Game, Splash, GamePaused, GameEnded } from "./AppExtras";
 import type { FlowAdapter, FlowPhase } from "../game/state/game.flow";
-import type { GameSession } from "../game/state/GameSession";
+import type { GameSession } from "kingdomino-engine";
 
 const phaseToRoom = {
   splash: Splash,

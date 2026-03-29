@@ -1,12 +1,8 @@
 /**
  * GameSession — OOP game state management
- *
- * Replaces the action/reducer pattern in Game.ts and Round.ts.
- * State is encapsulated inside objects; mutation happens via methods;
- * UI adapters subscribe to typed events via GameEventBus.
  */
 
-import { getCard } from "kingdomino-engine";
+import { getCard } from "./gamelogic/cards";
 import {
   findPlacementWithin5x5,
   findPlacementWithin7x7,
@@ -14,65 +10,16 @@ import {
   getValidDirections,
   staysWithin5x5,
   staysWithin7x7,
-  type PlayerId, type CardId, type Direction,
-  type BoardGrid,
-  Player, Deal, Round,
-  type GameVariant,
-} from "kingdomino-engine";
+} from "./gamelogic/board";
+import type { PlayerId, CardId, Direction } from "./types";
+import type { BoardGrid } from "./Board";
+import { Player } from "./Player";
+import { Deal } from "./Deal";
+import { Round } from "./Round";
+import { GameEventBus } from "./GameEventBus";
+import type { GameVariant } from "./gamelogic/cards";
 
-// Re-export sub-module classes and types for backward compatibility
-export type { BoardCell, BoardGrid, BoardPlacement } from "kingdomino-engine";
-export { Board, Player, Deal, Round } from "kingdomino-engine";
-export type { RoundPhase, PlayerId, CardId } from "kingdomino-engine";
-
-// ── GameEventBus ──────────────────────────────────────────────────────────────
-
-export type GameEventMap = {
-  "player:joined": { player: Player };
-  "game:started": { players: ReadonlyArray<Player>; pickOrder: ReadonlyArray<Player> };
-  "round:started": { round: Round };
-  "pick:made": { player: Player; cardId: CardId };
-  "place:made": {
-    player: Player;
-    cardId: CardId;
-    x: number;
-    y: number;
-    direction: Direction;
-  };
-  "discard:made": { player: Player; cardId: CardId };
-  "round:complete": { nextPickOrder: ReadonlyArray<Player> };
-  "game:ended": {
-    scores: Array<{
-      player: Player;
-      score: number;
-      bonuses: { middleKingdom: number; harmony: number };
-    }>;
-  };
-};
-
-type Listener<K extends keyof GameEventMap> = (event: GameEventMap[K]) => void;
-
-/**
- * Typed pub/sub event bus.
- * on() returns an unsubscribe function. Decouples GameSession from UI/network layers.
- */
-export class GameEventBus {
-  private listeners = new Map<keyof GameEventMap, Set<Listener<never>>>();
-
-  on<K extends keyof GameEventMap>(event: K, listener: Listener<K>): () => void {
-    if (!this.listeners.has(event)) this.listeners.set(event, new Set());
-    this.listeners.get(event)!.add(listener as Listener<never>);
-    return () => this.listeners.get(event)?.delete(listener as Listener<never>);
-  }
-
-  emit<K extends keyof GameEventMap>(event: K, data: GameEventMap[K]): void {
-    this.listeners.get(event)?.forEach((fn) => fn(data as never));
-  }
-}
-
-// ── GameSession ───────────────────────────────────────────────────────────────
-
-export type GamePhase = "lobby" | "playing" | "finished";
+export type GamePhase = "lobby" | "playing" | "paused" | "finished";
 
 export type GameBonuses = { middleKingdom?: boolean; harmony?: boolean };
 
@@ -129,47 +76,38 @@ export class GameSession {
   addPlayer(player: Player): void {
     if (this._players.some((p) => p.id === player.id)) return; // idempotent
     this._players.push(player);
-    this.events.emit("player:joined", { player });
   }
 
   // ── Lobby → Game ──
 
-  /**
-   * Transitions the session to the playing phase with a given pick order.
-   * Called by the flow module after the peer seed exchange determines order.
-   */
   startGame(pickOrder: Player[]): void {
     if (this._phase !== "lobby") throw new Error("Game not in lobby phase");
     this._pickOrder = [...pickOrder];
     this._phase = "playing";
-    this.events.emit("game:started", { players: [...this._players], pickOrder: [...pickOrder] });
+    this.events.emit({ type: "game:started", players: [...this._players], pickOrder: [...pickOrder] });
   }
 
   // ── Round management ──
 
-  /** Deal 4 cards and begin this round's pick sequence. */
   beginRound(cardIds: [CardId, CardId, CardId, CardId]): void {
     if (this._phase !== "playing") throw new Error("Game not in playing phase");
     const deal = new Deal(cardIds);
     this._currentRound = new Round(deal, this._pickOrder);
-    this.events.emit("round:started", { round: this._currentRound });
+    this.events.emit({ type: "round:started", round: this._currentRound });
   }
 
-  /** Record a pick by any player (local or remote). */
   handlePick(playerId: PlayerId, cardId: CardId): void {
     const round = this._requireActiveRound();
     const player = this._requirePlayer(playerId);
     round.recordPick(player, cardId);
-    this.events.emit("pick:made", { player, cardId });
+    this.events.emit({ type: "pick:made", player, cardId });
   }
 
-  /** Convenience: pick for the local player. */
   handleLocalPick(cardId: CardId): void {
     const me = this._requireLocalPlayer();
     this.handlePick(me.id, cardId);
   }
 
-  /** Record a placement by any player (local or remote). */
   handlePlacement(playerId: PlayerId, x: number, y: number, direction: Direction): void {
     const round = this._requireActiveRound();
     const player = this._requirePlayer(playerId);
@@ -198,32 +136,21 @@ export class GameSession {
     }
 
     round.recordPlacement(player, x, y, direction);
-    this.events.emit("place:made", {
-      player,
-      cardId,
-      x,
-      y,
-      direction,
-    });
+    this.events.emit({ type: "place:made", player, cardId, x, y, direction });
 
     if (round.phase === "complete") {
       const nextPickOrder = round.deal.nextRoundPickOrder();
       this._pickOrder = nextPickOrder;
       this._currentRound = null;
-      this.events.emit("round:complete", { nextPickOrder });
+      this.events.emit({ type: "round:complete", nextPickOrder });
     }
   }
 
-  /** Convenience: place for the local player. */
   handleLocalPlacement(x: number, y: number, direction: Direction): void {
     const me = this._requireLocalPlayer();
     this.handlePlacement(me.id, x, y, direction);
   }
 
-  /**
-   * Discard the picked card for a player when no legal placement exists within kingdom bounds.
-   * Throws if the player hasn't picked, or if a valid placement is available.
-   */
   handleDiscard(playerId: PlayerId): void {
     const round = this._requireActiveRound();
     const player = this._requirePlayer(playerId);
@@ -239,23 +166,17 @@ export class GameSession {
     }
 
     round.recordDiscard(player);
-    // Track discarded players so endGame() can withhold the Harmony bonus.
-    // NOTE: Only local player discards reach this path in the current flow.
-    // Remote player discards are a pre-existing gap in the peer protocol
-    // (game.messages.ts MovePayload carries no discard flag), so remote
-    // players who discard will still receive the Harmony bonus.
     this._discardedPlayerIds.add(player.id);
-    this.events.emit("discard:made", { player, cardId });
+    this.events.emit({ type: "discard:made", player, cardId });
 
     if (round.phase === "complete") {
       const nextPickOrder = round.deal.nextRoundPickOrder();
       this._pickOrder = nextPickOrder;
       this._currentRound = null;
-      this.events.emit("round:complete", { nextPickOrder });
+      this.events.emit({ type: "round:complete", nextPickOrder });
     }
   }
 
-  /** Convenience: discard for the local player. */
   handleLocalDiscard(): void {
     const me = this._requireLocalPlayer();
     this.handleDiscard(me.id);
@@ -281,7 +202,7 @@ export class GameSession {
         if (largestB !== largestA) return largestB - largestA;
         return b.player.board.totalCrowns() - a.player.board.totalCrowns();
       });
-    this.events.emit("game:ended", { scores });
+    this.events.emit({ type: "game:ended", scores });
   }
 
   // ── Read-only accessors ──
@@ -323,7 +244,6 @@ export class GameSession {
     return this._currentRound.phase === "placing" && this._currentRound.currentActor?.id === me.id;
   }
 
-  /** Card the local player has picked this round and must place (placing phase only). */
   localCardToPlace(): CardId | undefined {
     const me = this.myPlayer();
     if (!me || !this._currentRound || this._currentRound.phase !== "placing") return undefined;
@@ -331,7 +251,6 @@ export class GameSession {
     return this._currentRound.deal.pickedCardFor(me) ?? undefined;
   }
 
-  /** Eligible anchor positions for the local player's card-to-place. Returns [] when not in placing phase. */
   localEligiblePositions(): Array<{ x: number; y: number }> {
     const me = this.myPlayer();
     if (!me || !this._currentRound || this._currentRound.phase !== "placing") return [];
@@ -341,7 +260,6 @@ export class GameSession {
     return getEligiblePositions(me.board.snapshot(), cardId);
   }
 
-  /** Valid placement directions for the local player's card at grid position (x, y). Returns [] when not in placing phase. */
   localValidDirectionsAt(x: number, y: number): Direction[] {
     const me = this.myPlayer();
     if (!me || !this._currentRound || this._currentRound.phase !== "placing") return [];
@@ -354,7 +272,6 @@ export class GameSession {
     );
   }
 
-  /** Returns true if the local player has any valid placement for their picked card within kingdom bounds. */
   hasLocalValidPlacement(): boolean {
     const me = this.myPlayer();
     if (!me || !this._currentRound || this._currentRound.phase !== "placing") return false;
@@ -364,17 +281,12 @@ export class GameSession {
     return this._findPlacementWithinBounds(me.board.snapshot(), cardId) !== null;
   }
 
-  /**
-   * Returns the 4 deal cards in canonical (sorted) order as card-info objects.
-   * Compatible with the existing getCard() return format used by visual components.
-   */
   deal(): ReturnType<typeof getCard>[] {
     const snap = this._currentRound?.deal.snapshot();
     if (!snap) return [];
     return snap.map((s) => getCard(s.cardId));
   }
 
-  /** Board grid for a player — compatible with board.ts utility functions. */
   boardFor(playerId: PlayerId): BoardGrid {
     return this._players.find((p) => p.id === playerId)?.board.snapshot() ?? [];
   }

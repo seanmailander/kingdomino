@@ -1,4 +1,4 @@
-import type { GameSession } from "../game/state/GameSession";
+import type { GameSession } from "kingdomino-engine";
 
 // Room states
 export const Splash = "Splash" as const;
