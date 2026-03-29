@@ -1,6 +1,6 @@
 import { GameSession, Player } from "./GameSession";
 import { findPlacementWithin5x5, findPlacementWithin7x7 } from "kingdomino-engine";
-import type { CardId, Direction } from "./types";
+import type { CardId, Direction } from "kingdomino-engine";
 import type { PlayerMoveMessage } from "./game.messages";
 import type { GameVariant } from "kingdomino-engine";
 
@@ -12,9 +12,9 @@ export class RandomAIPlayer {
   constructor(aiPlayerId: string, humanPlayerId: string, variant: GameVariant = "standard") {
     this.aiPlayerId = aiPlayerId;
     this.humanPlayerId = humanPlayerId;
-    this.aiSession = new GameSession({ variant });
-    this.aiSession.addPlayer(new Player(aiPlayerId, true));     // AI is "local" in its own session
-    this.aiSession.addPlayer(new Player(humanPlayerId, false)); // Human is "remote" in AI session
+    this.aiSession = new GameSession({ variant, localPlayerId: aiPlayerId });
+    this.aiSession.addPlayer(new Player(aiPlayerId));     // AI is "local" in its own session
+    this.aiSession.addPlayer(new Player(humanPlayerId)); // Human is "remote" in AI session
   }
 
   /** Called once after the trusted seed exchange establishes pick order. */

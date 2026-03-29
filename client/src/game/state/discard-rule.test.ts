@@ -23,9 +23,9 @@ const seedBlockedBoard = (player: Player) => {
 };
 
 const makeSession = () => {
-  const session = new GameSession();
-  const alice = new Player("alice", true);
-  const bob = new Player("bob", false);
+  const session = new GameSession({ localPlayerId: "alice" });
+  const alice = new Player("alice");
+  const bob = new Player("bob");
   session.addPlayer(alice);
   session.addPlayer(bob);
   session.startGame([alice, bob]);

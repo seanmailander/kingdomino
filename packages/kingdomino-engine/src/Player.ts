@@ -4,10 +4,7 @@ import { Board } from "./Board";
 export class Player {
   private _board: Board = new Board();
 
-  constructor(
-    readonly id: PlayerId,
-    readonly isLocal: boolean,
-  ) {}
+  constructor(readonly id: PlayerId) {}
 
   get board(): Board {
     return this._board;

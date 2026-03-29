@@ -13,12 +13,12 @@ import { GameSession, Player } from "../state/GameSession";
 import { right, left } from "kingdomino-engine";
 import { findPlacementWithin5x5 } from "kingdomino-engine";
 import { getNextFourCards } from "kingdomino-engine";
-import type { Direction } from "../state/types";
+import type { Direction } from "kingdomino-engine";
 
 const makeSession = () => {
-  const session = new GameSession();
-  const alice = new Player("alice", true);
-  const bob = new Player("bob", false);
+  const session = new GameSession({ localPlayerId: "alice" });
+  const alice = new Player("alice");
+  const bob = new Player("bob");
   session.addPlayer(alice);
   session.addPlayer(bob);
   session.startGame([alice, bob]);

@@ -1,15 +1,13 @@
-// Sections 4+5 — Deal and Round
 import { describe, expect, it } from "vitest";
-import { Deal } from "kingdomino-engine";
-import { Round } from "kingdomino-engine";
-import { Player } from "kingdomino-engine";
-import { right, left } from "kingdomino-engine";
+import { Deal } from "./Deal";
+import { Round } from "./Round";
+import { Player } from "./Player";
+import { right, left } from "./gamelogic/cards";
 
-// Helpers
 const alice = () => new Player("alice");
 const bob = () => new Player("bob");
 
-const makeDeal = () => new Deal([34, 3, 32, 26]); // will sort to [3, 26, 32, 34]
+const makeDeal = () => new Deal([34, 3, 32, 26]);
 
 const makeRound = () => {
   const a = alice();
@@ -18,13 +16,9 @@ const makeRound = () => {
   return { round, alice: a, bob: b };
 };
 
-// ── Section 4: Deal ──────────────────────────────────────────────────────────
-
 describe("Deal", () => {
   it("slots are sorted by card id ascending after construction", () => {
-    const ids = makeDeal()
-      .snapshot()
-      .map((s) => s.cardId);
+    const ids = makeDeal().snapshot().map((s) => s.cardId);
     expect(ids).toEqual([3, 26, 32, 34]);
   });
 
@@ -42,17 +36,15 @@ describe("Deal", () => {
   });
 
   it("nextRoundPickOrder lists players in ascending slot (card id) order of their picks", () => {
-    const deal = makeDeal(); // slots: [3, 26, 32, 34]
+    const deal = makeDeal();
     const a = alice();
     const b = bob();
-    deal.pickByCardId(a, 32); // alice: slot 2
-    deal.pickByCardId(b, 3); // bob:   slot 0  → bob goes before alice
+    deal.pickByCardId(a, 32);
+    deal.pickByCardId(b, 3);
     const order = deal.nextRoundPickOrder().map((p) => p.id);
     expect(order).toEqual(["bob", "alice"]);
   });
 });
-
-// ── Section 5: Round ─────────────────────────────────────────────────────────
 
 describe("Round", () => {
   it("starts in picking phase with the first player as currentActor", () => {

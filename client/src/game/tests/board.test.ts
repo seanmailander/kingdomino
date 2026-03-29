@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { Board, type BoardPlacement } from "../state/Board";
+import { Board, type BoardPlacement } from "kingdomino-engine";
 import {
   castle,
   down,

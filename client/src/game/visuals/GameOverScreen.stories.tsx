@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn } from "storybook/test";
-import { Player } from "../state/Player";
+import { Player } from "kingdomino-engine";
 import { right } from "kingdomino-engine";
 import { GameOverScreen } from "./GameOverScreen";
 import type { ScoreEntry } from "./GameOverScreen";
@@ -20,7 +20,7 @@ type Story = StoryObj<typeof meta>;
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 function makePlayer(id: string): Player {
-  return new Player(id, true);
+  return new Player(id);
 }
 
 function twoPlayerNoBonuses(): ScoreEntry[] {

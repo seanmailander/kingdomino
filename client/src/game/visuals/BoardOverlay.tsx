@@ -3,9 +3,9 @@ import React, { useMemo } from "react";
 import { useBoardPosition } from "./useBoardPosition";
 
 import { Tile } from "./Tile";
-import { Board } from "../state/Board";
+import { Board } from "kingdomino-engine";
 import { getFlippedPosition } from "kingdomino-engine";
-import type { CardId, Direction } from "../state/types";
+import type { CardId, Direction } from "kingdomino-engine";
 
 type BoardOverlayProps = {
   playerId: string;

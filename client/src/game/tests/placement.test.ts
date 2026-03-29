@@ -12,7 +12,7 @@
 import { describe, expect, it } from "vitest";
 import { getEligiblePositions, getValidDirections, staysWithin5x5, staysWithin7x7 } from "kingdomino-engine";
 import { right, left } from "kingdomino-engine";
-import { Board, type BoardPlacement } from "../state/Board";
+import { Board, type BoardPlacement } from "kingdomino-engine";
 
 const placedCardsToBoard = (placements: BoardPlacement[] = []) =>
   new Board(placements).placedCardsToBoard();

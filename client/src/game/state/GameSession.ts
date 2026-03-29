@@ -14,22 +14,16 @@ import {
   getValidDirections,
   staysWithin5x5,
   staysWithin7x7,
+  type PlayerId, type CardId, type Direction,
+  type BoardGrid,
+  Player, Deal, Round,
+  type GameVariant,
 } from "kingdomino-engine";
-import type { PlayerId, CardId, Direction } from "./types";
-import type { BoardGrid } from "./Board";
-import { Player } from "./Player";
-import { Deal } from "./Deal";
-import { Round } from "./Round";
-import type { GameVariant } from "kingdomino-engine";
 
 // Re-export sub-module classes and types for backward compatibility
-export type { BoardCell, BoardGrid } from "./Board";
-export { Board } from "./Board";
-export { Player } from "./Player";
-export { Deal } from "./Deal";
-export { Round } from "./Round";
-export type { RoundPhase } from "./Round";
-export type { PlayerId, CardId } from "./types";
+export type { BoardCell, BoardGrid, BoardPlacement } from "kingdomino-engine";
+export { Board, Player, Deal, Round } from "kingdomino-engine";
+export type { RoundPhase, PlayerId, CardId } from "kingdomino-engine";
 
 // ── GameEventBus ──────────────────────────────────────────────────────────────
 

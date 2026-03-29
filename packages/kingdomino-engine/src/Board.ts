@@ -4,8 +4,8 @@ import {
   largestRegion,
   totalCrowns as computeTotalCrowns,
   isCastleCentered as computeIsCastleCentered,
-} from "kingdomino-engine";
-import { castle, getCard, up, down, left, right } from "kingdomino-engine";
+} from "./gamelogic/board";
+import { castle, getCard, up, down, left, right } from "./gamelogic/cards";
 import type { Direction, CardId } from "./types";
 
 /** Legacy cell format used by board.ts utilities and visual components */
@@ -99,19 +99,14 @@ export class Board {
     return scoreBoard(this.snapshot());
   }
 
-  /** Size of the largest single contiguous terrain region (castle excluded). */
   largestPropertySize(): number {
     return largestRegion(this.snapshot());
   }
 
-  /** Sum of all crown values across all terrain tiles (castle excluded). */
   totalCrowns(): number {
     return computeTotalCrowns(this.snapshot());
   }
 
-  /** Returns true if the castle (at grid position 6,6) is at the center of the
-   * bounding box of all placed tiles. Centered means minX + maxX == 12 AND
-   * minY + maxY == 12 (since the castle sits at col=6, row=6, i.e. 6×2=12). */
   isCastleCentered(): boolean {
     return computeIsCastleCentered(this.snapshot());
   }

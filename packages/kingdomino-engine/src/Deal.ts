@@ -25,7 +25,6 @@ export class Deal {
     return this._slots.find((s) => s.pickedBy?.id === player.id)?.cardId ?? null;
   }
 
-  /** Players ordered by their picked card id (low -> high = first pick order next round) */
   nextRoundPickOrder(): Player[] {
     return this._slots.filter((s) => s.pickedBy !== null).map((s) => s.pickedBy!);
   }

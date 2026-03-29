@@ -11,12 +11,12 @@ import {
 } from "kingdomino-engine";
 import type { GameVariant } from "kingdomino-engine";
 import type { GameBonuses } from "../state/GameSession";
-import type { BoardPlacement } from "../state/Board";
+import type { BoardPlacement } from "kingdomino-engine";
 import { ConnectionManager } from "../state/ConnectionManager";
 import { LobbyFlow } from "../state/game.flow";
 import { AppFlowAdapter } from "../../App/AppFlowAdapter";
 import { TestConnection, type TestConnectionScenario } from "../state/connection.testing";
-import type { Direction } from "../state/types";
+import type { Direction } from "kingdomino-engine";
 
 type HandshakeScript = {
   localSecret: number;

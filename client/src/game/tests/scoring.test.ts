@@ -14,7 +14,7 @@
 //  44  mine(2cr)/grain   — crown on tileA  [fourthTwelve[8]: getTile(mine, grain, twoCrown)]
 //  46  marsh/mine(2cr)   — crown on tileB  [fourthTwelve[10]: getTile(marsh, mine, _, twoCrown)]
 import { describe, expect, it } from "vitest";
-import { Board } from "../state/Board";
+import { Board } from "kingdomino-engine";
 import { GameSession, Player } from "../state/GameSession";
 import type { GameEventMap } from "../state/GameSession";
 import { right, left, down, up } from "kingdomino-engine";
@@ -174,9 +174,9 @@ describe("Middle Kingdom bonus — isCastleCentered", () => {
 
 describe("Bonus scoring in GameSession.endGame()", () => {
   const makeSessionWithBonuses = (bonuses: { middleKingdom?: boolean; harmony?: boolean }) => {
-    const session = new GameSession({ bonuses });
-    const me = new Player("me", true);
-    const them = new Player("them", false);
+    const session = new GameSession({ bonuses, localPlayerId: "me" });
+    const me = new Player("me");
+    const them = new Player("them");
     session.addPlayer(me);
     session.addPlayer(them);
     session.startGame([me, them]);

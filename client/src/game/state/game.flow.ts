@@ -202,7 +202,7 @@ export class LobbyFlow {
       const actor = round.currentActor;
       if (!actor) break;
 
-      if (actor.isLocal) {
+      if (actor.id === session.myPlayer()?.id) {
         const pickOrPause = await Promise.race([
           waitForEvent(session.events, "pick:made", (e) => e.player.id === actor.id)
             .then((r) => ({ type: "pick" as const, r })),
@@ -255,12 +255,12 @@ export class LobbyFlow {
   }
 
   private async runFlow(connection: IGameConnection) {
-    this.session = new GameSession({ variant: this.variant, bonuses: this.bonuses });
+    this.session = new GameSession({ variant: this.variant, bonuses: this.bonuses, localPlayerId: connection.peerIdentifiers.me });
     this.connectionManager = this.createConnectionManager(connection);
 
     try {
-      this.session.addPlayer(new Player(connection.peerIdentifiers.me, true));
-      this.session.addPlayer(new Player(connection.peerIdentifiers.them, false));
+      this.session.addPlayer(new Player(connection.peerIdentifiers.me));
+      this.session.addPlayer(new Player(connection.peerIdentifiers.them));
       this.adapter.setSession(this.session);
       this.adapter.setPhase("lobby");
 

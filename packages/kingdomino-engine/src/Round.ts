@@ -27,7 +27,6 @@ export class Round {
     return this._deal;
   }
 
-  /** The player whose action is expected: pick if "picking", place if "placing". */
   get currentActor(): Player | null {
     return this._playerQueue[0] ?? null;
   }

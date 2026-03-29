@@ -9,9 +9,16 @@ export const RESUME_ACK = "CONTROL_RESUME_ACK";
 export const EXIT_REQUEST = "CONTROL_EXIT_REQUEST";
 export const EXIT_ACK = "CONTROL_EXIT_ACK";
 
-import type { MovePayload } from "./types";
+import type { PlayerId, CardId, Direction } from "kingdomino-engine";
 
-export type PlayerMoveMessage = MovePayload;
+export type PlayerMoveMessage = {
+  playerId: PlayerId;
+  card: CardId;
+  x: number;
+  y: number;
+  direction: Direction;
+  discard?: true;
+};
 
 export type StartGameMessage = {
   type: typeof START;
