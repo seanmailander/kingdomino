@@ -257,6 +257,35 @@ describe("GameSession — tie-break ranking", () => {
   });
 });
 
+describe("pause and resume", () => {
+  it("pause() in playing phase transitions to paused and emits game:paused", () => {
+    const { session } = makeSession();
+    const events: string[] = [];
+    session.events.on("game:paused", () => events.push("game:paused"));
+
+    expect(session.phase).toBe("playing");
+    session.pause();
+    expect(session.phase).toBe("paused");
+    expect(events).toEqual(["game:paused"]);
+  });
+
+  it("resume() in paused phase transitions to playing and emits game:resumed", () => {
+    const { session } = makeSession();
+    const events: string[] = [];
+    session.events.on("game:resumed", () => events.push("game:resumed"));
+
+    session.pause();
+    session.resume();
+    expect(session.phase).toBe("playing");
+    expect(events).toEqual(["game:resumed"]);
+  });
+
+  it("pause() throws if not in playing phase", () => {
+    const session = new GameSession({ localPlayerId: "alice" });
+    expect(() => session.pause()).toThrow();
+  });
+});
+
 describe("GameSession — end of game", () => {
   it.todo("a session with no cards remaining cannot begin another round");
 

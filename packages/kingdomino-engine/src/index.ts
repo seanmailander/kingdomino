@@ -17,4 +17,5 @@ export type {
 } from "./GameEvent";
 export { GameEventBus } from "./GameEventBus";
 export { GameSession } from "./GameSession";
+export type { SeedProvider } from "./SeedProvider";
 export type { GamePhase, GameBonuses } from "./GameSession";

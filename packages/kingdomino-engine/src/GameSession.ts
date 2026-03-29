@@ -182,6 +182,18 @@ export class GameSession {
     this.handleDiscard(me.id);
   }
 
+  pause(): void {
+    if (this._phase !== "playing") throw new Error("Can only pause while playing");
+    this._phase = "paused";
+    this.events.emit({ type: "game:paused" });
+  }
+
+  resume(): void {
+    if (this._phase !== "paused") throw new Error("Can only resume while paused");
+    this._phase = "playing";
+    this.events.emit({ type: "game:resumed" });
+  }
+
   endGame(): void {
     this._phase = "finished";
     const scores = this._players
