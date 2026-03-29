@@ -1,0 +1,19 @@
+{
+  "name": "kingdomino-lobby",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "tscheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "kingdomino-protocol": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.0"
+  }
+}
