@@ -1,8 +1,11 @@
 import { GameSession, Player } from "kingdomino-engine";
 import { findPlacementWithin5x5, findPlacementWithin7x7 } from "kingdomino-engine";
 import type { CardId, Direction } from "kingdomino-engine";
-import type { PlayerMoveMessage } from "./game.messages";
 import type { GameVariant } from "kingdomino-engine";
+
+type AIMove =
+  | { playerId: string; cardId: CardId; discard: true }
+  | { playerId: string; cardId: CardId; x: number; y: number; direction: Direction };
 
 export class RandomAIPlayer {
   private readonly aiSession: GameSession;
@@ -49,7 +52,7 @@ export class RandomAIPlayer {
    * Falls back to a sentinel move (0, 0, "up") if no valid placement exists —
    * identical to the pre-existing hardcoded stub. See spec for deferred handling.
    */
-  generateMove(): PlayerMoveMessage {
+  generateMove(): AIMove {
     const round = this.aiSession.currentRound!;
     const boardSnapshot = this.aiSession.boardFor(this.aiPlayerId);
     const findPlacement =
@@ -70,7 +73,7 @@ export class RandomAIPlayer {
         this.aiSession.handleLocalPlacement(placement.x, placement.y, placement.direction);
         return {
           playerId: this.aiPlayerId,
-          card: cardId,
+          cardId,
           x: placement.x,
           y: placement.y,
           direction: placement.direction,
@@ -84,10 +87,7 @@ export class RandomAIPlayer {
     this.aiSession.handleLocalDiscard();
     return {
       playerId: this.aiPlayerId,
-      card: firstCard,
-      x: 0,
-      y: 0,
-      direction: "up" as Direction,
+      cardId: firstCard,
       discard: true,
     };
   }

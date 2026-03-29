@@ -5,7 +5,8 @@ import type { SeedProvider } from "kingdomino-engine";
 import { ConnectionManager } from "./ConnectionManager";
 import { GameSession, Player } from "kingdomino-engine";
 import type { GameEventBus, GameEvent, CardId } from "kingdomino-engine";
-import type { GameMessage, GameMessagePayload, GameMessageType } from "./game.messages";
+import type { WireMessage, WireMessagePayload, WireMessageType } from "./game.messages";
+import { PLACE } from "./game.messages";
 import { SoloConnection } from "./connection.solo";
 import { RandomAIPlayer } from "./ai.player";
 import type { GameVariant } from "kingdomino-engine";
@@ -17,11 +18,9 @@ const CONTROL_TIMEOUT_MS = 5000;
 
 export interface IGameConnection {
   readonly peerIdentifiers: { me: string; them: string };
-  send: (message: GameMessage) => void;
-  waitFor: <T extends GameMessageType>(messageType: T) => Promise<GameMessagePayload<T>>;
+  send: (message: WireMessage) => void;
+  waitFor: <T extends WireMessageType>(messageType: T) => Promise<WireMessagePayload<T>>;
   destroy: () => void;
-  /** Solo-only: notifies the AI that the human discarded their card this turn. */
-  notifyLocalDiscard?: (cardId: CardId) => void;
 }
 
 /** Internal phase names used by LobbyFlow — independent of UI room constants. */
@@ -217,6 +216,7 @@ export class LobbyFlow {
           this.adapter.oncePhaseIsNot("game").then(() => ({ type: "inactive" as const })),
         ]);
         if (pickOrPause.type === "inactive") return;
+        connectionManager.sendPick(actor.id, pickOrPause.r.cardId);
 
         const placeOrPause = await Promise.race([
           waitForEvent(session.events, "place:made", (e) => e.player.id === actor.id)
@@ -228,35 +228,31 @@ export class LobbyFlow {
         if (placeOrPause.type === "inactive") return;
 
         if (placeOrPause.type === "discard") {
-          // Human couldn't place — notify AI (solo mode) so it can advance its own session
-          this.soloConnection?.notifyLocalDiscard(placeOrPause.r.cardId);
+          connectionManager.sendDiscard(actor.id);
         } else {
-          // Send place move to peer
           const placeEvent = placeOrPause.r;
-          connectionManager.sendMove({
-            playerId: actor.id,
-            card: placeEvent.cardId,
-            x: placeEvent.x,
-            y: placeEvent.y,
-            direction: placeEvent.direction,
-          });
+          connectionManager.sendPlace(actor.id, placeEvent.x, placeEvent.y, placeEvent.direction);
         }
       } else {
-        const moveOrPause = await Promise.race([
-          connectionManager.waitForMove().then(
-            (r) => ({ type: "move" as const, r }),
-            () => ({ type: "inactive" as const }),
-          ),
-          this.adapter.oncePhaseIsNot("game").then(() => ({ type: "inactive" as const })),
+        // waitForPickAndPlacement pre-registers all handlers before the first await,
+        // so we only yield ONCE to get pick+place together — React batches them in one render.
+        const moveOrEnded = await Promise.race([
+          connectionManager.waitForPickAndPlacement(),
+          this.adapter.oncePhaseIsNot("game").then((): null => null),
         ]);
-        if (moveOrPause.type === "inactive") return;
+        if (!moveOrEnded) return;
 
-        const { move } = moveOrPause.r;
-        session.handlePick(move.playerId, move.card);
-        if (move.discard) {
-          session.handleDiscard(move.playerId);
+        // Apply pick + place/discard atomically so React batches them into one render
+        session.handlePick(moveOrEnded.pick.playerId, moveOrEnded.pick.cardId);
+        if (moveOrEnded.place.type === PLACE) {
+          session.handlePlacement(
+            moveOrEnded.place.playerId,
+            moveOrEnded.place.x,
+            moveOrEnded.place.y,
+            moveOrEnded.place.direction,
+          );
         } else {
-          session.handlePlacement(move.playerId, move.x, move.y, move.direction);
+          session.handleDiscard(moveOrEnded.place.playerId);
         }
       }
     }

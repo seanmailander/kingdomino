@@ -1,7 +1,9 @@
 import { commit } from "kingdomino-engine";
 import {
   COMMITTMENT,
-  MOVE,
+  PICK,
+  PLACE,
+  DISCARD,
   REVEAL,
   START,
   PAUSE_REQUEST,
@@ -11,20 +13,27 @@ import {
   EXIT_REQUEST,
   EXIT_ACK,
   committmentMessage,
-  moveMessage,
+  pickMessage,
+  placeMessage,
+  discardMessage,
   revealMessage,
-  type GameMessage,
-  type GameMessagePayload,
-  type GameMessageType,
-  type PlayerMoveMessage,
+  pauseAckMessage,
+  resumeAckMessage,
+  exitAckMessage,
+  pauseRequestMessage,
+  resumeRequestMessage,
+  exitRequestMessage,
+  type WireMessage,
+  type WireMessagePayload,
+  type WireMessageType,
 } from "./game.messages";
 
-type AnyGameMessagePayload = {
-  [MessageType in GameMessageType]: GameMessagePayload<MessageType>;
-}[GameMessageType];
+type AnyWireMessagePayload = {
+  [MessageType in WireMessageType]: WireMessagePayload<MessageType>;
+}[WireMessageType];
 
 type MessageResolver = {
-  resolve: (payload: AnyGameMessagePayload) => void;
+  resolve: (payload: AnyWireMessagePayload) => void;
   reject: (error: Error) => void;
 };
 
@@ -33,10 +42,13 @@ type TestHandshake = {
   committment?: string;
 };
 
-type ScriptedMove = Omit<PlayerMoveMessage, "playerId" | "card"> & {
-  card?: PlayerMoveMessage["card"];
-  /** Zero-based index into the sorted list of unpicked cards in the current deal. */
+type ScriptedMove = {
+  card?: number;
   cardIndex?: number;
+  discard?: true;
+  x?: number;
+  y?: number;
+  direction?: string;
 };
 
 export type TestConnectionControl = {
@@ -64,8 +76,8 @@ export class TestConnection {
   readonly peerIdentifiers: { me: string; them: string };
 
   private readonly scenario: TestConnectionScenario;
-  private readonly messageQueues = new Map<GameMessageType, unknown[]>();
-  private readonly messageResolvers = new Map<GameMessageType, MessageResolver[]>();
+  private readonly messageQueues = new Map<WireMessageType, unknown[]>();
+  private readonly messageResolvers = new Map<WireMessageType, MessageResolver[]>();
 
   private handshakeIndex = 0;
   private remoteMoveIndex = 0;
@@ -79,7 +91,7 @@ export class TestConnection {
     this.getAvailableCards = getAvailableCards;
   }
 
-  send = (message: GameMessage) => {
+  send = (message: WireMessage) => {
     this.assertActive();
     this.assertScenarioAvailable(message.type);
 
@@ -92,21 +104,25 @@ export class TestConnection {
       case REVEAL:
         this.respondToReveal();
         return;
-      case MOVE:
+      case PICK:
+        return;
+      case PLACE:
+        return;
+      case DISCARD:
         return;
       case PAUSE_REQUEST:
         if (this.scenario.control?.respondToPauseRequest) {
-          this.emitIncoming(PAUSE_ACK, undefined);
+          this.emitIncoming(PAUSE_ACK, pauseAckMessage());
         }
         return;
       case RESUME_REQUEST:
         if (this.scenario.control?.respondToResumeRequest) {
-          this.emitIncoming(RESUME_ACK, undefined);
+          this.emitIncoming(RESUME_ACK, resumeAckMessage());
         }
         return;
       case EXIT_REQUEST:
         if (this.scenario.control?.respondToExitRequest) {
-          this.emitIncoming(EXIT_ACK, undefined);
+          this.emitIncoming(EXIT_ACK, exitAckMessage());
         }
         return;
       case PAUSE_ACK:
@@ -122,24 +138,24 @@ export class TestConnection {
 
   triggerRemoteControl(type: "pause" | "resume" | "exit") {
     switch (type) {
-      case "pause": this.emitIncoming(PAUSE_REQUEST, undefined); return;
-      case "resume": this.emitIncoming(RESUME_REQUEST, undefined); return;
-      case "exit": this.emitIncoming(EXIT_REQUEST, undefined); return;
+      case "pause":  this.emitIncoming(PAUSE_REQUEST, pauseRequestMessage());  return;
+      case "resume": this.emitIncoming(RESUME_REQUEST, resumeRequestMessage()); return;
+      case "exit":   this.emitIncoming(EXIT_REQUEST, exitRequestMessage());    return;
     }
   }
 
-  waitFor = <T extends GameMessageType>(messageType: T): Promise<GameMessagePayload<T>> => {
+  waitFor = <T extends WireMessageType>(messageType: T): Promise<WireMessagePayload<T>> => {
     this.assertActive();
 
-    const queue = this.messageQueues.get(messageType) as Array<GameMessagePayload<T>> | undefined;
+    const queue = this.messageQueues.get(messageType) as Array<WireMessagePayload<T>> | undefined;
     if (queue && queue.length > 0) {
-      return Promise.resolve(queue.shift() as GameMessagePayload<T>);
+      return Promise.resolve(queue.shift() as WireMessagePayload<T>);
     }
 
-    return new Promise<GameMessagePayload<T>>((resolve, reject) => {
+    return new Promise<WireMessagePayload<T>>((resolve, reject) => {
       const resolvers = this.messageResolvers.get(messageType) ?? [];
       resolvers.push({
-        resolve: (payload) => resolve(payload as GameMessagePayload<T>),
+        resolve: (payload) => resolve(payload as WireMessagePayload<T>),
         reject,
       });
       this.messageResolvers.set(messageType, resolvers);
@@ -173,8 +189,8 @@ export class TestConnection {
     const handshake = this.currentHandshake();
     const isFirstRoundHandshake = this.handshakeIndex === 1;
     const ctrl = this.scenario.control;
-    // When any control behavior is configured, skip MOVE emissions so that
-    // waitForMove() stays pending and pause/exit races resolve cleanly.
+    // When any control behavior is configured, skip move emissions so that
+    // waitForPick() stays pending and pause/exit races resolve cleanly.
     const hasControlBehavior = !!(
       ctrl?.respondToPauseRequest ||
       ctrl?.respondToResumeRequest ||
@@ -182,7 +198,6 @@ export class TestConnection {
       ctrl?.sendPauseRequestOnStart
     );
 
-    let queuedMove: GameMessagePayload<typeof MOVE> | null = null;
     let deferredMoveEmitter: (() => void) | null = null;
     if (this.handshakeIndex > 0 && !hasControlBehavior) {
       const scriptedMove = this.scenario.moves[this.handshakeIndex - 1];
@@ -192,11 +207,11 @@ export class TestConnection {
         );
       }
 
+      const { them } = this.peerIdentifiers;
       if (scriptedMove.cardIndex !== undefined) {
         // cardIndex must be resolved AFTER session.beginRound() is called (which happens
-        // synchronously in the same microtask as the REVEAL resolution). Defer via queueMicrotask.
+        // synchronously in the same microtask as the REVEAL resolution). Defer via setTimeout.
         const { cardIndex } = scriptedMove;
-        const { them } = this.peerIdentifiers;
         deferredMoveEmitter = () => {
           const available = this.getAvailableCards?.() ?? [];
           const resolved = available[cardIndex];
@@ -205,25 +220,20 @@ export class TestConnection {
               `TestConnection cardIndex ${cardIndex} out of range (${available.length} available)`,
             );
           }
-          this.emitIncoming(
-            MOVE,
-            moveMessage({ playerId: them, ...scriptedMove, card: resolved }).content,
-          );
+          this.emitMoveMessages(them, resolved, scriptedMove);
         };
       } else if (scriptedMove.card !== undefined) {
-        queuedMove = moveMessage({ playerId: this.peerIdentifiers.them, ...scriptedMove, card: scriptedMove.card }).content;
+        const card = scriptedMove.card;
+        deferredMoveEmitter = () => this.emitMoveMessages(them, card, scriptedMove);
       } else {
         throw new Error(`TestConnection scripted move for round ${this.handshakeIndex} has neither card nor cardIndex`);
       }
     }
 
     this.emitIncoming(REVEAL, revealMessage(String(handshake.secret)).content);
-
     this.handshakeIndex += 1;
 
-    if (queuedMove) {
-      this.emitIncoming(MOVE, queuedMove);
-    } else if (deferredMoveEmitter) {
+    if (deferredMoveEmitter) {
       // buildTrustedSeed() has multiple awaits (verifyCommitment, combineSecrets) before
       // session.beginRound() is called. A macrotask (setTimeout 0) fires after ALL pending
       // microtasks complete, so the deal will be set by the time getAvailableCards() is called.
@@ -234,10 +244,9 @@ export class TestConnection {
     if (isFirstRoundHandshake && ctrl?.sendPauseRequestOnStart && !this.pauseRequestOnStartFired) {
       this.pauseRequestOnStartFired = true;
       // Delay long enough for test polling (vi.waitFor interval ~50ms) to observe Game state
-      setTimeout(() => this.emitIncoming(PAUSE_REQUEST, undefined), 100);
+      setTimeout(() => this.emitIncoming(PAUSE_REQUEST, pauseRequestMessage()), 100);
     }
   }
-
 
   /**
    * Emit the next scripted remote move directly, bypassing the handshake protocol.
@@ -258,12 +267,23 @@ export class TestConnection {
         if (resolved === undefined) {
           throw new Error(`TestConnection cardIndex ${cardIndex} out of range (${available.length} available)`);
         }
-        this.emitIncoming(MOVE, moveMessage({ playerId: them, ...scriptedMove, card: resolved }).content);
+        this.emitMoveMessages(them, resolved, scriptedMove);
       }, 0);
     } else if (scriptedMove.card !== undefined) {
-      this.emitIncoming(MOVE, moveMessage({ playerId: them, ...scriptedMove, card: scriptedMove.card }).content);
+      this.emitMoveMessages(them, scriptedMove.card, scriptedMove);
     } else {
       throw new Error(`TestConnection scripted move for round ${this.remoteMoveIndex} has neither card nor cardIndex`);
+    }
+  }
+
+  /** Emit PICK + PLACE (or DISCARD) messages for a scripted remote move. */
+  private emitMoveMessages(playerId: string, cardId: number, move: ScriptedMove) {
+    this.emitIncoming(PICK, pickMessage(playerId, cardId));
+    if (move.discard) {
+      this.emitIncoming(DISCARD, discardMessage(playerId));
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      this.emitIncoming(PLACE, placeMessage(playerId, move.x!, move.y!, move.direction! as import("kingdomino-engine").Direction));
     }
   }
 
@@ -278,19 +298,19 @@ export class TestConnection {
     return handshake;
   }
 
-  private emitIncoming<T extends GameMessageType>(messageType: T, payload: GameMessagePayload<T>) {
+  private emitIncoming<T extends WireMessageType>(messageType: T, payload: WireMessagePayload<T>) {
     const resolvers = this.messageResolvers.get(messageType);
     const resolver = resolvers?.shift();
 
     if (resolver) {
-      resolver.resolve(payload as AnyGameMessagePayload);
+      resolver.resolve(payload as AnyWireMessagePayload);
       if (resolvers && resolvers.length === 0) {
         this.messageResolvers.delete(messageType);
       }
       return;
     }
 
-    const queue = this.messageQueues.get(messageType) as Array<GameMessagePayload<T>> | undefined;
+    const queue = this.messageQueues.get(messageType) as Array<WireMessagePayload<T>> | undefined;
     if (queue) {
       queue.push(payload);
       return;
@@ -299,7 +319,7 @@ export class TestConnection {
     this.messageQueues.set(messageType, [payload]);
   }
 
-  private assertScenarioAvailable(messageType: GameMessageType) {
+  private assertScenarioAvailable(messageType: WireMessageType) {
     if (
       (messageType === COMMITTMENT || messageType === REVEAL) &&
       !this.scenario.handshakes[this.handshakeIndex]

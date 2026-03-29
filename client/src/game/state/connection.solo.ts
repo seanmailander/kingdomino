@@ -1,6 +1,8 @@
 import {
   COMMITTMENT,
-  MOVE,
+  PICK,
+  PLACE,
+  DISCARD,
   REVEAL,
   START,
   PAUSE_REQUEST,
@@ -9,19 +11,25 @@ import {
   RESUME_ACK,
   EXIT_REQUEST,
   EXIT_ACK,
-  moveMessage,
-  type GameMessage,
-  type GameMessagePayload,
-  type GameMessageType,
+  pickMessage,
+  placeMessage,
+  discardMessage,
+  pauseAckMessage,
+  resumeAckMessage,
+  exitAckMessage,
+  type WireMessage,
+  type WireMessagePayload,
+  type WireMessageType,
 } from "./game.messages";
 import type { RandomAIPlayer } from "./ai.player";
+import type { CardId } from "kingdomino-engine";
 
-type AnyGameMessagePayload = {
-  [MessageType in GameMessageType]: GameMessagePayload<MessageType>;
-}[GameMessageType];
+type AnyWireMessagePayload = {
+  [MessageType in WireMessageType]: WireMessagePayload<MessageType>;
+}[WireMessageType];
 
 type MessageResolver = {
-  resolve: (payload: AnyGameMessagePayload) => void;
+  resolve: (payload: AnyWireMessagePayload) => void;
   reject: (error: Error) => void;
 };
 
@@ -32,8 +40,9 @@ export class SoloConnection {
   } as const;
 
   private readonly aiPlayer: RandomAIPlayer;
-  private readonly messageQueues = new Map<GameMessageType, unknown[]>();
-  private readonly messageResolvers = new Map<GameMessageType, MessageResolver[]>();
+  private readonly messageQueues = new Map<WireMessageType, unknown[]>();
+  private readonly messageResolvers = new Map<WireMessageType, MessageResolver[]>();
+  private pendingLocalPickCard: CardId | null = null;
 
   private isDestroyed = false;
 
@@ -41,23 +50,23 @@ export class SoloConnection {
     this.aiPlayer = aiPlayer;
   }
 
-  send = (message: GameMessage) => {
+  send = (message: WireMessage) => {
     this.assertActive();
     this.respondToMessage(message);
   };
 
-  waitFor = <T extends GameMessageType>(messageType: T): Promise<GameMessagePayload<T>> => {
+  waitFor = <T extends WireMessageType>(messageType: T): Promise<WireMessagePayload<T>> => {
     this.assertActive();
 
-    const queue = this.messageQueues.get(messageType) as Array<GameMessagePayload<T>> | undefined;
+    const queue = this.messageQueues.get(messageType) as Array<WireMessagePayload<T>> | undefined;
     if (queue && queue.length > 0) {
-      return Promise.resolve(queue.shift() as GameMessagePayload<T>);
+      return Promise.resolve(queue.shift() as WireMessagePayload<T>);
     }
 
-    return new Promise<GameMessagePayload<T>>((resolve, reject) => {
+    return new Promise<WireMessagePayload<T>>((resolve, reject) => {
       const resolvers = this.messageResolvers.get(messageType) ?? [];
       resolvers.push({
-        resolve: (payload) => resolve(payload as GameMessagePayload<T>),
+        resolve: (payload) => resolve(payload as WireMessagePayload<T>),
         reject,
       });
       this.messageResolvers.set(messageType, resolvers);
@@ -82,7 +91,7 @@ export class SoloConnection {
     this.messageQueues.clear();
   };
 
-  private async respondToMessage(message: GameMessage) {
+  private async respondToMessage(message: WireMessage) {
     switch (message.type) {
       case START:
         return;
@@ -92,26 +101,35 @@ export class SoloConnection {
       case REVEAL:
         // Solo mode uses RandomSeedProvider — commitment exchange is not used.
         return;
-      case MOVE:
-        this.aiPlayer.receiveHumanMove(
-          message.content.move.card,
-          message.content.move.x,
-          message.content.move.y,
-          message.content.move.direction,
-        );
-        // Only emit if the round is still active — the human's last pick ends the round.
-        if (this.aiPlayer.hasActiveRound()) {
-          this.emitOpponentMove();
+      case PICK:
+        this.pendingLocalPickCard = message.cardId;
+        return;
+      case PLACE:
+        if (this.pendingLocalPickCard !== null) {
+          this.aiPlayer.receiveHumanMove(this.pendingLocalPickCard, message.x, message.y, message.direction);
+          this.pendingLocalPickCard = null;
+          if (this.aiPlayer.hasActiveRound()) {
+            this.emitOpponentMove();
+          }
+        }
+        return;
+      case DISCARD:
+        if (this.pendingLocalPickCard !== null) {
+          this.aiPlayer.receiveHumanDiscard(this.pendingLocalPickCard);
+          this.pendingLocalPickCard = null;
+          if (this.aiPlayer.hasActiveRound()) {
+            this.emitOpponentMove();
+          }
         }
         return;
       case PAUSE_REQUEST:
-        this.emitIncoming(PAUSE_ACK, undefined);
+        this.emitIncoming(PAUSE_ACK, pauseAckMessage());
         return;
       case RESUME_REQUEST:
-        this.emitIncoming(RESUME_ACK, undefined);
+        this.emitIncoming(RESUME_ACK, resumeAckMessage());
         return;
       case EXIT_REQUEST:
-        this.emitIncoming(EXIT_ACK, undefined);
+        this.emitIncoming(EXIT_ACK, exitAckMessage());
         return;
       case PAUSE_ACK:
       case RESUME_ACK:
@@ -131,33 +149,30 @@ export class SoloConnection {
     }
   }
 
-  /** Called by LobbyFlow when the human discards: advances AI session and triggers AI move if needed. */
-  notifyLocalDiscard(cardId: number): void {
-    this.aiPlayer.receiveHumanDiscard(cardId);
-    if (this.aiPlayer.hasActiveRound()) {
-      this.emitOpponentMove();
-    }
-  }
-
   private emitOpponentMove() {
     if (!this.aiPlayer.hasActiveRound()) return;
     const move = this.aiPlayer.generateMove();
-    this.emitIncoming(MOVE, moveMessage(move).content);
+    this.emitIncoming(PICK, pickMessage(move.playerId, move.cardId));
+    if ("discard" in move) {
+      this.emitIncoming(DISCARD, discardMessage(move.playerId));
+    } else {
+      this.emitIncoming(PLACE, placeMessage(move.playerId, move.x, move.y, move.direction));
+    }
   }
 
-  private emitIncoming<T extends GameMessageType>(messageType: T, payload: GameMessagePayload<T>) {
+  private emitIncoming<T extends WireMessageType>(messageType: T, payload: WireMessagePayload<T>) {
     const resolvers = this.messageResolvers.get(messageType);
     const resolver = resolvers?.shift();
 
     if (resolver) {
-      resolver.resolve(payload as AnyGameMessagePayload);
+      resolver.resolve(payload as AnyWireMessagePayload);
       if (resolvers && resolvers.length === 0) {
         this.messageResolvers.delete(messageType);
       }
       return;
     }
 
-    const queue = this.messageQueues.get(messageType) as Array<GameMessagePayload<T>> | undefined;
+    const queue = this.messageQueues.get(messageType) as Array<WireMessagePayload<T>> | undefined;
     if (queue) {
       queue.push(payload);
       return;

@@ -37,7 +37,7 @@ describe("TestConnection", () => {
     );
   });
 
-  it("queues the scripted remote move for each round handshake after the opening seed", async () => {
+  it("queues the scripted remote pick and place for each round handshake after the opening seed", async () => {
     const connection = new TestConnection({
       me: "local-player",
       them: "remote-player",
@@ -53,13 +53,19 @@ describe("TestConnection", () => {
 
     await provider.nextSeed(); // pick-order seed (no move emitted)
     await provider.nextSeed(); // round 1 seed (move 0 emitted)
-    await expect(connection.waitFor("MOVE")).resolves.toEqual({
-      move: { playerId: "remote-player", card: 26, x: 5, y: 6, direction: left },
+    await expect(connection.waitFor("pick:made")).resolves.toEqual({
+      type: "pick:made", playerId: "remote-player", cardId: 26,
+    });
+    await expect(connection.waitFor("place:made")).resolves.toEqual({
+      type: "place:made", playerId: "remote-player", x: 5, y: 6, direction: left,
     });
 
     await provider.nextSeed(); // round 2 seed (move 1 emitted)
-    await expect(connection.waitFor("MOVE")).resolves.toEqual({
-      move: { playerId: "remote-player", card: 18, x: 7, y: 6, direction: right },
+    await expect(connection.waitFor("pick:made")).resolves.toEqual({
+      type: "pick:made", playerId: "remote-player", cardId: 18,
+    });
+    await expect(connection.waitFor("place:made")).resolves.toEqual({
+      type: "place:made", playerId: "remote-player", x: 7, y: 6, direction: right,
     });
   });
 

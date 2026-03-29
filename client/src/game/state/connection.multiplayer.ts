@@ -1,6 +1,8 @@
 import {
   COMMITTMENT,
-  MOVE,
+  PICK,
+  PLACE,
+  DISCARD,
   REVEAL,
   START,
   PAUSE_REQUEST,
@@ -9,22 +11,22 @@ import {
   RESUME_ACK,
   EXIT_REQUEST,
   EXIT_ACK,
-  type GameMessage,
-  type GameMessagePayload,
-  type GameMessageType,
+  type WireMessage,
+  type WireMessagePayload,
+  type WireMessageType,
 } from "./game.messages";
 
-type AnyGameMessagePayload = {
-  [MessageType in GameMessageType]: GameMessagePayload<MessageType>;
-}[GameMessageType];
+type AnyWireMessagePayload = {
+  [MessageType in WireMessageType]: WireMessagePayload<MessageType>;
+}[WireMessageType];
 
 type MessageResolver = {
-  resolve: (payload: AnyGameMessagePayload) => void;
+  resolve: (payload: AnyWireMessagePayload) => void;
   reject: (error: Error) => void;
 };
 
 export type MultiplayerTransport = {
-  send: (message: GameMessage) => void;
+  send: (message: WireMessage) => void;
   destroy?: () => void;
 };
 
@@ -37,8 +39,8 @@ export type MultiplayerConnectionOptions = {
 export class MultiplayerConnection {
   readonly peerIdentifiers: { me: string; them: string };
 
-  private readonly messageQueues = new Map<GameMessageType, unknown[]>();
-  private readonly messageResolvers = new Map<GameMessageType, MessageResolver[]>();
+  private readonly messageQueues = new Map<WireMessageType, unknown[]>();
+  private readonly messageResolvers = new Map<WireMessageType, MessageResolver[]>();
 
   private transport: MultiplayerTransport | null;
   private isDestroyed = false;
@@ -53,7 +55,7 @@ export class MultiplayerConnection {
     this.transport = transport;
   };
 
-  send = (message: GameMessage) => {
+  send = (message: WireMessage) => {
     this.assertActive();
 
     if (!this.transport) {
@@ -63,25 +65,25 @@ export class MultiplayerConnection {
     this.transport.send(message);
   };
 
-  waitFor = <T extends GameMessageType>(messageType: T): Promise<GameMessagePayload<T>> => {
+  waitFor = <T extends WireMessageType>(messageType: T): Promise<WireMessagePayload<T>> => {
     this.assertActive();
 
-    const queue = this.messageQueues.get(messageType) as Array<GameMessagePayload<T>> | undefined;
+    const queue = this.messageQueues.get(messageType) as Array<WireMessagePayload<T>> | undefined;
     if (queue && queue.length > 0) {
-      return Promise.resolve(queue.shift() as GameMessagePayload<T>);
+      return Promise.resolve(queue.shift() as WireMessagePayload<T>);
     }
 
-    return new Promise<GameMessagePayload<T>>((resolve, reject) => {
+    return new Promise<WireMessagePayload<T>>((resolve, reject) => {
       const resolvers = this.messageResolvers.get(messageType) ?? [];
       resolvers.push({
-        resolve: (payload) => resolve(payload as GameMessagePayload<T>),
+        resolve: (payload) => resolve(payload as WireMessagePayload<T>),
         reject,
       });
       this.messageResolvers.set(messageType, resolvers);
     });
   };
 
-  receive = (message: GameMessage) => {
+  receive = (message: WireMessage) => {
     this.assertActive();
     this.handleIncomingMessage(message);
   };
@@ -105,10 +107,10 @@ export class MultiplayerConnection {
     this.transport = null;
   };
 
-  private handleIncomingMessage(message: GameMessage) {
+  private handleIncomingMessage(message: WireMessage) {
     switch (message.type) {
       case START:
-        this.emitIncoming(START, undefined as GameMessagePayload<typeof START>);
+        this.emitIncoming(START, { type: START });
         return;
       case COMMITTMENT:
         this.emitIncoming(COMMITTMENT, message.content);
@@ -116,8 +118,14 @@ export class MultiplayerConnection {
       case REVEAL:
         this.emitIncoming(REVEAL, message.content);
         return;
-      case MOVE:
-        this.emitIncoming(MOVE, message.content);
+      case PICK:
+        this.emitIncoming(PICK, message);
+        return;
+      case PLACE:
+        this.emitIncoming(PLACE, message);
+        return;
+      case DISCARD:
+        this.emitIncoming(DISCARD, message);
         return;
       case PAUSE_REQUEST:
       case PAUSE_ACK:
@@ -125,7 +133,7 @@ export class MultiplayerConnection {
       case RESUME_ACK:
       case EXIT_REQUEST:
       case EXIT_ACK:
-        // Control messages handled in Task 3
+        this.emitIncoming(message.type, message);
         return;
       default: {
         const exhaustiveCheck: never = message;
@@ -134,19 +142,19 @@ export class MultiplayerConnection {
     }
   }
 
-  private emitIncoming<T extends GameMessageType>(messageType: T, payload: GameMessagePayload<T>) {
+  private emitIncoming<T extends WireMessageType>(messageType: T, payload: WireMessagePayload<T>) {
     const resolvers = this.messageResolvers.get(messageType);
     const resolver = resolvers?.shift();
 
     if (resolver) {
-      resolver.resolve(payload as AnyGameMessagePayload);
+      resolver.resolve(payload as AnyWireMessagePayload);
       if (resolvers && resolvers.length === 0) {
         this.messageResolvers.delete(messageType);
       }
       return;
     }
 
-    const queue = this.messageQueues.get(messageType) as Array<GameMessagePayload<T>> | undefined;
+    const queue = this.messageQueues.get(messageType) as Array<WireMessagePayload<T>> | undefined;
     if (queue) {
       queue.push(payload);
       return;

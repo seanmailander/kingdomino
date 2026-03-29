@@ -11,12 +11,15 @@ describe("RandomAIPlayer — generateMove", () => {
     const move = ai.generateMove();
 
     expect(move.playerId).toBe("them");
-    expect([4, 22, 28, 46]).toContain(move.card);
-    expect(move.x).toBeTypeOf("number");
-    expect(move.y).toBeTypeOf("number");
-    expect(["up", "down", "left", "right"]).toContain(move.direction);
-    // Any card should be placeable next to the castle — not the hardcoded sentinel (0,0,up)
-    expect(move.x !== 0 || move.y !== 0).toBe(true);
+    expect([4, 22, 28, 46]).toContain(move.cardId);
+    expect("discard" in move).toBe(false);
+    if (!("discard" in move)) {
+      expect(move.x).toBeTypeOf("number");
+      expect(move.y).toBeTypeOf("number");
+      expect(["up", "down", "left", "right"]).toContain(move.direction);
+      // Any card should be placeable next to the castle — not the hardcoded sentinel (0,0,up)
+      expect(move.x !== 0 || move.y !== 0).toBe(true);
+    }
   });
 
   it("returns a card from the active deal at a valid position when AI picks second", () => {
@@ -30,10 +33,13 @@ describe("RandomAIPlayer — generateMove", () => {
     const move = ai.generateMove();
 
     expect(move.playerId).toBe("them");
-    expect([22, 28, 46]).toContain(move.card); // card 4 is taken
-    expect(move.x).toBeTypeOf("number");
-    expect(move.y).toBeTypeOf("number");
-    expect(["up", "down", "left", "right"]).toContain(move.direction);
+    expect([22, 28, 46]).toContain(move.cardId); // card 4 is taken
+    expect("discard" in move).toBe(false);
+    if (!("discard" in move)) {
+      expect(move.x).toBeTypeOf("number");
+      expect(move.y).toBeTypeOf("number");
+      expect(["up", "down", "left", "right"]).toContain(move.direction);
+    }
   });
 });
 
@@ -46,8 +52,8 @@ describe("RandomAIPlayer — receiveHumanMove", () => {
     ai.receiveHumanMove(4, 7, 6, "right"); // Human claims card 4
     const move = ai.generateMove();
 
-    expect(move.card).not.toBe(4);
-    expect([22, 28, 46]).toContain(move.card);
+    expect(move.cardId).not.toBe(4);
+    expect([22, 28, 46]).toContain(move.cardId);
   });
 
   it("tracks the human placement so the AI does not overlap the same board position", () => {

@@ -16,10 +16,9 @@ import { LobbyFlow } from "./game.flow";
 import { AppFlowAdapter } from "../../App/AppFlowAdapter";
 import { findPlacementWithin5x5 } from "kingdomino-engine";
 import {
-  MOVE,
-  type GameMessage,
-  type GameMessagePayload,
-  type GameMessageType,
+  type WireMessage,
+  type WireMessagePayload,
+  type WireMessageType,
 } from "./game.messages";
 import { TestConnection } from "./connection.testing";
 
@@ -29,9 +28,9 @@ class StubConnection {
     them: "story-them",
   } as const;
 
-  send(_message: GameMessage) {}
+  send(_message: WireMessage) {}
 
-  waitFor<T extends GameMessageType>(_messageType: T): Promise<GameMessagePayload<T>> {
+  waitFor<T extends WireMessageType>(_messageType: T): Promise<WireMessagePayload<T>> {
     return new Promise(() => undefined);
   }
 

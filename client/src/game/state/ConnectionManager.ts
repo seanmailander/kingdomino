@@ -1,12 +1,15 @@
+import type { PlayerId, CardId, Direction } from "kingdomino-engine";
 import {
-  MOVE,
+  PICK, PLACE, DISCARD,
   PAUSE_REQUEST,
   PAUSE_ACK,
   RESUME_REQUEST,
   RESUME_ACK,
   EXIT_REQUEST,
   EXIT_ACK,
-  moveMessage,
+  pickMessage,
+  placeMessage,
+  discardMessage,
   startMessage,
   pauseRequestMessage,
   pauseAckMessage,
@@ -14,64 +17,102 @@ import {
   resumeAckMessage,
   exitRequestMessage,
   exitAckMessage,
-  type GameMessage,
-  type GameMessagePayload,
-  type GameMessageType,
-  type PlayerMoveMessage,
+  type WireMessage,
+  type WireMessagePayload,
+  type WireMessageType,
+  type PickMessage,
+  type PlaceMessage,
+  type DiscardMessage,
+  type MoveMessage,
 } from "./game.messages";
 
-type WaitForGameMessage = <T extends GameMessageType>(
+type WaitForWireMessage = <T extends WireMessageType>(
   messageType: T,
-) => Promise<GameMessagePayload<T>>;
-type SendGameMessage = (message: GameMessage) => void;
+) => Promise<WireMessagePayload<T>>;
+type SendWireMessage = (message: WireMessage) => void;
 
 export class ConnectionManager {
-  private readonly sendGameMessage: SendGameMessage;
-  private readonly waitForGameMessage: WaitForGameMessage;
+  private readonly send: SendWireMessage;
+  private readonly waitFor: WaitForWireMessage;
 
   constructor(
-    sendGameMessage: SendGameMessage,
-    waitForGameMessage: WaitForGameMessage,
+    send: SendWireMessage,
+    waitFor: WaitForWireMessage,
   ) {
-    this.sendGameMessage = sendGameMessage;
-    this.waitForGameMessage = waitForGameMessage;
+    this.send = send;
+    this.waitFor = waitFor;
   }
 
   sendStart() {
-    this.sendGameMessage(startMessage());
+    this.send(startMessage());
   }
 
-  sendMove(move: PlayerMoveMessage) {
-    this.sendGameMessage(moveMessage(move));
+  sendPick(playerId: PlayerId, cardId: CardId) {
+    this.send(pickMessage(playerId, cardId));
   }
 
-  waitForMove() {
-    return this.waitForGameMessage(MOVE);
+  sendPlace(playerId: PlayerId, x: number, y: number, direction: Direction) {
+    this.send(placeMessage(playerId, x, y, direction));
   }
 
-  sendPauseRequest() { this.sendGameMessage(pauseRequestMessage()); }
-  sendPauseAck()     { this.sendGameMessage(pauseAckMessage()); }
-  sendResumeRequest() { this.sendGameMessage(resumeRequestMessage()); }
-  sendResumeAck()    { this.sendGameMessage(resumeAckMessage()); }
-  sendExitRequest()  { this.sendGameMessage(exitRequestMessage()); }
-  sendExitAck()      { this.sendGameMessage(exitAckMessage()); }
+  sendDiscard(playerId: PlayerId) {
+    this.send(discardMessage(playerId));
+  }
+
+  waitForPick()    { return this.waitFor(PICK) as Promise<PickMessage>; }
+  waitForPlace()   { return this.waitFor(PLACE) as Promise<PlaceMessage>; }
+  waitForDiscard() { return this.waitFor(DISCARD) as Promise<DiscardMessage>; }
+
+  /** Await the next move message of any type from the remote peer */
+  async waitForNextMoveMessage(): Promise<MoveMessage> {
+    return Promise.race([
+      this.waitFor(PICK)    as Promise<PickMessage>,
+      this.waitFor(PLACE)   as Promise<PlaceMessage>,
+      this.waitFor(DISCARD) as Promise<DiscardMessage>,
+    ]);
+  }
+
+  /**
+   * Await both the PICK and the associated PLACE/DISCARD from the remote peer as a unit.
+   * Returns null if the connection is destroyed before both arrive.
+   * Pre-registers all rejection handlers synchronously to prevent unhandled rejections.
+   */
+  async waitForPickAndPlacement(): Promise<{ pick: PickMessage; place: PlaceMessage | DiscardMessage } | null> {
+    // Register rejection handlers synchronously BEFORE any await
+    const pickOrNull = (this.waitFor(PICK) as Promise<PickMessage>).catch((): null => null);
+    const placeOrNull = (this.waitFor(PLACE) as Promise<PlaceMessage>).catch((): null => null);
+    const discardOrNull = (this.waitFor(DISCARD) as Promise<DiscardMessage>).catch((): null => null);
+
+    const pick = await pickOrNull;
+    if (!pick) return null;
+
+    const place = await Promise.race([placeOrNull, discardOrNull]);
+    return place ? { pick, place } : null;
+  }
+
+  sendPauseRequest()  { this.send(pauseRequestMessage()); }
+  sendPauseAck()      { this.send(pauseAckMessage()); }
+  sendResumeRequest() { this.send(resumeRequestMessage()); }
+  sendResumeAck()     { this.send(resumeAckMessage()); }
+  sendExitRequest()   { this.send(exitRequestMessage()); }
+  sendExitAck()       { this.send(exitAckMessage()); }
 
   waitForPauseAck(timeoutMs: number)   { return this.waitForWithTimeout(PAUSE_ACK, timeoutMs); }
-  waitForPauseRequest()                { return this.waitForGameMessage(PAUSE_REQUEST); }
+  waitForPauseRequest()                { return this.waitFor(PAUSE_REQUEST); }
   waitForResumeAck(timeoutMs: number)  { return this.waitForWithTimeout(RESUME_ACK, timeoutMs); }
-  waitForResumeRequest()               { return this.waitForGameMessage(RESUME_REQUEST); }
+  waitForResumeRequest()               { return this.waitFor(RESUME_REQUEST); }
   waitForExitAck(timeoutMs: number)    { return this.waitForWithTimeout(EXIT_ACK, timeoutMs); }
-  waitForExitRequest()                 { return this.waitForGameMessage(EXIT_REQUEST); }
+  waitForExitRequest()                 { return this.waitFor(EXIT_REQUEST); }
 
-  private waitForWithTimeout<T extends GameMessageType>(
+  private waitForWithTimeout<T extends WireMessageType>(
     messageType: T,
     timeoutMs: number,
-  ): Promise<GameMessagePayload<T>> {
+  ): Promise<WireMessagePayload<T>> {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         reject(new Error(`Timeout waiting for ${messageType}`));
       }, timeoutMs);
-      this.waitForGameMessage(messageType).then(
+      this.waitFor(messageType).then(
         (payload) => { clearTimeout(timer); resolve(payload); },
         (err) => { clearTimeout(timer); reject(err); },
       );
