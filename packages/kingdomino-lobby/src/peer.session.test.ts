@@ -54,6 +54,8 @@ class FakePeer {
   destroyed = false;
   _outboundConnections: FakeDataConnection[] = [];
   options: Record<string, unknown>;
+  /** Optional callback invoked (synchronously) inside connect() after the FakeDataConnection is created. */
+  _onConnect: ((conn: FakeDataConnection) => void) | null = null;
 
   constructor(idOrOptions: string | undefined | Record<string, unknown>, options?: Record<string, unknown>) {
     // Support both new Peer(id, options) and new Peer(options) call signatures
@@ -70,9 +72,22 @@ class FakePeer {
     return this;
   }
 
+  once(event: string, handler: (...args: unknown[]) => void) {
+    const wrapper = (...args: unknown[]) => {
+      handler(...args);
+      const list = (this.listeners as Record<string, unknown[]>)[event];
+      if (list) {
+        const idx = list.indexOf(wrapper);
+        if (idx !== -1) list.splice(idx, 1);
+      }
+    };
+    return this.on(event, wrapper);
+  }
+
   connect(remotePeerId: string, _opts?: unknown): FakeDataConnection {
     const conn = new FakeDataConnection(remotePeerId);
     this._outboundConnections.push(conn);
+    this._onConnect?.(conn);
     return conn;
   }
 
@@ -259,5 +274,109 @@ describe("PeerSession — destroy", () => {
     const session = new PeerSession({ host: "localhost", port: 3001 });
     session.destroy();
     expect(lastPeer.destroyed).toBe(true);
+  });
+});
+
+describe("PeerSession — joinMatchmaking", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("polls /api/letMeIn with the local peer ID", async () => {
+    const session = new PeerSession({ host: "localhost", port: 3001 });
+    lastPeer._emitOpen("my-id");
+
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      json: async () => ({ otherPlayerId: "their-id" }),
+    } as Response);
+
+    // Auto-open the DataChannel once PeerSession calls peer.connect()
+    lastPeer._onConnect = (conn) => {
+      Promise.resolve().then(() => conn.listeners.open.forEach((h) => h()));
+    };
+
+    await session.joinMatchmaking();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:3001/api/letMeIn",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ playerId: "my-id" }),
+      }),
+    );
+  });
+
+  it("waits checkBackInMs then re-polls until matched as initiator", async () => {
+    vi.useFakeTimers();
+    const session = new PeerSession({ host: "localhost", port: 3001 });
+    lastPeer._emitOpen("my-id");
+
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce({ json: async () => ({ checkBackInMs: 500 }) } as Response)
+      .mockResolvedValueOnce({ json: async () => ({ otherPlayerId: "their-id" }) } as Response);
+
+    lastPeer._onConnect = (conn) => {
+      Promise.resolve().then(() => conn.listeners.open.forEach((h) => h()));
+    };
+
+    const connectPromise = session.joinMatchmaking();
+
+    // First fetch → checkBackInMs response → starts delay
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // Advance past the delay → second fetch fires
+    await vi.advanceTimersByTimeAsync(500);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    const mc = await connectPromise;
+    expect(mc.peerIdentifiers.them).toBe("their-id");
+
+    vi.useRealTimers();
+  });
+
+  it("connects to otherPlayerId and returns a MultiplayerConnection (initiator role)", async () => {
+    const session = new PeerSession({ host: "localhost", port: 3001 });
+    lastPeer._emitOpen("player-1");
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      json: async () => ({ otherPlayerId: "player-2" }),
+    } as Response);
+
+    lastPeer._onConnect = (conn) => {
+      Promise.resolve().then(() => conn.listeners.open.forEach((h) => h()));
+    };
+
+    const mc = await session.joinMatchmaking();
+    expect(mc).toBeInstanceOf(MultiplayerConnection);
+    expect(mc.peerIdentifiers.me).toBe("player-1");
+    expect(mc.peerIdentifiers.them).toBe("player-2");
+  });
+
+  it("awaits the next inbound connection and returns it (receiver role)", async () => {
+    const session = new PeerSession({ host: "localhost", port: 3001 });
+    lastPeer._emitOpen("player-1");
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      json: async () => ({ waitForConnection: true }),
+    } as Response);
+
+    const connectPromise = session.joinMatchmaking();
+
+    // Drain microtasks so joinMatchmaking reaches the peer.once() registration
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Simulate the inbound connection arriving
+    const inbound = new FakeDataConnection("player-2");
+    lastPeer._emitIncomingConnection(inbound);
+    inbound.listeners.open.forEach((h) => h());
+
+    const mc = await connectPromise;
+    expect(mc).toBeInstanceOf(MultiplayerConnection);
+    expect(mc.peerIdentifiers.me).toBe("player-1");
+    expect(mc.peerIdentifiers.them).toBe("player-2");
   });
 });

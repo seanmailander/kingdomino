@@ -9,6 +9,11 @@ export type PeerSessionOptions = {
   path?: string;
 };
 
+type MatchmakingResponse =
+  | { checkBackInMs: number }
+  | { otherPlayerId: string }
+  | { waitForConnection: true };
+
 /**
  * Manages a connection to the PeerJS signaling server.
  * Responsibilities: registration, peer discovery, and establishing
@@ -86,6 +91,52 @@ export class PeerSession {
   /** Destroy all connections and disconnect from the signaling server. */
   destroy(): void {
     this.peer.destroy();
+  }
+
+  /**
+   * Join the server matchmaking queue via POST /api/letMeIn.
+   * Polls until paired, then returns a wired MultiplayerConnection.
+   *
+   * The server assigns one of two roles:
+   *  - Initiator (`otherPlayerId`): we call connect() to them.
+   *  - Receiver (`waitForConnection`): we await their inbound connection.
+   *
+   * Polls are spaced by `checkBackInMs` when no peer is available yet.
+   */
+  async joinMatchmaking(): Promise<MultiplayerConnection> {
+    const myId = await this.ready;
+    const { host, port } = this.peer.options;
+    const url = `http://${host}:${port}/api/letMeIn`;
+
+    while (true) {
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playerId: myId }),
+      });
+      const data: MatchmakingResponse = await resp.json();
+
+      if ("checkBackInMs" in data) {
+        await new Promise<void>((resolve) => setTimeout(resolve, data.checkBackInMs));
+        continue;
+      }
+
+      if ("otherPlayerId" in data) {
+        return this.connect(data.otherPlayerId);
+      }
+
+      if ("waitForConnection" in data) {
+        return new Promise<MultiplayerConnection>((resolve) => {
+          this.peer.once("connection", (dataConn: DataConnection) => {
+            dataConn.on("open", () => {
+              resolve(this._wireConnection(myId, dataConn.peer, dataConn));
+            });
+          });
+        });
+      }
+
+      throw new Error("Unexpected matchmaking response from server");
+    }
   }
 
   private _wireConnection(me: string, them: string, dataConn: DataConnection): MultiplayerConnection {
