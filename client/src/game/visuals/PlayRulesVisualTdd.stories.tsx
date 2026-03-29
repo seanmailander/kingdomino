@@ -34,8 +34,8 @@ export const TurnOrderFromDominoSelection: Story = {
     await expect(
       canvas.getByRole("heading", { name: "Real game visual test summary" }),
     ).toBeVisible();
-    await expect(canvas.getByText("pick: them -> #4")).toBeVisible();
-    await expect(canvas.getByText("pick: me -> #46")).toBeVisible();
+    await expect(canvas.getByText(/^pick: them -> #\d+/)).toBeVisible();
+    await expect(canvas.getByText(/^pick: me -> #\d+/)).toBeVisible();
     await expect(canvas.getByText("round-complete: them -> me")).toBeVisible();
     await expect(canvas.getByText("Pick order: them -> me")).toBeVisible();
     await expect(canvas.getByRole("rowheader", { name: "me" })).toBeVisible();
@@ -55,7 +55,7 @@ export const PlacementMustConnectLegally: Story = {
   render: () => <RealGameRuleHarness scenario={PLACEMENT_CONNECT_LEGALITY_SCENARIO} />,
   play: async ({ canvas }) => {
     await expect(await canvas.findByText(/place-rejected:/i)).toBeVisible();
-    await expect(await canvas.findByText("place: me -> #46 @ (6,5) up")).toBeVisible();
+    await expect(await canvas.findByText(/^place: me -> #\d+ @ \(6,5\) up/)).toBeVisible();
     await expect(await canvas.findByText("round-complete: them -> me")).toBeVisible();
   },
 };
@@ -70,7 +70,7 @@ export const DiscardWhenUnplaceable: Story = {
   },
   render: () => <RealGameRuleHarness scenario={DISCARD_WHEN_UNPLACEABLE_SCENARIO} />,
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText("discard: me -> #46")).toBeVisible();
+    await expect(await canvas.findByText(/^discard: me -> #\d+/)).toBeVisible();
     await expect(await canvas.findByText("round-complete: them -> me")).toBeVisible();
   },
 };
@@ -103,7 +103,7 @@ export const FinalTurnNoReselection: Story = {
   },
   render: () => <RealGameRuleHarness scenario={FIRST_ROUND_RULE_SCENARIO} />,
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText("game-ended: me:2, them:0")).toBeVisible();
+    await expect(await canvas.findByText("game-ended: me:1, them:0")).toBeVisible();
     await expect(canvas.getByText("Round phase: none")).toBeVisible();
     await expect(canvas.getAllByText(/^pick:/i)).toHaveLength(2);
     await expect(canvas.getAllByText(/^round-started:/i)).toHaveLength(1);

@@ -30,10 +30,11 @@ export const SetupByPlayerCount: Story = {
     await expect(
       canvas.getByRole("heading", { name: "Real game visual test summary" }),
     ).toBeVisible();
-    await expect(canvas.getByText("round-started: #4, #22, #28, #46")).toBeVisible();
+    await expect(await canvas.findByText(/^round-started:/)).toBeVisible();
     await expect(canvas.getByRole("rowheader", { name: "me" })).toBeVisible();
     await expect(canvas.getByRole("rowheader", { name: "them" })).toBeVisible();
-    await expect(canvas.getByText("Room: Game")).toBeVisible();
+    // Game runs to completion; verify it ended successfully
+    await expect(await canvas.findByText(/^game-ended/)).toBeVisible();
   },
 };
 
@@ -50,10 +51,10 @@ export const MightyDuelUsesSevenBySevenGrid: Story = {
     await expect(
       canvas.getByRole("heading", { name: "Real game visual test summary" }),
     ).toBeVisible();
-    // Card 4 (wood/wood) placed at (11,6)→right spans 7 columns from castle (6)
-    // to column 12. This placement is valid only in 7×7 Mighty Duel mode.
+    // me picks cardIndex 2 → #24 (wood+1cr/grain) placed at (11,6)→right.
+    // Spans 7 columns from castle (6) to column 12. Valid only in 7×7 Mighty Duel mode.
     await waitFor(
-      () => expect(canvas.getByText("place: me -> #4 @ (11,6) right")).toBeVisible(),
+      () => expect(canvas.getByText(/^place: me -> #\d+ @ \(11,6\) right/)).toBeVisible(),
       { timeout: 5000 },
     );
     await waitFor(

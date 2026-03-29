@@ -33,7 +33,11 @@ type TestHandshake = {
   committment?: string;
 };
 
-type ScriptedMove = Omit<PlayerMoveMessage, "playerId">;
+type ScriptedMove = Omit<PlayerMoveMessage, "playerId" | "card"> & {
+  card?: PlayerMoveMessage["card"];
+  /** Zero-based index into the sorted list of unpicked cards in the current deal. */
+  cardIndex?: number;
+};
 
 export type TestConnectionControl = {
   respondToPauseRequest?: boolean;
@@ -52,6 +56,8 @@ export type TestConnectionOptions = {
   me?: string;
   them?: string;
   scenario: TestConnectionScenario;
+  /** Returns sorted unpicked card IDs from the current deal; used to resolve cardIndex. */
+  getAvailableCards?: () => number[];
 };
 
 export class TestConnection {
@@ -64,14 +70,16 @@ export class TestConnection {
   private handshakeIndex = 0;
   private isDestroyed = false;
   private pauseRequestOnStartFired = false;
+  private readonly getAvailableCards?: () => number[];
 
-  constructor({ me = "me", them = "them", scenario }: TestConnectionOptions) {
+  constructor({ me = "me", them = "them", scenario, getAvailableCards }: TestConnectionOptions) {
     if (scenario.handshakes.length === 0) {
       throw new Error("TestConnection scenario requires at least one handshake");
     }
 
     this.peerIdentifiers = { me, them };
     this.scenario = scenario;
+    this.getAvailableCards = getAvailableCards;
   }
 
   send = (message: GameMessage) => {
@@ -178,6 +186,7 @@ export class TestConnection {
     );
 
     let queuedMove: GameMessagePayload<typeof MOVE> | null = null;
+    let deferredMoveEmitter: (() => void) | null = null;
     if (this.handshakeIndex > 0 && !hasControlBehavior) {
       const scriptedMove = this.scenario.moves[this.handshakeIndex - 1];
       if (!scriptedMove) {
@@ -186,7 +195,29 @@ export class TestConnection {
         );
       }
 
-      queuedMove = moveMessage({ playerId: this.peerIdentifiers.them, ...scriptedMove }).content;
+      if (scriptedMove.cardIndex !== undefined) {
+        // cardIndex must be resolved AFTER session.beginRound() is called (which happens
+        // synchronously in the same microtask as the REVEAL resolution). Defer via queueMicrotask.
+        const { cardIndex } = scriptedMove;
+        const { them } = this.peerIdentifiers;
+        deferredMoveEmitter = () => {
+          const available = this.getAvailableCards?.() ?? [];
+          const resolved = available[cardIndex];
+          if (resolved === undefined) {
+            throw new Error(
+              `TestConnection cardIndex ${cardIndex} out of range (${available.length} available)`,
+            );
+          }
+          this.emitIncoming(
+            MOVE,
+            moveMessage({ playerId: them, ...scriptedMove, card: resolved }).content,
+          );
+        };
+      } else if (scriptedMove.card !== undefined) {
+        queuedMove = moveMessage({ playerId: this.peerIdentifiers.them, ...scriptedMove, card: scriptedMove.card }).content;
+      } else {
+        throw new Error(`TestConnection scripted move for round ${this.handshakeIndex} has neither card nor cardIndex`);
+      }
     }
 
     this.emitIncoming(REVEAL, revealMessage(handshake.secret).content);
@@ -195,6 +226,12 @@ export class TestConnection {
 
     if (queuedMove) {
       this.emitIncoming(MOVE, queuedMove);
+    } else if (deferredMoveEmitter) {
+      // buildTrustedSeed() has multiple awaits (verifyCommitment, combineSecrets) before
+      // session.beginRound() is called. A macrotask (setTimeout 0) fires after ALL pending
+      // microtasks complete, so the deal will be set by the time getAvailableCards() is called.
+      const emitter = deferredMoveEmitter;
+      setTimeout(() => emitter(), 0);
     }
 
     if (isFirstRoundHandshake && ctrl?.sendPauseRequestOnStart && !this.pauseRequestOnStartFired) {

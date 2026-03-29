@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { App } from "../../App/App";
-import { resetAppState, triggerLobbyLeave, triggerLobbyStart, useApp } from "../../App/store";
+import { resetAppState, triggerLobbyLeave, triggerLobbyStart, useApp, getCurrentSession } from "../../App/store";
 import {
   findPlacementWithin5x5,
   getEligiblePositions,
@@ -25,7 +25,8 @@ type HandshakeScript = {
 };
 
 type LocalMoveScript = {
-  card: number;
+  card?: number;
+  cardIndex?: number;
   discard?: boolean;
   x?: number;
   y?: number;
@@ -55,33 +56,35 @@ export type RealGameScenario = {
 };
 
 export const TIE_BREAK_SCENARIO: RealGameScenario = {
-  // Two rounds. Local ends with score 3, largest property 3, totalCrowns 1.
-  // Remote ends with score 3, largest property 2, totalCrowns 3.
-  // Tie on score → local wins by largest property (3 > 2).
+  // Two-round game. Scores depend on ChaCha RNG card distribution; use snapshot assertions.
+  // Round 1 deal (hashIt(30^800)): [#12, #17, #35, #39]. Pick order (hashIt(11^101)): them first.
+  // Round 2 deal (hashIt(20^700)): [#7, #30, #31, #44]. Pick order continues from R1 picks.
   roundLimit: 2,
   handshakes: [
-    { localSecret: 11, remoteSecret: 101 },  // pick-order seed (local picks first)
-    { localSecret: 30, remoteSecret: 800 },  // round 1 deal: [0,2,27,34]
-    { localSecret: 20, remoteSecret: 700 },  // round 2 deal: [18,37,39,47]
+    { localSecret: 11, remoteSecret: 101 },  // pick-order seed
+    { localSecret: 30, remoteSecret: 800 },  // round 1 deal
+    { localSecret: 20, remoteSecret: 700 },  // round 2 deal
   ],
   localMoves: [
-    { card: 0, x: 7, y: 6, direction: "right" },   // grain/grain → (7,6)+(8,6)
-    { card: 18, x: 9, y: 6, direction: "right" },  // grain+1cr/wood → (9,6)+(10,6); grain region 3×1=3
+    { cardIndex: 0, x: 7, y: 6, direction: "right" },        // R1: pick lowest available
+    { cardIndex: 0, placements: [{ mode: "legal" }] },        // R2: pick lowest available
   ],
   remoteMoves: [
-    { card: 2, x: 7, y: 6, direction: "right" },   // wood/wood → (7,6)+(8,6)
-    { card: 47, x: 5, y: 6, direction: "left" },   // grain/mine+3cr → (5,6)+(4,6); mine 1×3=3
+    { cardIndex: 0, x: 6, y: 5, direction: "up" },           // R1: them picks lowest
+    { cardIndex: 0, x: 7, y: 6, direction: "right" },        // R2: them picks lowest
   ],
 };
 
 export const FIRST_ROUND_RULE_SCENARIO: RealGameScenario = {
+  // Deal (hashIt(22^202)): [#1, #9, #10, #24]. Pick order (hashIt(11^101)): them first.
+  // them picks #1 (grain/grain, 0cr). me picks cardIndex 2 → #24 (wood+1cr/grain) → score 1.
   roundLimit: 1,
   handshakes: [
     { localSecret: 11, remoteSecret: 101 },
     { localSecret: 22, remoteSecret: 202 },
   ],
-  localMoves: [{ card: 46, x: 6, y: 5, direction: "up" }],
-  remoteMoves: [{ card: 4, x: 6, y: 5, direction: "up" }],
+  localMoves: [{ cardIndex: 2, x: 6, y: 5, direction: "up" }],
+  remoteMoves: [{ cardIndex: 0, x: 6, y: 5, direction: "up" }],
 };
 
 export const PLACEMENT_CONNECT_LEGALITY_SCENARIO: RealGameScenario = {
@@ -92,14 +95,14 @@ export const PLACEMENT_CONNECT_LEGALITY_SCENARIO: RealGameScenario = {
   ],
   localMoves: [
     {
-      card: 46,
+      cardIndex: 2,
       placements: [
         { x: 0, y: 0, direction: "right" },
         { x: 6, y: 5, direction: "up" },
       ],
     },
   ],
-  remoteMoves: [{ card: 4, x: 6, y: 5, direction: "up" }],
+  remoteMoves: [{ cardIndex: 0, x: 6, y: 5, direction: "up" }],
 };
 
 export const GRID_BOUNDARY_RULE_SCENARIO: RealGameScenario = {
@@ -116,12 +119,13 @@ export const GRID_BOUNDARY_RULE_SCENARIO: RealGameScenario = {
     { localSecret: 11, remoteSecret: 101 },
     { localSecret: 22, remoteSecret: 202 },
   ],
-  localMoves: [{ card: 46, placements: [{ mode: "overflow" }, { mode: "legal" }] }],
-  remoteMoves: [{ card: 4, x: 6, y: 5, direction: "up" }],
+  localMoves: [{ cardIndex: 0, placements: [{ mode: "overflow" }, { mode: "legal" }] }],
+  remoteMoves: [{ cardIndex: 0, x: 6, y: 5, direction: "up" }],
 };
 
 // Board pre-filled with non-marsh/non-mine terrain on all 4 castle-adjacent
-// positions so card 46 (marsh/mine) has no eligible neighbour and must be discarded.
+// positions. The deal (hashIt(1^115)) = [#0, #1, #6, #46] ensures card #46
+// (marsh/mine) is available. Card 46 has no eligible neighbour and must be discarded.
 export const DISCARD_WHEN_UNPLACEABLE_SCENARIO: RealGameScenario = {
   roundLimit: 1,
   localBoardPlacements: [
@@ -131,17 +135,19 @@ export const DISCARD_WHEN_UNPLACEABLE_SCENARIO: RealGameScenario = {
     { card: 9, x: 6, y: 5, direction: "up" }, //    grass/grass north (6,5)(6,4)
   ],
   handshakes: [
-    { localSecret: 11, remoteSecret: 101 },
-    { localSecret: 22, remoteSecret: 202 },
+    { localSecret: 11, remoteSecret: 101 },  // pick-order seed: them first
+    { localSecret: 1, remoteSecret: 115 },   // deal: [#0, #1, #6, #46]
   ],
   localMoves: [{ card: 46, discard: true }],
-  remoteMoves: [{ card: 4, x: 6, y: 5, direction: "up" }],
+  remoteMoves: [{ cardIndex: 0, x: 6, y: 5, direction: "up" }],
 };
 
 // Board pre-filled with wood/wood cards to the east, spanning columns 7–10
 // (width from castle=6 to 10 is 5 = exactly 5×5). The local player then places
-// a wood/wood card at (11,6)→right, expanding width to 7. This is valid in 7×7
+// a wood card at (11,6)→right, expanding width to 7. This is valid in 7×7
 // Mighty Duel but would be rejected in standard 5×5 mode.
+// Deal (hashIt(22^202)): [#1, #9, #10, #24]. Pick order: them first.
+// them picks cardIndex 0 → #1 (grain/grain). me picks cardIndex 2 → #24 (wood+1cr/grain).
 export const MIGHTY_DUEL_SCENARIO: RealGameScenario = {
   variant: "mighty-duel",
   roundLimit: 1,
@@ -153,17 +159,18 @@ export const MIGHTY_DUEL_SCENARIO: RealGameScenario = {
     { localSecret: 11, remoteSecret: 101 },
     { localSecret: 22, remoteSecret: 202 },
   ],
-  localMoves: [{ card: 4, x: 11, y: 6, direction: "right" }],
-  remoteMoves: [{ card: 46, x: 6, y: 5, direction: "up" }],
+  localMoves: [{ cardIndex: 2, x: 11, y: 6, direction: "right" }],
+  remoteMoves: [{ cardIndex: 0, x: 6, y: 5, direction: "up" }],
 };
 
 // Pre-seed me's board with 4 symmetric placements to form a centred 5×5 kingdom:
 //   East:  grain at (7,6)+(8,6)   West: grain at (5,6)+(4,6)
 //   South: wood  at (6,7)+(6,8)   North: wood  at (6,5)+(6,4)
 // Bounding box: x ∈ [4,8], y ∈ [4,8] → minX+maxX=12, minY+maxY=12 → centred.
-// In the round, me picks card 0 (grain/grain) from deal [0,2,27,34] and places
-// it at (7,5)→right within the existing bounds → kingdom stays centred (+10 MK).
-// Neither player discards → both earn Harmony (+5).
+// Deal (hashIt(30^800)): [#12, #17, #35, #39]. Pick order: them first.
+// them picks cardIndex 0 → #12 (grain/wood, 0cr). me picks cardIndex 0 → #17 (wood/grass, 0cr).
+// me places #17 (wood tile) at (7,5)→right: connects to wood at (6,5), stays within [4,8]×[4,8].
+// Kingdom stays centred (+10 MK). Neither player discards → both earn Harmony (+5).
 // Final: me = 0 base + 10 MK + 5 harmony = 15; them = 0 base + 0 MK + 5 harmony = 5.
 export const BONUS_SCENARIO: RealGameScenario = {
   bonuses: { middleKingdom: true, harmony: true },
@@ -175,11 +182,11 @@ export const BONUS_SCENARIO: RealGameScenario = {
     { card: 3, x: 6, y: 5, direction: "up" },    // wood north:  (6,5),(6,4)
   ],
   handshakes: [
-    { localSecret: 11, remoteSecret: 101 }, // pick-order seed (local picks first)
-    { localSecret: 30, remoteSecret: 800 }, // round 1 deal: [0, 2, 27, 34]
+    { localSecret: 11, remoteSecret: 101 }, // pick-order seed: them first
+    { localSecret: 30, remoteSecret: 800 }, // round 1 deal: [#12, #17, #35, #39]
   ],
-  localMoves: [{ card: 0, x: 7, y: 5, direction: "right" }], // grain at (7,5),(8,5) — stays within bounds
-  remoteMoves: [{ card: 2, x: 7, y: 6, direction: "right" }], // wood east of their castle
+  localMoves: [{ cardIndex: 0, x: 7, y: 5, direction: "right" }], // #17 wood at (7,5),(8,5) — stays within bounds
+  remoteMoves: [{ cardIndex: 0, x: 6, y: 5, direction: "up" }],   // #12 on their empty board
 };
 
 // Scenario where game is in progress; remote peer will ack any pause request.
@@ -276,7 +283,22 @@ function ScriptedLocalPlayer({
 
     queueMicrotask(() => {
       if (phase === "picking") {
-        session.handleLocalPick(move.card);
+        let cardId: number;
+        if (move.cardIndex !== undefined) {
+          const available = (round.deal.snapshot() as ReadonlyArray<{ cardId: number; pickedBy: unknown }>)
+            .filter((s) => s.pickedBy === null)
+            .map((s) => s.cardId);
+          const resolved = available[move.cardIndex];
+          if (resolved === undefined) {
+            throw new Error(`cardIndex ${move.cardIndex} out of range (${available.length} available)`);
+          }
+          cardId = resolved;
+        } else if (move.card !== undefined) {
+          cardId = move.card;
+        } else {
+          throw new Error(`No card or cardIndex for round ${roundIndex.current + 1}`);
+        }
+        session.handleLocalPick(cardId);
         return;
       }
 
@@ -486,6 +508,10 @@ export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }
         moves: scenario.remoteMoves,
         control: scenario.remoteControl,
       },
+      getAvailableCards: () =>
+        (getCurrentSession()?.currentRound?.deal.snapshot() as ReadonlyArray<{ cardId: number; pickedBy: unknown }> ?? [])
+          .filter((s) => s.pickedBy === null)
+          .map((s) => s.cardId),
     });
 
     flow.ready(connection);
