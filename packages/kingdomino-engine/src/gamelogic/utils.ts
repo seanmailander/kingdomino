@@ -1,15 +1,25 @@
-import seedrandom from "seedrandom";
+import { ChaChaRng } from "chacha-rng";
 
 import { generateDeck } from "./cards";
 
+// Derive a 32-byte ChaCha seed from an arbitrary string deterministically.
+function seedStringToBytes(seed: string): Uint8Array {
+  const encoded = new TextEncoder().encode(seed);
+  const result = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) {
+    result[i] = encoded[i % encoded.length] ^ (i & 0xff);
+  }
+  return result;
+}
+
 // Make a predictable pseudorandom number generator.
 // https://stackoverflow.com/a/12646864
-const seededShuffle = (seed: string | number) => {
-  const seededRandom = seedrandom(String(seed));
+const seededShuffle = (seed: string) => {
+  const rng = ChaChaRng.fromSeed(seedStringToBytes(seed));
 
   return <T>(array: T[]): T[] => {
     for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(seededRandom() * (i + 1));
+      const j = Number(rng.next_u64() % BigInt(i + 1));
       [array[i], array[j]] = [array[j], array[i]];
     }
     return array;

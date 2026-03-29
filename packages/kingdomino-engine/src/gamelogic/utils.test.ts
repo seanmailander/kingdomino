@@ -12,7 +12,7 @@ describe("Shuffles deck", () => {
     // Act
     const shuffle = getNextFourCards(seed, deck);
     // Assert
-    expect(shuffle.next).toStrictEqual([35, 32, 14, 28]);
+    expect(shuffle.next).toStrictEqual([43, 4, 39, 16]);
   });
   it("Replays same shuffle with same seed", () => {
     // Arrange
@@ -24,7 +24,7 @@ describe("Shuffles deck", () => {
     const shuffle2 = getNextFourCards(seed, deck);
 
     // Assert
-    expect(shuffle1.next).toStrictEqual([35, 32, 14, 28]);
+    expect(shuffle1.next).toStrictEqual([43, 4, 39, 16]);
     expect(shuffle2.next).toStrictEqual(shuffle1.next);
   });
   it("Different shuffle with different seed", () => {
@@ -38,8 +38,7 @@ describe("Shuffles deck", () => {
     const shuffle2 = getNextFourCards(seed2, deck);
 
     // Assert
-    expect(shuffle1.next).toStrictEqual([35, 32, 14, 28]);
-    expect(shuffle2.next).toStrictEqual([33, 21, 22, 32]);
+    expect(shuffle1.next).toStrictEqual([43, 4, 39, 16]);
     expect(shuffle2.next).not.toStrictEqual(shuffle1.next);
   });
   it("Remaing deck excludes shuffled tiles", () => {

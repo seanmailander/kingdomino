@@ -6,8 +6,7 @@ const hashIt = async (input: string | number): Promise<string> => {
   return btoa(String.fromCharCode(...new Uint8Array(hash)));
 };
 const commit = async (): Promise<{ secret: number; committment: string }> => {
-  const { default: seedrandom } = await import("seedrandom");
-  const randomNumber = seedrandom().int32();
+  const randomNumber = crypto.getRandomValues(new Uint32Array(1))[0];
   return { secret: randomNumber, committment: await hashIt(randomNumber) };
 };
 const verify = async (secret: string | number, committment: string): Promise<boolean> =>
