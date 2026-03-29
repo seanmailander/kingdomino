@@ -9,10 +9,9 @@ import {
   staysWithin5x5,
   hashIt,
 } from "kingdomino-engine";
-import type { GameVariant } from "kingdomino-engine";
+import type { GameVariant, SeedProvider } from "kingdomino-engine";
 import type { GameBonuses } from "kingdomino-engine";
 import type { BoardPlacement } from "kingdomino-engine";
-import { ConnectionManager } from "../state/ConnectionManager";
 import { LobbyFlow } from "../state/game.flow";
 import { AppFlowAdapter } from "../../App/AppFlowAdapter";
 import { TestConnection, type TestConnectionScenario } from "../state/connection.testing";
@@ -210,23 +209,30 @@ export type RuleScenarioProps = {
   expectedOutcome: string;
 };
 
-const buildCommitSequence = (handshakes: ReadonlyArray<HandshakeScript>) => {
-  let index = 0;
+/**
+ * Produces the same deterministic seeds as the old commitment protocol did for
+ * these fixed secrets: seed = hashIt(localSecret ^ remoteSecret).
+ * This ensures story scenarios see the same card deals and pick orders as before.
+ */
+class SequentialSeedProvider implements SeedProvider {
+  private readonly seeds: Promise<string>[];
+  private index = 0;
 
-  return async () => {
-    const handshake = handshakes[index];
-    if (!handshake) {
-      throw new Error(`No scripted local handshake for exchange ${index + 1}`);
+  constructor(handshakes: ReadonlyArray<HandshakeScript>) {
+    this.seeds = handshakes.map(({ localSecret, remoteSecret }) =>
+      hashIt(localSecret ^ remoteSecret),
+    );
+  }
+
+  async nextSeed(): Promise<string> {
+    const seed = await this.seeds[this.index];
+    if (seed === undefined) {
+      throw new Error(`SequentialSeedProvider: no seed for exchange ${this.index + 1}`);
     }
-
-    index += 1;
-
-    return {
-      secret: handshake.localSecret,
-      committment: await hashIt(handshake.localSecret),
-    };
-  };
-};
+    this.index++;
+    return seed;
+  }
+}
 
 function ScriptedLocalPlayer({
   localMoves,
@@ -477,15 +483,38 @@ function StoryStatePanel({ scriptLog }: { scriptLog: ReadonlyArray<string> }) {
   );
 }
 
+function ScriptedRemotePlayer({
+  moves,
+  connectionRef,
+}: {
+  moves: RealGameScenario["remoteMoves"];
+  connectionRef: React.RefObject<TestConnection | null>;
+}) {
+  const { session } = useApp();
+  const roundIndexRef = useRef(0);
+
+  useEffect(() => {
+    if (!session) return;
+    roundIndexRef.current = 0;
+    const off = session.events.on("round:started", () => {
+      const moveIndex = roundIndexRef.current++;
+      if (moveIndex >= moves.length) return;
+      connectionRef.current?.scheduleNextRemoteMove();
+    });
+    return off;
+  }, [session, moves, connectionRef]);
+
+  return null;
+}
+
 export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }) {
   const [scriptLog, setScriptLog] = useState<string[]>([]);
+  const connectionRef = useRef<TestConnection | null>(null);
 
   const flow = useMemo(() => {
-    const commit = buildCommitSequence(scenario.handshakes);
     return new LobbyFlow({
       adapter: new AppFlowAdapter(),
-      createConnectionManager: (connection) =>
-        new ConnectionManager(connection.send, connection.waitFor, { commit }),
+      createSeedProvider: () => new SequentialSeedProvider(scenario.handshakes),
       shouldContinuePlaying: (completedRounds) =>
         scenario.roundLimit === undefined || completedRounds < scenario.roundLimit,
       variant: scenario.variant,
@@ -501,11 +530,13 @@ export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }
       me: scenario.me,
       them: scenario.them,
       scenario: {
+        // Handshakes are provided for backward compatibility with control scenarios
+        // (pause/resume/exit), but seeding is now handled by SequentialSeedProvider.
         handshakes: scenario.handshakes.map(({ remoteSecret, remoteCommittment }) => ({
           secret: remoteSecret,
           committment: remoteCommittment,
         })),
-        moves: scenario.remoteMoves,
+        moves: scenario.remoteMoves,  // consumed by scheduleNextRemoteMove() via ScriptedRemotePlayer
         control: scenario.remoteControl,
       },
       getAvailableCards: () =>
@@ -513,6 +544,7 @@ export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }
           .filter((s) => s.pickedBy === null)
           .map((s) => s.cardId),
     });
+    connectionRef.current = connection;
 
     flow.ready(connection);
 
@@ -521,6 +553,7 @@ export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }
     }
 
     return () => {
+      connectionRef.current = null;
       triggerLobbyLeave();
       resetAppState();
       setScriptLog([]);
@@ -535,6 +568,7 @@ export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }
         localMoves={scenario.localMoves}
         onPlacementRejected={(message) => setScriptLog((current) => [...current, message])}
       />
+      <ScriptedRemotePlayer moves={scenario.remoteMoves} connectionRef={connectionRef} />
       <StoryStatePanel scriptLog={scriptLog} />
     </>
   );

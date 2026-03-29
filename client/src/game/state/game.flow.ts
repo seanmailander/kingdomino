@@ -1,4 +1,7 @@
 import { chooseOrderFromSeed, getNextFourCards } from "kingdomino-engine";
+import { CommitmentSeedProvider, RandomSeedProvider } from "kingdomino-commitment";
+import type { CommitmentTransport } from "kingdomino-commitment";
+import type { SeedProvider } from "kingdomino-engine";
 import { ConnectionManager } from "./ConnectionManager";
 import { GameSession, Player } from "kingdomino-engine";
 import type { GameEventBus, GameEvent, CardId } from "kingdomino-engine";
@@ -43,6 +46,7 @@ export interface FlowAdapter {
 type LobbyFlowOptions = {
   adapter: FlowAdapter;
   createConnectionManager?: (connection: IGameConnection) => ConnectionManager;
+  createSeedProvider?: (connection: IGameConnection) => SeedProvider;
   shouldContinuePlaying?: (completedRounds: number, remainingDeck: readonly number[]) => boolean;
   variant?: GameVariant;
   bonuses?: GameBonuses;
@@ -81,6 +85,7 @@ export class LobbyFlow {
   private soloConnection: SoloConnection | null = null;
   private readonly adapter: FlowAdapter;
   private readonly createConnectionManager: (connection: IGameConnection) => ConnectionManager;
+  private readonly createSeedProvider: ((connection: IGameConnection) => SeedProvider) | undefined;
   private readonly shouldContinuePlaying: (
     completedRounds: number,
     remainingDeck: readonly number[],
@@ -93,6 +98,7 @@ export class LobbyFlow {
     this.createConnectionManager =
       options.createConnectionManager ??
       ((connection) => new ConnectionManager(connection.send, connection.waitFor));
+    this.createSeedProvider = options.createSeedProvider;
     this.shouldContinuePlaying =
       options.shouldContinuePlaying ?? ((_, remainingDeck) => remainingDeck.length > 0);
     this.variant = options.variant ?? "standard";
@@ -106,9 +112,11 @@ export class LobbyFlow {
   }
 
   ReadySolo() {
+    if (this.isRunning) return;
+    this.isRunning = true;
     this.aiPlayer = new RandomAIPlayer("them", "me", this.variant);
     this.soloConnection = new SoloConnection(this.aiPlayer);
-    this.ready(this.soloConnection);
+    void this.runFlow(this.soloConnection, new RandomSeedProvider());
   }
 
   ReadyMultiplayer() {
@@ -181,11 +189,11 @@ export class LobbyFlow {
     }
   }
 
-  private async playRound() {
+  private async playRound(seedProvider: SeedProvider) {
     const { session, connectionManager } = this;
     if (!session || !connectionManager) throw new Error("LobbyFlow: no active game");
 
-    const trustedSeed = await connectionManager.buildTrustedSeed();
+    const trustedSeed = await seedProvider.nextSeed();
     const { next: cardIds, remaining } = getNextFourCards(
       trustedSeed,
       this.remainingDeck ? this.remainingDeck : undefined,
@@ -254,7 +262,11 @@ export class LobbyFlow {
     }
   }
 
-  private async runFlow(connection: IGameConnection) {
+  private async runFlow(connection: IGameConnection, seedProviderOverride?: SeedProvider) {
+    const seedProvider = seedProviderOverride
+      ?? this.createSeedProvider?.(connection)
+      ?? new CommitmentSeedProvider(connection as unknown as CommitmentTransport);
+
     this.session = new GameSession({ variant: this.variant, bonuses: this.bonuses, localPlayerId: connection.peerIdentifiers.me });
     this.connectionManager = this.createConnectionManager(connection);
 
@@ -282,11 +294,10 @@ export class LobbyFlow {
       void this.listenForControlMessages();
 
       // Determine first-round pick order from a shared cryptographic seed
-      const firstSeed = await this.connectionManager.buildTrustedSeed();
+      const firstSeed = await seedProvider.nextSeed();
       const orderedIds = chooseOrderFromSeed(firstSeed, [connection.peerIdentifiers.me, connection.peerIdentifiers.them]);
       const pickOrder = orderedIds.map((id) => this.session!.playerById(id)!);
 
-      // TODO(Task 8): remove setPickOrder once seedProvider drives pick order via _runGameLoop
       this.session.startGame();
       this.session.setPickOrder(pickOrder);
       this.aiPlayer?.startGame(orderedIds);
@@ -299,7 +310,7 @@ export class LobbyFlow {
           await this.adapter.oncePhaseIsNot("paused");
           continue;
         }
-        await this.playRound();
+        await this.playRound(seedProvider);
         if (this.adapter.getPhase() !== "game") continue; // Paused or exited mid-round
         completedRounds += 1;
         if (

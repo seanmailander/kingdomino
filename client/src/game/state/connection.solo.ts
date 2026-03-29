@@ -1,10 +1,7 @@
 import {
   COMMITTMENT,
-  committmentMessage,
   MOVE,
-  moveMessage,
   REVEAL,
-  revealMessage,
   START,
   PAUSE_REQUEST,
   PAUSE_ACK,
@@ -12,23 +9,12 @@ import {
   RESUME_ACK,
   EXIT_REQUEST,
   EXIT_ACK,
+  moveMessage,
   type GameMessage,
   type GameMessagePayload,
   type GameMessageType,
 } from "./game.messages";
 import type { RandomAIPlayer } from "./ai.player";
-
-// Old commitment protocol — kept for compatibility until Task 8
-const hashIt = async (input: string | number): Promise<string> => {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(String(input));
-  const hash = await crypto.subtle.digest("SHA-1", data);
-  return btoa(String.fromCharCode(...new Uint8Array(hash)));
-};
-const commit = async (): Promise<{ secret: number; committment: string }> => {
-  const randomNumber = crypto.getRandomValues(new Uint32Array(1))[0];
-  return { secret: randomNumber, committment: await hashIt(randomNumber) };
-};
 
 type AnyGameMessagePayload = {
   [MessageType in GameMessageType]: GameMessagePayload<MessageType>;
@@ -50,8 +36,6 @@ export class SoloConnection {
   private readonly messageResolvers = new Map<GameMessageType, MessageResolver[]>();
 
   private isDestroyed = false;
-
-  private readonly commitData = commit();
 
   constructor(aiPlayer: RandomAIPlayer) {
     this.aiPlayer = aiPlayer;
@@ -99,18 +83,14 @@ export class SoloConnection {
   };
 
   private async respondToMessage(message: GameMessage) {
-    const { secret, committment } = await this.commitData;
     switch (message.type) {
       case START:
         return;
       case COMMITTMENT:
-        this.emitIncoming(COMMITTMENT, committmentMessage(committment).content);
+        // Solo mode uses RandomSeedProvider — commitment exchange is not used.
         return;
       case REVEAL:
-        this.emitIncoming(REVEAL, revealMessage(String(secret)).content);
-        // Don't emit AI move here — REVEAL fires twice per game (pick-order seed + round-card
-        // seed), and beginRound() hasn't been called yet at that point. Instead,
-        // LobbyFlow calls notifyRoundStarted() after beginRound().
+        // Solo mode uses RandomSeedProvider — commitment exchange is not used.
         return;
       case MOVE:
         this.aiPlayer.receiveHumanMove(

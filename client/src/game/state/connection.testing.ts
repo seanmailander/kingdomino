@@ -1,4 +1,4 @@
-import { hashIt } from "kingdomino-engine";
+import { commit } from "kingdomino-engine";
 import {
   COMMITTMENT,
   MOVE,
@@ -68,15 +68,12 @@ export class TestConnection {
   private readonly messageResolvers = new Map<GameMessageType, MessageResolver[]>();
 
   private handshakeIndex = 0;
+  private remoteMoveIndex = 0;
   private isDestroyed = false;
   private pauseRequestOnStartFired = false;
   private readonly getAvailableCards?: () => number[];
 
   constructor({ me = "me", them = "them", scenario, getAvailableCards }: TestConnectionOptions) {
-    if (scenario.handshakes.length === 0) {
-      throw new Error("TestConnection scenario requires at least one handshake");
-    }
-
     this.peerIdentifiers = { me, them };
     this.scenario = scenario;
     this.getAvailableCards = getAvailableCards;
@@ -168,7 +165,7 @@ export class TestConnection {
 
   private async respondToCommittment() {
     const handshake = this.currentHandshake();
-    const committment = handshake.committment ?? (await hashIt(handshake.secret));
+    const committment = handshake.committment ?? (await commit(String(handshake.secret)));
     this.emitIncoming(COMMITTMENT, committmentMessage(committment).content);
   }
 
@@ -220,7 +217,7 @@ export class TestConnection {
       }
     }
 
-    this.emitIncoming(REVEAL, revealMessage(handshake.secret).content);
+    this.emitIncoming(REVEAL, revealMessage(String(handshake.secret)).content);
 
     this.handshakeIndex += 1;
 
@@ -238,6 +235,35 @@ export class TestConnection {
       this.pauseRequestOnStartFired = true;
       // Delay long enough for test polling (vi.waitFor interval ~50ms) to observe Game state
       setTimeout(() => this.emitIncoming(PAUSE_REQUEST, undefined), 100);
+    }
+  }
+
+
+  /**
+   * Emit the next scripted remote move directly, bypassing the handshake protocol.
+   * Used by the visual test harness when a SequentialSeedProvider is injected.
+   */
+  scheduleNextRemoteMove(): void {
+    this.assertActive();
+    const scriptedMove = this.scenario.moves[this.remoteMoveIndex];
+    if (!scriptedMove) return;
+    this.remoteMoveIndex++;
+
+    const { them } = this.peerIdentifiers;
+    if (scriptedMove.cardIndex !== undefined) {
+      const { cardIndex } = scriptedMove;
+      setTimeout(() => {
+        const available = this.getAvailableCards?.() ?? [];
+        const resolved = available[cardIndex];
+        if (resolved === undefined) {
+          throw new Error(`TestConnection cardIndex ${cardIndex} out of range (${available.length} available)`);
+        }
+        this.emitIncoming(MOVE, moveMessage({ playerId: them, ...scriptedMove, card: resolved }).content);
+      }, 0);
+    } else if (scriptedMove.card !== undefined) {
+      this.emitIncoming(MOVE, moveMessage({ playerId: them, ...scriptedMove, card: scriptedMove.card }).content);
+    } else {
+      throw new Error(`TestConnection scripted move for round ${this.remoteMoveIndex} has neither card nor cardIndex`);
     }
   }
 
