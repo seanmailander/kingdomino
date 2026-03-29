@@ -14,7 +14,38 @@ import { Player } from "./Player";
 import { right, left } from "./gamelogic/cards";
 import { findPlacementWithin5x5 } from "./gamelogic/board";
 import { getNextFourCards } from "./gamelogic/utils";
+import type { SeedProvider } from "./SeedProvider";
 import type { Direction } from "./types";
+
+/** Returns a SeedProvider that yields a fixed sequence of seeds */
+const fixedSeeds = (seeds: string[]): SeedProvider => {
+  let i = 0;
+  return { nextSeed: async () => seeds[i++] ?? "fallback" };
+};
+
+/** Auto-plays all picks and placements for the current round */
+const autoPlayRound = (session: GameSession): void => {
+  while (session.currentRound !== null) {
+    const round = session.currentRound;
+    const actor = round.currentActor;
+    if (!actor) break;
+
+    if (round.phase === "picking") {
+      const snap = round.deal.snapshot();
+      const available = snap.filter((s) => s.pickedBy === null);
+      session.handlePick(actor.id, available[0].cardId);
+    } else {
+      const cardId = round.deal.pickedCardFor(actor);
+      if (cardId === null) break;
+      const placement = findPlacementWithin5x5(actor.board.snapshot(), cardId);
+      if (placement) {
+        session.handlePlacement(actor.id, placement.x, placement.y, placement.direction);
+      } else {
+        session.handleDiscard(actor.id);
+      }
+    }
+  }
+};
 
 const makeSession = () => {
   const session = new GameSession({ localPlayerId: "alice" });
@@ -22,7 +53,7 @@ const makeSession = () => {
   const bob = new Player("bob");
   session.addPlayer(alice);
   session.addPlayer(bob);
-  session.startGame([alice, bob]);
+  session.startGame();
   return { session, alice, bob };
 };
 
@@ -356,4 +387,31 @@ describe("GameSession — end of game", () => {
     expect(finalScores[0].score).toBeGreaterThanOrEqual(finalScores[1].score);
     expect(finalScores.map((s) => s.playerId).sort()).toEqual([alice.id, bob.id].sort());
   });
+});
+
+describe("game loop", () => {
+  it("startGame() plays all rounds and emits game:ended when deck exhausted", async () => {
+    // 1 for pick order + 12 rounds (48 cards / 4 per round)
+    const seeds = Array.from({ length: 13 }, (_, i) => `seed-${i}`);
+    const seedProvider = fixedSeeds(seeds);
+
+    const session = new GameSession({ localPlayerId: "alice", seedProvider });
+    session.addPlayer(new Player("alice"));
+    session.addPlayer(new Player("bob"));
+
+    const endedPromise = new Promise<void>((resolve) =>
+      session.events.on("game:ended", () => resolve()),
+    );
+
+    session.startGame(); // triggers async loop
+
+    let roundCount = 0;
+    session.events.on("round:started", () => {
+      roundCount++;
+      setImmediate(() => autoPlayRound(session));
+    });
+
+    await endedPromise;
+    expect(roundCount).toBe(12); // 48 cards / 4 per round
+  }, 5000);
 });

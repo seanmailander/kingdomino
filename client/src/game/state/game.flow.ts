@@ -286,7 +286,9 @@ export class LobbyFlow {
       const orderedIds = chooseOrderFromSeed(firstSeed, [connection.peerIdentifiers.me, connection.peerIdentifiers.them]);
       const pickOrder = orderedIds.map((id) => this.session!.playerById(id)!);
 
-      this.session.startGame(pickOrder);
+      // TODO(Task 8): remove setPickOrder once seedProvider drives pick order via _runGameLoop
+      this.session.startGame();
+      this.session.setPickOrder(pickOrder);
       this.aiPlayer?.startGame(orderedIds);
 
       // Play rounds until the deck is exhausted or the game is paused/exited

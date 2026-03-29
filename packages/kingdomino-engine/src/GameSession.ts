@@ -2,7 +2,7 @@
  * GameSession — OOP game state management
  */
 
-import { getCard } from "./gamelogic/cards";
+import { getCard, generateDeck } from "./gamelogic/cards";
 import {
   findPlacementWithin5x5,
   findPlacementWithin7x7,
@@ -12,6 +12,8 @@ import {
   staysWithin7x7,
 } from "./gamelogic/board";
 import type { PlayerId, CardId, Direction } from "./types";
+import type { SeedProvider } from "./SeedProvider";
+import { chooseOrderFromSeed, getNextFourCards } from "./gamelogic/utils";
 import type { BoardGrid } from "./Board";
 import { Player } from "./Player";
 import { Deal } from "./Deal";
@@ -29,13 +31,13 @@ export type GameBonuses = { middleKingdom?: boolean; harmony?: boolean };
  * PUBLIC MUTATION API
  * ────────────────────
  *  addPlayer(player)                                — lobby: register a participant
- *  startGame(pickOrder)                             — lobby → playing
- *  beginRound(cardIds)                              — deal 4 cards, start picking sequence
+ *  startGame()                                      — lobby → playing; drives loop via SeedProvider
+ *  beginRound(cardIds)          @internal           — deal 4 cards (test use / manual flow)
  *  handlePick(playerId, cardId)                     — record a pick (from UI or peer message)
  *  handleLocalPick(cardId)                          — convenience: pick for the local player
  *  handlePlacement(playerId, x, y, direction)       — record a placement
  *  handleLocalPlacement(x, y, direction)            — convenience: place for the local player
- *  endGame()                                        — compute final scores
+ *  endGame()                    @internal           — compute final scores (test use / manual flow)
  */
 export class GameSession {
   readonly events = new GameEventBus();
@@ -48,11 +50,14 @@ export class GameSession {
   private readonly _bonuses: GameBonuses;
   private readonly _localPlayerId: PlayerId | undefined;
   private readonly _discardedPlayerIds = new Set<string>();
+  private readonly _seedProvider: SeedProvider | undefined;
+  private _remainingDeck: CardId[] = [];
 
-  constructor({ variant = "standard", bonuses = {}, localPlayerId }: { variant?: GameVariant; bonuses?: GameBonuses; localPlayerId?: PlayerId } = {}) {
+  constructor({ variant = "standard", bonuses = {}, localPlayerId, seedProvider }: { variant?: GameVariant; bonuses?: GameBonuses; localPlayerId?: PlayerId; seedProvider?: SeedProvider } = {}) {
     this._variant = variant;
     this._bonuses = bonuses;
     this._localPlayerId = localPlayerId;
+    this._seedProvider = seedProvider;
   }
 
   private _staysWithinBounds(board: BoardGrid, x: number, y: number, direction: Direction): boolean {
@@ -80,20 +85,70 @@ export class GameSession {
 
   // ── Lobby → Game ──
 
-  startGame(pickOrder: Player[]): void {
+  startGame(): void {
     if (this._phase !== "lobby") throw new Error("Game not in lobby phase");
-    this._pickOrder = [...pickOrder];
+    this._remainingDeck = [...generateDeck()];
     this._phase = "playing";
-    this.events.emit({ type: "game:started", players: [...this._players], pickOrder: [...pickOrder] });
+    void this._runGameLoop();
+  }
+
+  private async _runGameLoop(): Promise<void> {
+    if (!this._seedProvider) {
+      // No seed provider: caller must drive rounds manually (legacy / testing)
+      return;
+    }
+    try {
+      const firstSeed = await this._seedProvider.nextSeed();
+      const orderedIds = chooseOrderFromSeed(firstSeed, this._players.map((p) => p.id));
+      this._pickOrder = orderedIds.map((id) => this._requirePlayer(id));
+      this.events.emit({ type: "game:started", players: [...this._players], pickOrder: [...this._pickOrder] });
+
+      while (this._remainingDeck.length > 0) {
+        if (this._phase === "paused") {
+          await new Promise<void>((resolve) => {
+            const off = this.events.on("game:resumed", () => { off(); resolve(); });
+          });
+        }
+        if (this._phase !== "playing") break;
+
+        const seed = await this._seedProvider.nextSeed();
+        const { next: cardIds, remaining } = getNextFourCards(seed, this._remainingDeck);
+        this._remainingDeck = remaining as CardId[];
+
+        this._beginRound(cardIds as [CardId, CardId, CardId, CardId]);
+
+        await new Promise<void>((resolve) => {
+          const off = this.events.on("round:complete", () => { off(); resolve(); });
+        });
+      }
+
+      if (this._phase === "playing") {
+        this._endGame();
+      }
+    } catch (e) {
+      console.error("GameSession game loop error:", e);
+    }
+  }
+
+  /** @internal — used by LobbyFlow until Task 8 wires SeedProvider into GameSession. */
+  setPickOrder(players: Player[]): void {
+    this._pickOrder = [...players];
   }
 
   // ── Round management ──
 
-  beginRound(cardIds: [CardId, CardId, CardId, CardId]): void {
-    if (this._phase !== "playing") throw new Error("Game not in playing phase");
+  private _beginRound(cardIds: [CardId, CardId, CardId, CardId]): void {
     const deal = new Deal(cardIds);
     this._currentRound = new Round(deal, this._pickOrder);
     this.events.emit({ type: "round:started", round: this._currentRound });
+  }
+
+  /** @internal — test use only. In normal flow, the game loop calls _beginRound. */
+  beginRound(cardIds: [CardId, CardId, CardId, CardId]): void {
+    if (this._pickOrder.length === 0) {
+      this._pickOrder = [...this._players];
+    }
+    this._beginRound(cardIds);
   }
 
   handlePick(playerId: PlayerId, cardId: CardId): void {
@@ -194,7 +249,7 @@ export class GameSession {
     this.events.emit({ type: "game:resumed" });
   }
 
-  endGame(): void {
+  private _endGame(): void {
     this._phase = "finished";
     const scores = this._players
       .map((p) => {
@@ -215,6 +270,11 @@ export class GameSession {
         return b.player.board.totalCrowns() - a.player.board.totalCrowns();
       });
     this.events.emit({ type: "game:ended", scores });
+  }
+
+  /** @internal — test use only. In normal flow, the game loop calls _endGame. */
+  endGame(): void {
+    this._endGame();
   }
 
   // ── Read-only accessors ──

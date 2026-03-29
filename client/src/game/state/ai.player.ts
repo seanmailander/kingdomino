@@ -19,8 +19,9 @@ export class RandomAIPlayer {
 
   /** Called once after the trusted seed exchange establishes pick order. */
   startGame(orderedPlayerIds: string[]): void {
+    this.aiSession.startGame();
     const pickOrder = orderedPlayerIds.map((id) => this.aiSession.playerById(id)!);
-    this.aiSession.startGame(pickOrder);
+    this.aiSession.setPickOrder(pickOrder);
   }
 
   /** Called at the start of each round with the same 4 cards as the human session. */
