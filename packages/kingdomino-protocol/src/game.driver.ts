@@ -3,6 +3,21 @@ import type { PlayerId, CardId } from "kingdomino-engine";
 import { generateDeck, getNextFourCards } from "kingdomino-engine";
 import type { PlayerActor } from "./player.actor";
 
+// TODO: Two known gaps in this implementation:
+//
+//  1. SeedProvider: the driver generates seeds with Math.random(), which works
+//     for all-local games but is not suitable for multiplayer. The driver should
+//     accept a SeedProvider (e.g. CommitmentSeedProvider from kingdomino-commitment)
+//     so both clients derive the same shuffle. Per architecture-report §8.5,
+//     the roster factory should supply the correct provider; GameDriver should
+//     consume it rather than calling Math.random() directly.
+//
+//  2. @internal APIs: session.beginRound() and session.endGame() are marked
+//     @internal on GameSession. GameSession's internal _runGameLoop() requires
+//     a SeedProvider to run and exits immediately without one, so the driver
+//     owns the loop itself via these internal entry points. If the engine
+//     promotes an external-drive contract to its public API, update accordingly.
+
 export class GameDriver {
   constructor(
     private readonly session: GameSession,
