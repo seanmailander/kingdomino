@@ -10,7 +10,7 @@ A browser-based multiplayer **Kingdomino** board game by Bruno Cathala — recre
 
 ## Tech Stack
 
-**Client** (`client/`) — where all game logic and UI live:
+**Client** (`packages/client/`) — where all game logic and UI live:
 - React 18 + TypeScript 5 + Vite 8
 - **State:** alien-signals (`signal` / `computed` / `effect`) — **not Redux**
 - **Networking:** PeerJS (WebRTC wrapper) for peer-to-peer play
@@ -18,7 +18,7 @@ A browser-based multiplayer **Kingdomino** board game by Bruno Cathala — recre
 - **Browser tests:** `@vitest/browser-playwright` (Playwright/Chromium, headless)
 - **Linting/formatting:** oxlint + oxfmt (at repo root)
 
-**Server** (`server/`) — minimal signaling only:
+**Server** (`packages/server/`) — minimal signaling only:
 - Node.js + Express + PeerJS server + multicast-dns; no real test suite
 
 ## Key Directories
@@ -31,7 +31,7 @@ A browser-based multiplayer **Kingdomino** board game by Bruno Cathala — recre
 | `client/src/game/visuals/` | React UI components + Storybook stories for visual TDD |
 | `client/src/game/tests/` | Unit tests for game logic |
 | `client/.storybook/` | Storybook config (framework: `@storybook/react-vite`, MCP addon enabled) |
-| `server/` | Express signaling server + mDNS — no game logic |
+| `packages/server/` | Express signaling server + mDNS — no game logic |
 
 ## Key Abstractions
 
@@ -42,7 +42,7 @@ A browser-based multiplayer **Kingdomino** board game by Bruno Cathala — recre
 - **`GameSession`** — OOP session manager with `GameEventBus` for typed pub/sub events (`player:joined`, `game:started`, `round:started`, `pick:made`, `place:made`, `round:complete`, `game:ended`)
 - **`LobbyFlow`** — orchestrates the splash → lobby → game → end state machine
 
-## Code Conventions (`client/src/CLAUDE.md`)
+## Code Conventions (`packages/client/src/CLAUDE.md`)
 
 - Minimize explicit TypeScript type annotations; prefer inference
 - **Named exports only** — no default exports
@@ -74,7 +74,7 @@ Root `npm test` is a placeholder — **not real validation**.
 Startup Baseline
 
 - Root `npm test` is a placeholder echo, not real validation.
-- Real baseline tests are in `client/`: run `npm test` there first.
+- Real baseline tests are in `packages/client/`: run `npm test` there first.
 - `client` test baseline: Vitest plus Storybook stories; currently green.
 - `server` does not currently have a real test suite.
 

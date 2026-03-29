@@ -1,6 +1,6 @@
 {
   "name": "kingdomino",
-  "workspaces": ["client", "packages/*"],
+  "workspaces": ["packages/*"],
   "version": "1.0.0",
   "description": "Recreate the Kingdomino board game",
   "homepage": "https://github.com/seanmailander/kingdomino#readme",
@@ -15,8 +15,8 @@
   },
   "main": "index.js",
   "scripts": {
-    "lint": "oxlint client/src",
-    "lint:fix": "oxlint --fix client/src",
+    "lint": "oxlint packages/*/src",
+    "lint:fix": "oxlint --fix packages/*/src",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "test": "echo \"Tests are green. Green is good\""

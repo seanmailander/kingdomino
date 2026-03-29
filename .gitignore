@@ -24,7 +24,7 @@ yarn-error.log*
 
 .eslintcache
 
-client/build
+packages/client/build
 
 .cert
 *storybook.log
