@@ -28,7 +28,7 @@ const makeSession = () => {
   const bob = new Player("bob");
   session.addPlayer(alice);
   session.addPlayer(bob);
-  session.startGame();
+  session.startGame([alice, bob]);
   return { session, alice, bob };
 };
 
