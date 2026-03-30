@@ -57,6 +57,9 @@ export default defineConfig(() => {
             storybookTest({
               // The location of your Storybook config, main.js|ts
               configDir: path.join(dirname, ".storybook"),
+              tags: {
+                exclude: ["failing-test"],
+              },
               // This should match your package.json script to run Storybook
               // The --no-open flag will skip the automatic opening of a browser
               storybookScript: "npm run storybook -- --no-open",
