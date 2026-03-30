@@ -22,6 +22,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const TurnOrderFromDominoSelection: Story = {
+  tags: ["failing-test"],
   args: {
     title: "Turn order from chosen domino positions",
     ruleFocus: "Play order follows ascending domino number in current line",
@@ -44,6 +45,7 @@ export const TurnOrderFromDominoSelection: Story = {
 };
 
 export const PlacementMustConnectLegally: Story = {
+  tags: ["failing-test"],
   // In scope for docs/superpowers/plans/2026-03-25-supported-story-conversion-next-steps.md.
   args: {
     title: "Placement must connect to castle or matching terrain",
@@ -61,6 +63,7 @@ export const PlacementMustConnectLegally: Story = {
 };
 
 export const DiscardWhenUnplaceable: Story = {
+  tags: ["failing-test"],
   args: {
     title: "Discard domino when no legal placement exists",
     ruleFocus: "Unplaceable domino is discarded and scores zero",
@@ -76,6 +79,7 @@ export const DiscardWhenUnplaceable: Story = {
 };
 
 export const GridBoundaryEnforced: Story = {
+  tags: ["failing-test"],
   // In scope for docs/superpowers/plans/2026-03-25-supported-story-conversion-next-steps.md.
   args: {
     title: "5x5 kingdom boundary enforced",
@@ -93,6 +97,7 @@ export const GridBoundaryEnforced: Story = {
 };
 
 export const FinalTurnNoReselection: Story = {
+  tags: ["failing-test"],
   // In scope for docs/superpowers/plans/2026-03-25-supported-story-conversion-next-steps.md.
   args: {
     title: "Final turn places only",

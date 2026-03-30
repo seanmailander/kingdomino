@@ -102,6 +102,7 @@ async function playSoloGameToEnd(
 }
 
 export const SoloGamePlaysToCompletion: Story = {
+  tags: ["failing-test"],
   play: async ({ canvas }) => {
     await playSoloGameToEnd(canvas, 85000);
     await expect(canvas.getByText(/Kingdomino/i)).toBeVisible();

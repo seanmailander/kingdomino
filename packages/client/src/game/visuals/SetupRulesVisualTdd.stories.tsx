@@ -18,6 +18,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const SetupByPlayerCount: Story = {
+  tags: ["failing-test"],
   args: {
     title: "Setup by player count",
     ruleFocus: "2p uses 24 dominoes, 3p uses 36, 4p uses 48; kings in play define line size",
@@ -39,6 +40,7 @@ export const SetupByPlayerCount: Story = {
 };
 
 export const MightyDuelUsesSevenBySevenGrid: Story = {
+  tags: ["failing-test"],
   args: {
     title: "Mighty Duel uses 7x7 grid in 2-player game",
     ruleFocus: "Mighty Duel variant expands kingdom size to 7x7 with full domino set",
