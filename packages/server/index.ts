@@ -17,9 +17,18 @@ if (process.env.NODE_ENV === "production") {
   app.use(express.static("../client/build"));
 }
 
+const WAITING_TO_PAIR = "WAITING_TO_PAIR" as const;
+const WAITING_FOR_CONNECTION = "WAITING_FOR_CONNECTION" as const;
+const NEEDS_TO_REACH_OUT = "NEEDS_TO_REACH_OUT" as const;
+
+type PositionInLobby =
+  | typeof WAITING_TO_PAIR
+  | typeof WAITING_FOR_CONNECTION
+  | typeof NEEDS_TO_REACH_OUT;
+
 type Lobby = {
   [playerId: string]: {
-    waiting: boolean;
+    state: PositionInLobby;
   };
 };
 const waitingPlayers: Lobby = {};
@@ -27,17 +36,15 @@ const waitingPlayers: Lobby = {};
 // Player B is new, gets matched to A, gets A's id
 // Player A is existing, was matched with B, waits for B to reach out
 
-app.post("/api/letMeIn", (req, res) => {
+app.post("/api/letMeIn", async (req, res) => {
   const { playerId } = req.body;
 
   // Player has not been seen before
   // Find any other players already waiting
   const otherPlayerIds = Object.keys(waitingPlayers).filter((k) => k !== playerId);
   if (otherPlayerIds.length === 0) {
-    // No other players waiting
-    const thisPlayerInWaitLine = Object.keys(waitingPlayers).filter((k) => k === playerId);
     // Just add them to the waiting list
-    waitingPlayers[playerId] = { waiting: !!thisPlayerInWaitLine };
+    waitingPlayers[playerId] = { state: WAITING_TO_PAIR };
     console.debug(`Player: ${playerId} joined as first in line`);
     res.json({ checkBackInMs: 1000 });
     return;
@@ -48,19 +55,30 @@ app.post("/api/letMeIn", (req, res) => {
   const otherPlayerId = otherPlayerIds[0];
 
   console.debug(`Player: ${playerId} is joining ${otherPlayerId} in game lobby`);
-  // TODO: when do these get cleared?
-  waitingPlayers[playerId] = {
-    waiting: true,
-  };
 
-  if (waitingPlayers[otherPlayerId].waiting) {
-    console.debug("Both are connected, purging them from lobby", playerId, otherPlayerId);
-    delete waitingPlayers[playerId];
-    delete waitingPlayers[otherPlayerId];
+  if (waitingPlayers[otherPlayerId].state === WAITING_TO_PAIR) {
+    console.debug(`Player: ${otherPlayerId} should reach out to ${playerId}`);
+    waitingPlayers[otherPlayerId] = {
+      state: NEEDS_TO_REACH_OUT,
+    };
+  }
+
+  if (waitingPlayers[otherPlayerId].state === NEEDS_TO_REACH_OUT) {
+    console.debug(`Player: ${playerId} should wait for a connection from ${otherPlayerId}`);
+    waitingPlayers[playerId] = {
+      state: WAITING_FOR_CONNECTION,
+    };
+    setTimeout(() => {
+      console.debug("Both are connected, purging them from lobby", playerId, otherPlayerId);
+      // Give clients a moment to connect before purging lobby
+      delete waitingPlayers[playerId];
+      delete waitingPlayers[otherPlayerId];
+    }, 5000);
     return res.json({ waitForConnection: true });
   }
 
   // TODO: timeout after 30seconds, force client to re-attempt
+  console.debug(`Player: ${otherPlayerId} is waiting for ${playerId} to connect`);
   res.json({ otherPlayerId });
   return;
 });

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent } from "storybook/test";
+import { MultiplayerConnection } from "kingdomino-protocol";
 
 import { Lobby } from "./Lobby";
 
@@ -10,6 +11,7 @@ const meta = {
   args: {
     onStart: fn(),
     onLeave: fn(),
+    joinMatchmaking: fn(async () => new MultiplayerConnection({ me: "local-id", them: "peer-abc123" })),
   },
 } satisfies Meta<typeof Lobby>;
 
@@ -39,21 +41,25 @@ export const FourPlayerMixed: Story = {
     const items = () => canvas.getAllByRole("listitem");
     const slot2Couch = items()[1].querySelector("button:nth-of-type(2)") as HTMLButtonElement;
     await user.click(slot2Couch);
-    // Slot 4: set to Remote
+    // Slot 4: set to Remote — triggers matchmaking automatically
     const slot4Buttons = items()[3].querySelectorAll("button");
     const remoteBtn = Array.from(slot4Buttons).find((b) => b.textContent === "Remote") as HTMLButtonElement;
     await user.click(remoteBtn);
-    // Type peer ID in slot 4 input
-    const peerInput = items()[3].querySelector("input") as HTMLInputElement;
-    await user.type(peerInput, "peer-abc123");
-    // Start should be enabled
+    // No text input or select — matchmaking is auto
+    await expect(items()[3].querySelector("input")).toBeNull();
+    await expect(items()[3].querySelector("select")).toBeNull();
+    // Wait for peer ID to appear once matchmaking resolves
+    await expect(await canvas.findByText("peer-abc123")).toBeVisible();
+    // Start should now be enabled
     await expect(canvas.getByRole("button", { name: "Start game" })).not.toBeDisabled();
-    // Peer ID input shows value
-    await expect(peerInput.value).toBe("peer-abc123");
   },
 };
 
 export const RemoteSlotPending: Story = {
+  args: {
+    // Never-resolving matchmaking — stays in connecting state
+    joinMatchmaking: fn(() => new Promise<MultiplayerConnection>(() => {})),
+  },
   play: async ({ canvas }) => {
     const user = userEvent.setup();
     // Slot 2: set to Remote
@@ -61,10 +67,12 @@ export const RemoteSlotPending: Story = {
     const slot2Buttons = items[1].querySelectorAll("button");
     const remoteBtn = Array.from(slot2Buttons).find((b) => b.textContent === "Remote") as HTMLButtonElement;
     await user.click(remoteBtn);
-    // Start should be disabled (no peerId)
+    // Start should be disabled (still connecting)
     await expect(canvas.getByRole("button", { name: "Start game" })).toBeDisabled();
-    // Peer ID input exists in slot 2
-    await expect(items[1].querySelector("input")).not.toBeNull();
+    // Shows connecting state — no input or select
+    await expect(items[1].querySelector("[aria-busy='true']")).not.toBeNull();
+    await expect(items[1].querySelector("input")).toBeNull();
+    await expect(items[1].querySelector("select")).toBeNull();
   },
 };
 

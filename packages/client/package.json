@@ -25,6 +25,7 @@
     "eventemitter3": "^5.0.1",
     "kingdomino-commitment": "*",
     "kingdomino-engine": "*",
+    "kingdomino-lobby": "*",
     "kingdomino-protocol": "*",
     "peerjs": "^1.5.4",
     "react": "^18.3.1",

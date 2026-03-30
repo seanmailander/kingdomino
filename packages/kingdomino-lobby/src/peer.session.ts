@@ -70,6 +70,7 @@ export class PeerSession {
 
     return new Promise<MultiplayerConnection>((resolve, reject) => {
       dataConn.on("open", () => {
+        console.debug("Successful output connection to peer", dataConn.peer);
         resolve(this._wireConnection(myId, remotePeerId, dataConn));
       });
       dataConn.on("error", (err: Error) => reject(err));
@@ -122,6 +123,7 @@ export class PeerSession {
       }
 
       if ("otherPlayerId" in data) {
+        console.debug("Matchmaking paired us with peer", data.otherPlayerId);
         return this.connect(data.otherPlayerId);
       }
 
@@ -129,6 +131,7 @@ export class PeerSession {
         return new Promise<MultiplayerConnection>((resolve) => {
           this.peer.once("connection", (dataConn: DataConnection) => {
             dataConn.on("open", () => {
+              console.debug("Received inbound connection from peer", dataConn.peer);
               resolve(this._wireConnection(myId, dataConn.peer, dataConn));
             });
           });
@@ -139,7 +142,11 @@ export class PeerSession {
     }
   }
 
-  private _wireConnection(me: string, them: string, dataConn: DataConnection): MultiplayerConnection {
+  private _wireConnection(
+    me: string,
+    them: string,
+    dataConn: DataConnection,
+  ): MultiplayerConnection {
     const transport = new WebRtcTransport(dataConn);
     const conn = new MultiplayerConnection({ me, them, transport });
 

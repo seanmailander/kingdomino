@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { MultiplayerConnection, RemotePlayerActor } from "kingdomino-protocol";
 
 import type { RosterConfig } from "../../Lobby/lobby.types";
 import { LocalPlayerActor } from "./local.player.actor";
@@ -72,10 +73,32 @@ describe("DefaultRosterFactory", () => {
     expect(result.seedProvider).toBeDefined();
   });
 
-  it("throws for remote slots (not yet supported)", async () => {
+  it("throws for remote slots that have no established connection", async () => {
     const factory = new DefaultRosterFactory();
     const config: RosterConfig = [{ type: "local" }, { type: "remote", peerId: "peer-123" }];
 
-    await expect(factory.build(config)).rejects.toThrow("remote slots not yet supported");
+    await expect(factory.build(config)).rejects.toThrow("must have an established connection");
+  });
+
+  it("returns RemotePlayerActor for remote slots with a connection", async () => {
+    const factory = new DefaultRosterFactory();
+    const conn = new MultiplayerConnection({ me: "local-id", them: "peer-123" });
+    const config: RosterConfig = [{ type: "local" }, { type: "remote", peerId: "peer-123", connection: conn }];
+
+    const result = await factory.build(config);
+
+    expect(result.players[1].actor).toBeInstanceOf(RemotePlayerActor);
+  });
+
+  it("uses commitment seed provider when remote slots are present", async () => {
+    const factory = new DefaultRosterFactory();
+    const conn = new MultiplayerConnection({ me: "local-id", them: "peer-123" });
+    const config: RosterConfig = [{ type: "local" }, { type: "remote", peerId: "peer-123", connection: conn }];
+
+    const result = await factory.build(config);
+
+    expect(result.seedProvider).toBeDefined();
+    // CommitmentSeedProvider has a nextSeed() method that returns a Promise
+    expect(typeof result.seedProvider.nextSeed).toBe("function");
   });
 });

@@ -1,4 +1,4 @@
-import { RandomSeedProvider } from "kingdomino-commitment";
+import { CommitmentSeedProvider, RandomSeedProvider } from "kingdomino-commitment";
 import type { GameVariant, PlayerId } from "kingdomino-engine";
 import { STANDARD } from "kingdomino-engine";
 import type { RosterConfig, PlayerSlotConfig } from "../../Lobby/lobby.types";
@@ -7,6 +7,8 @@ import type { RosterFactory, RosterResult } from "./RosterFactory";
 import { LocalPlayerActor } from "./local.player.actor";
 import { CouchPlayerActor } from "./couch.player.actor";
 import { AIPlayerActor } from "./ai.player.actor";
+import { ConnectionManager, RemotePlayerActor } from "kingdomino-protocol";
+import type { CommitmentTransport } from "kingdomino-commitment";
 
 type DefaultRosterFactoryOptions = {
   variant?: GameVariant;
@@ -20,13 +22,16 @@ export class DefaultRosterFactory implements RosterFactory {
   }
 
   async build(config: RosterConfig): Promise<RosterResult> {
-    const hasRemote = config.some((slot) => slot.type === SLOT_REMOTE);
-    if (hasRemote) {
-      // TODO(remote-factory): inject PeerSession + CommitmentSeedProvider for remote slots
-      throw new Error("DefaultRosterFactory: remote slots not yet supported");
+    const remoteSlots = config.filter((slot) => slot.type === SLOT_REMOTE);
+    if (remoteSlots.some((slot) => !slot.connection)) {
+      throw new Error("DefaultRosterFactory: remote slots must have an established connection");
     }
 
-    const seedProvider = new RandomSeedProvider();
+    // Use commitment seed protocol when any remote peer is present
+    const firstRemote = remoteSlots[0];
+    const seedProvider = firstRemote
+      ? new CommitmentSeedProvider(firstRemote.connection as unknown as CommitmentTransport)
+      : new RandomSeedProvider();
 
     // Assign stable player IDs: p1, p2, p3, p4
     const playerIds: PlayerId[] = config.map((_, i) => `p${i + 1}` as PlayerId);
@@ -46,9 +51,11 @@ export class DefaultRosterFactory implements RosterFactory {
           return { id, actor: new CouchPlayerActor(id, label) };
         case SLOT_AI:
           return { id, actor: new AIPlayerActor(id, firstHumanId, this.variant) };
-        case SLOT_REMOTE:
-          // Unreachable: guarded by hasRemote check above
-          throw new Error(`DefaultRosterFactory: unexpected remote slot at index ${i}`);
+        case SLOT_REMOTE: {
+          const conn = slot.connection!;
+          const cm = new ConnectionManager(conn.send, conn.waitFor);
+          return { id, actor: new RemotePlayerActor(id, cm) };
+        }
       }
     });
 
