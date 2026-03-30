@@ -75,6 +75,27 @@ export default defineConfig(() => {
             // setupFiles: ["./.storybook/vitest.setup.ts"],
           },
         },
+        {
+          extends: true,
+          plugins: [
+            storybookTest({
+              configDir: path.join(dirname, ".storybook"),
+              storybookScript: "npm run storybook -- --no-open",
+              tags: {
+                include: ["failing-test"],
+              },
+            }),
+          ],
+          test: {
+            name: "storybook-failing",
+            browser: {
+              enabled: true,
+              provider: playwright({}),
+              headless: true,
+              instances: [{ browser: "chromium" }],
+            },
+          },
+        },
       ],
     },
   } satisfies UserConfig;
