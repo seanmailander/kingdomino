@@ -37,7 +37,7 @@ export function Lobby({ onStart, onLeave }: LobbyProps) {
     setSlots((prev) => prev.map((slot, i) => (i === index ? { ...slot, peerId } : slot)));
   };
 
-  const startDisabled = slots.some((slot) => slot.type === "remote" && !slot.peerId);
+  const startDisabled = slots.some((slot) => slot.type === "remote" && !slot.peerId?.trim());
 
   return (
     <>
