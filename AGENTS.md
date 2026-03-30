@@ -3,6 +3,7 @@
 ## What This Is
 
 A browser-based multiplayer **Kingdomino** board game by Bruno Cathala — recreated with a twist:
+
 - Game lobbies are for player discovery only
 - All play is **peer-to-peer via WebRTC** (PeerJS)
 - Works on local networks without internet connectivity (mDNS discovery)
@@ -11,6 +12,7 @@ A browser-based multiplayer **Kingdomino** board game by Bruno Cathala — recre
 ## Tech Stack
 
 **Client** (`packages/client/`) — where all game logic and UI live:
+
 - React 18 + TypeScript 5 + Vite 8
 - **State:** alien-signals (`signal` / `computed` / `effect`) — **not Redux**
 - **Networking:** PeerJS (WebRTC wrapper) for peer-to-peer play
@@ -19,25 +21,26 @@ A browser-based multiplayer **Kingdomino** board game by Bruno Cathala — recre
 - **Linting/formatting:** oxlint + oxfmt (at repo root)
 
 **Server** (`packages/server/`) — minimal signaling only:
+
 - Node.js + Express + PeerJS server + multicast-dns; no real test suite
 
 ## Key Directories
 
-| Path | Purpose |
-|------|---------|
-| `client/src/App/` | React shell: `App.tsx`, `store.ts` (alien-signals state), `AppExtras.ts` (room types) |
-| `client/src/game/state/` | OOP game state: `GameSession`, `LobbyFlow`, `ConnectionManager`, `Round`, `Deal`, `Player`, `Board` |
-| `client/src/game/gamelogic/` | Pure functions: cards, board scoring, deck operations, cryptographic seed utils |
-| `client/src/game/visuals/` | React UI components + Storybook stories for visual TDD |
-| `client/src/game/tests/` | Unit tests for game logic |
-| `client/.storybook/` | Storybook config (framework: `@storybook/react-vite`, MCP addon enabled) |
-| `packages/server/` | Express signaling server + mDNS — no game logic |
+| Path                         | Purpose                                                                                             |
+| ---------------------------- | --------------------------------------------------------------------------------------------------- |
+| `client/src/App/`            | React shell: `App.tsx`, `store.ts` (alien-signals state), `AppExtras.ts` (room types)               |
+| `client/src/game/state/`     | OOP game state: `GameSession`, `LobbyFlow`, `ConnectionManager`, `Round`, `Deal`, `Player`, `Board` |
+| `client/src/game/gamelogic/` | Pure functions: cards, board scoring, deck operations, cryptographic seed utils                     |
+| `client/src/game/visuals/`   | React UI components + Storybook stories for visual TDD                                              |
+| `client/src/game/tests/`     | Unit tests for game logic                                                                           |
+| `client/.storybook/`         | Storybook config (framework: `@storybook/react-vite`, MCP addon enabled)                            |
+| `packages/server/`           | Express signaling server + mDNS — no game logic                                                     |
 
 ## Key Abstractions
 
 - **`IGameConnection`** (in `game.flow.ts`) — the connection interface; three implementations:
   - `SoloConnection` — single-player / self-play
-  - `MultiplayerConnection` — WebRTC via PeerJS *(not yet fully wired)*
+  - `MultiplayerConnection` — WebRTC via PeerJS _(not yet fully wired)_
   - `TestConnection` — scripted deterministic scenarios for unit/integration tests
 - **`GameSession`** — OOP session manager with `GameEventBus` for typed pub/sub events (`player:joined`, `game:started`, `round:started`, `pick:made`, `place:made`, `round:complete`, `game:ended`)
 - **`LobbyFlow`** — orchestrates the splash → lobby → game → end state machine
@@ -49,16 +52,17 @@ A browser-based multiplayer **Kingdomino** board game by Bruno Cathala — recre
 - One primary responsibility per file
 - **OOP (classes)** for game state: sessions, rounds, players, connections, flow orchestration
 - **Pure functions** for game logic: card manipulation, board scoring, deck operations, seed calculations
+- **No magic strings** between packages: make sure the owner of strings used as keys exports them for consumers to use
 
 ## Test Layout
 
-| Location | What |
-|----------|------|
-| `client/src/game/tests/*.test.ts` | Unit tests for game logic (scoring, placement, deck, board) |
-| `client/src/game/gamelogic/*.test.ts` | Unit tests for pure game logic functions |
-| `client/src/game/state/*.test.ts` | Integration/flow tests; use `TestConnection` for scripted scenarios |
+| Location                                | What                                                                                    |
+| --------------------------------------- | --------------------------------------------------------------------------------------- |
+| `client/src/game/tests/*.test.ts`       | Unit tests for game logic (scoring, placement, deck, board)                             |
+| `client/src/game/gamelogic/*.test.ts`   | Unit tests for pure game logic functions                                                |
+| `client/src/game/state/*.test.ts`       | Integration/flow tests; use `TestConnection` for scripted scenarios                     |
 | `client/src/game/visuals/*.stories.tsx` | Visual TDD via Storybook — `RealGameRuleHarness` wraps `GameSession` + `TestConnection` |
-| `client/src/setupTests.ts` | Test setup — extends Vitest `expect` with `jest-extended` matchers |
+| `client/src/setupTests.ts`              | Test setup — extends Vitest `expect` with `jest-extended` matchers                      |
 
 **Run all client tests:** `cd client && npm test`
 Root `npm test` is a placeholder — **not real validation**.
@@ -119,19 +123,24 @@ Bug Logging Rule
 Use this map to navigate all project documentation without filesystem exploration.
 
 ## Top-Level Index
+
 - [`docs/README.md`](docs/README.md) — Hub: links to every doc file in the project
 
 ## Code Conventions & Architecture
+
 - [`client/src/CLAUDE.md`](client/src/CLAUDE.md) — TypeScript conventions for client/src (typing, exports, OOP vs pure)
 - [`client/src/game/readme.md`](client/src/game/readme.md) — Game module architecture: logic / state / visuals layers and their dependencies
 - [`client/src/game/testing.md`](client/src/game/testing.md) — Test plan: 50+ domain-driven scenarios across deck, placement, scoring, rounds
 
 ## Client & Server Setup
+
 - [`client/README.md`](client/README.md) — Dev scripts: start, build, test, preview
 - [`server/README.md`](server/README.md) — Signaling server: purpose, scripts, key files
 
 ## Agent Skills
+
 - [`.agents/skills/README.md`](.agents/skills/README.md) — Index of all skills with when-to-invoke summaries and workflow
 
 ## Design History
+
 - [`docs/superpowers/README.md`](docs/superpowers/README.md) — Index of all specs and implementation plans with status

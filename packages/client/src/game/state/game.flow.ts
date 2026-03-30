@@ -2,7 +2,7 @@ import { CommitmentSeedProvider, RandomSeedProvider } from "kingdomino-commitmen
 import type { CommitmentTransport } from "kingdomino-commitment";
 import type { SeedProvider } from "kingdomino-engine";
 import { ConnectionManager, RandomAIPlayer, GameDriver } from "kingdomino-protocol";
-import { GameSession, Player } from "kingdomino-engine";
+import { GameSession, Player, GAME_PHASE_PLAYING, GAME_PHASE_PAUSED, GAME_STARTED, ROUND_STARTED, GAME_PAUSED, GAME_RESUMED, GAME_ENDED, PICK_MADE, PLACE_MADE, DISCARD_MADE, STANDARD } from "kingdomino-engine";
 import type { GameEventBus, GameEvent, CardId } from "kingdomino-engine";
 import type { WireMessage, WireMessagePayload, WireMessageType } from "kingdomino-protocol";
 import { PICK, PLACE, DISCARD } from "kingdomino-protocol";
@@ -23,8 +23,14 @@ export interface IGameConnection {
   destroy: () => void;
 }
 
+export const FLOW_SPLASH = "splash" as const;
+export const FLOW_LOBBY  = "lobby"  as const;
+export const FLOW_GAME   = "game"   as const;
+export const FLOW_PAUSED = "paused" as const;
+export const FLOW_ENDED  = "ended"  as const;
+
 /** Internal phase names used by LobbyFlow — independent of UI room constants. */
-export type FlowPhase = "splash" | "lobby" | "game" | "paused" | "ended";
+export type FlowPhase = typeof FLOW_SPLASH | typeof FLOW_LOBBY | typeof FLOW_GAME | typeof FLOW_PAUSED | typeof FLOW_ENDED;
 
 /**
  * Adapter interface that decouples LobbyFlow from any specific UI framework or store.
@@ -98,7 +104,7 @@ export class LobbyFlow {
       options.createConnectionManager ??
       ((connection) => new ConnectionManager(connection.send, connection.waitFor));
     this.createSeedProvider = options.createSeedProvider;
-    this.variant = options.variant ?? "standard";
+    this.variant = options.variant ?? STANDARD;
     this.bonuses = options.bonuses ?? {};
   }
 
@@ -137,13 +143,13 @@ export class LobbyFlow {
     // Multiplayer transport wiring is not implemented yet.
     // Keep this as a safe no-op until a transport is configured.
     this.adapter.setSession(null);
-    this.adapter.setPhase("splash");
+    this.adapter.setPhase(FLOW_SPLASH);
   }
 
   private async runFlowWithFactory(): Promise<void> {
     try {
       this.adapter.setSession(null);
-      this.adapter.setPhase("lobby");
+      this.adapter.setPhase(FLOW_LOBBY);
 
       const lobbyResult = await Promise.race([
         this.adapter.awaitStart().then((config) => ({ outcome: "start" as const, config })),
@@ -151,7 +157,7 @@ export class LobbyFlow {
       ]);
 
       if (lobbyResult.outcome === "leave") {
-        this.adapter.setPhase("splash");
+        this.adapter.setPhase(FLOW_SPLASH);
         return;
       }
 
@@ -169,27 +175,27 @@ export class LobbyFlow {
         session.addPlayer(new Player(id));
       }
       this.adapter.setSession(session);
-      this.adapter.setPhase("game");
+      this.adapter.setPhase(FLOW_GAME);
 
       // Sync engine phase changes to adapter
-      session.events.on("game:paused",  () => this.adapter.setPhase("paused"));
-      session.events.on("game:resumed", () => this.adapter.setPhase("game"));
+      session.events.on(GAME_PAUSED,  () => this.adapter.setPhase(FLOW_PAUSED));
+      session.events.on(GAME_RESUMED, () => this.adapter.setPhase(FLOW_GAME));
 
       // Wire local pause/resume/leave intents
       // TODO(remote-control): Add peer handshake for remote slots
-      void this.adapter.awaitPause().then(() => { if (session.phase === "playing") session.pause(); });
-      void this.adapter.awaitResume().then(() => { if (session.phase === "paused") session.resume(); });
+      void this.adapter.awaitPause().then(() => { if (session.phase === GAME_PHASE_PLAYING) session.pause(); });
+      void this.adapter.awaitResume().then(() => { if (session.phase === GAME_PHASE_PAUSED) session.resume(); });
       void this.adapter.awaitLeave().then(() => this.adapter.reset());
 
       const actorMap = new Map(players.map(({ id, actor }) => [id, actor]));
       const driver = new GameDriver(session, actorMap);
       await driver.run();
 
-      this.adapter.setPhase("ended");
+      this.adapter.setPhase(FLOW_ENDED);
     } catch (e) {
       console.error(e);
       this.adapter.setSession(null);
-      this.adapter.setPhase("splash");
+      this.adapter.setPhase(FLOW_SPLASH);
     } finally {
       this.session = null;
       this.isRunning = false;
@@ -198,10 +204,10 @@ export class LobbyFlow {
 
   private listenForControlMessages(session: GameSession): void {
     void this.connectionManager!.waitForPauseRequest().then(() => {
-      if (session.phase === "playing") session.pause();
+      if (session.phase === GAME_PHASE_PLAYING) session.pause();
     });
     void this.connectionManager!.waitForResumeRequest().then(() => {
-      if (session.phase === "paused") session.resume();
+      if (session.phase === GAME_PHASE_PAUSED) session.resume();
     });
     void this.connectionManager!.waitForExitRequest().then(() => this.adapter.reset());
   }
@@ -209,7 +215,7 @@ export class LobbyFlow {
   private async relayRemoteMoves(session: GameSession, connection: IGameConnection): Promise<void> {
     const remoteId = connection.peerIdentifiers.them;
     try {
-      while (session.phase === "playing" || session.phase === "paused") {
+      while (session.phase === GAME_PHASE_PLAYING || session.phase === GAME_PHASE_PAUSED) {
         const msg = await this.connectionManager!.waitForNextMoveMessage();
         if (msg.type === PICK)    session.handlePick(remoteId, msg.cardId);
         if (msg.type === PLACE)   session.handlePlacement(remoteId, msg.x, msg.y, msg.direction);
@@ -238,7 +244,7 @@ export class LobbyFlow {
       session.addPlayer(new Player(connection.peerIdentifiers.me));
       session.addPlayer(new Player(connection.peerIdentifiers.them));
       this.adapter.setSession(session);
-      this.adapter.setPhase("lobby");
+      this.adapter.setPhase(FLOW_LOBBY);
 
       // Lobby phase: race start vs leave
       const lobbyResult = await Promise.race([
@@ -248,17 +254,17 @@ export class LobbyFlow {
 
       if (lobbyResult.outcome === "leave") {
         this.adapter.setSession(null);
-        this.adapter.setPhase("splash");
+        this.adapter.setPhase(FLOW_SPLASH);
         return;
       }
 
       // TODO(roster-factory-interface): legacy IGameConnection path — use start() + rosterFactory for new flows
 
-      this.adapter.setPhase("game");
+      this.adapter.setPhase(FLOW_GAME);
 
       // Sync engine phase changes to adapter
-      session.events.on("game:paused",  () => this.adapter.setPhase("paused"));
-      session.events.on("game:resumed", () => this.adapter.setPhase("game"));
+      session.events.on(GAME_PAUSED,  () => this.adapter.setPhase(FLOW_PAUSED));
+      session.events.on(GAME_RESUMED, () => this.adapter.setPhase(FLOW_GAME));
 
       // Wire local pause intent → peer handshake → engine
       void this.adapter.awaitPause().then(async () => {
@@ -293,10 +299,10 @@ export class LobbyFlow {
       if (this.aiPlayer && this.soloConnection) {
         const aiPlayer = this.aiPlayer;
         const soloConn = this.soloConnection;
-        session.events.on("game:started", ({ pickOrder }) => {
+        session.events.on(GAME_STARTED, ({ pickOrder }) => {
           aiPlayer.startGame(pickOrder.map((p) => p.id));
         });
-        session.events.on("round:started", ({ round }) => {
+        session.events.on(ROUND_STARTED, ({ round }) => {
           const cardIds = round.deal.snapshot().map((s) => s.cardId) as [CardId, CardId, CardId, CardId];
           aiPlayer.beginRound(cardIds);
           soloConn.notifyRoundStarted();
@@ -308,20 +314,20 @@ export class LobbyFlow {
 
       // Relay local moves to peer
       const localId = connection.peerIdentifiers.me;
-      const off1 = session.events.on("pick:made",    (e) => { if (e.player.id === localId) this.connectionManager!.sendPick(e.player.id, e.cardId); });
-      const off2 = session.events.on("place:made",   (e) => { if (e.player.id === localId) this.connectionManager!.sendPlace(e.player.id, e.x, e.y, e.direction); });
-      const off3 = session.events.on("discard:made", (e) => { if (e.player.id === localId) this.connectionManager!.sendDiscard(e.player.id); });
+      const off1 = session.events.on(PICK_MADE,    (e) => { if (e.player.id === localId) this.connectionManager!.sendPick(e.player.id, e.cardId); });
+      const off2 = session.events.on(PLACE_MADE,   (e) => { if (e.player.id === localId) this.connectionManager!.sendPlace(e.player.id, e.x, e.y, e.direction); });
+      const off3 = session.events.on(DISCARD_MADE, (e) => { if (e.player.id === localId) this.connectionManager!.sendDiscard(e.player.id); });
 
       // Feed remote moves into engine
       void this.relayRemoteMoves(session, connection);
 
-      await waitForEvent(session.events, "game:ended");
+      await waitForEvent(session.events, GAME_ENDED);
       off1(); off2(); off3();
-      this.adapter.setPhase("ended");
+      this.adapter.setPhase(FLOW_ENDED);
     } catch (e) {
       console.error(e);
       this.adapter.setSession(null);
-      this.adapter.setPhase("splash");
+      this.adapter.setPhase(FLOW_SPLASH);
     } finally {
       connection.destroy();
       this.aiPlayer = null;

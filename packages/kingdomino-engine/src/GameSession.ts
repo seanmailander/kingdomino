@@ -3,6 +3,7 @@
  */
 
 import { getCard, generateDeck } from "./gamelogic/cards";
+import { STANDARD, MIGHTY_DUEL } from "./gamelogic/cards";
 import {
   findPlacementWithin5x5,
   findPlacementWithin7x7,
@@ -17,11 +18,19 @@ import { chooseOrderFromSeed, getNextFourCards } from "./gamelogic/utils";
 import type { BoardGrid } from "./Board";
 import { Player } from "./Player";
 import { Deal } from "./Deal";
-import { Round } from "./Round";
+import { Round, ROUND_PHASE_COMPLETE, ROUND_PHASE_PICKING, ROUND_PHASE_PLACING } from "./Round";
 import { GameEventBus } from "./GameEventBus";
 import type { GameVariant } from "./gamelogic/cards";
+import {
+  GAME_STARTED, ROUND_STARTED, PICK_MADE, PLACE_MADE, DISCARD_MADE,
+  ROUND_COMPLETE, GAME_PAUSED, GAME_RESUMED, GAME_ENDED,
+} from "./GameEvent";
 
-export type GamePhase = "lobby" | "playing" | "paused" | "finished";
+export const GAME_PHASE_LOBBY    = "lobby"    as const;
+export const GAME_PHASE_PLAYING  = "playing"  as const;
+export const GAME_PHASE_PAUSED   = "paused"   as const;
+export const GAME_PHASE_FINISHED = "finished" as const;
+export type GamePhase = typeof GAME_PHASE_LOBBY | typeof GAME_PHASE_PLAYING | typeof GAME_PHASE_PAUSED | typeof GAME_PHASE_FINISHED;
 
 export type GameBonuses = { middleKingdom?: boolean; harmony?: boolean };
 
@@ -42,7 +51,7 @@ export type GameBonuses = { middleKingdom?: boolean; harmony?: boolean };
 export class GameSession {
   readonly events = new GameEventBus();
 
-  private _phase: GamePhase = "lobby";
+  private _phase: GamePhase = GAME_PHASE_LOBBY;
   private _players: Player[] = [];
   private _pickOrder: Player[] = [];
   private _currentRound: Round | null = null;
@@ -53,7 +62,7 @@ export class GameSession {
   private readonly _seedProvider: SeedProvider | undefined;
   private _remainingDeck: CardId[] = [];
 
-  constructor({ variant = "standard", bonuses = {}, localPlayerId, seedProvider }: { variant?: GameVariant; bonuses?: GameBonuses; localPlayerId?: PlayerId; seedProvider?: SeedProvider } = {}) {
+  constructor({ variant = STANDARD, bonuses = {}, localPlayerId, seedProvider }: { variant?: GameVariant; bonuses?: GameBonuses; localPlayerId?: PlayerId; seedProvider?: SeedProvider } = {}) {
     this._variant = variant;
     this._bonuses = bonuses;
     this._localPlayerId = localPlayerId;
@@ -61,13 +70,13 @@ export class GameSession {
   }
 
   private _staysWithinBounds(board: BoardGrid, x: number, y: number, direction: Direction): boolean {
-    return this._variant === "mighty-duel"
+    return this._variant === MIGHTY_DUEL
       ? staysWithin7x7(board, x, y, direction)
       : staysWithin5x5(board, x, y, direction);
   }
 
   private _findPlacementWithinBounds(board: BoardGrid, cardId: CardId) {
-    return this._variant === "mighty-duel"
+    return this._variant === MIGHTY_DUEL
       ? findPlacementWithin7x7(board, cardId)
       : findPlacementWithin5x5(board, cardId);
   }
@@ -86,9 +95,9 @@ export class GameSession {
   // ── Lobby → Game ──
 
   startGame(): void {
-    if (this._phase !== "lobby") throw new Error("Game not in lobby phase");
+    if (this._phase !== GAME_PHASE_LOBBY) throw new Error("Game not in lobby phase");
     this._remainingDeck = [...generateDeck()];
-    this._phase = "playing";
+    this._phase = GAME_PHASE_PLAYING;
     void this._runGameLoop();
   }
 
@@ -101,15 +110,15 @@ export class GameSession {
       const firstSeed = await this._seedProvider.nextSeed();
       const orderedIds = chooseOrderFromSeed(firstSeed, this._players.map((p) => p.id));
       this._pickOrder = orderedIds.map((id) => this._requirePlayer(id));
-      this.events.emit({ type: "game:started", players: [...this._players], pickOrder: [...this._pickOrder] });
+      this.events.emit({ type: GAME_STARTED, players: [...this._players], pickOrder: [...this._pickOrder] });
 
       while (this._remainingDeck.length > 0) {
-        if (this._phase === "paused") {
+        if (this._phase === GAME_PHASE_PAUSED) {
           await new Promise<void>((resolve) => {
-            const off = this.events.on("game:resumed", () => { off(); resolve(); });
+            const off = this.events.on(GAME_RESUMED, () => { off(); resolve(); });
           });
         }
-        if (this._phase !== "playing") break;
+        if (this._phase !== GAME_PHASE_PLAYING) break;
 
         const seed = await this._seedProvider.nextSeed();
         const { next: cardIds, remaining } = getNextFourCards(seed, this._remainingDeck);
@@ -118,11 +127,11 @@ export class GameSession {
         this._beginRound(cardIds as [CardId, CardId, CardId, CardId]);
 
         await new Promise<void>((resolve) => {
-          const off = this.events.on("round:complete", () => { off(); resolve(); });
+          const off = this.events.on(ROUND_COMPLETE, () => { off(); resolve(); });
         });
       }
 
-      if (this._phase === "playing") {
+      if (this._phase === GAME_PHASE_PLAYING) {
         this._endGame();
       }
     } catch (e) {
@@ -140,7 +149,7 @@ export class GameSession {
   private _beginRound(cardIds: [CardId, CardId, CardId, CardId]): void {
     const deal = new Deal(cardIds);
     this._currentRound = new Round(deal, this._pickOrder);
-    this.events.emit({ type: "round:started", round: this._currentRound });
+    this.events.emit({ type: ROUND_STARTED, round: this._currentRound });
   }
 
   /** @internal — test use only. In normal flow, the game loop calls _beginRound. */
@@ -155,7 +164,7 @@ export class GameSession {
     const round = this._requireActiveRound();
     const player = this._requirePlayer(playerId);
     round.recordPick(player, cardId);
-    this.events.emit({ type: "pick:made", player, cardId });
+    this.events.emit({ type: PICK_MADE, player, cardId });
   }
 
   handleLocalPick(cardId: CardId): void {
@@ -186,18 +195,18 @@ export class GameSession {
 
     if (!this._staysWithinBounds(board, x, y, direction)) {
       throw new Error(
-        `Placement exceeds ${this._variant === "mighty-duel" ? "7x7" : "5x5"} kingdom for player ${playerId}: (${x}, ${y}, ${direction})`,
+        `Placement exceeds ${this._variant === MIGHTY_DUEL ? "7x7" : "5x5"} kingdom for player ${playerId}: (${x}, ${y}, ${direction})`,
       );
     }
 
     round.recordPlacement(player, x, y, direction);
-    this.events.emit({ type: "place:made", player, cardId, x, y, direction });
+    this.events.emit({ type: PLACE_MADE, player, cardId, x, y, direction });
 
-    if (round.phase === "complete") {
+    if (round.phase === ROUND_PHASE_COMPLETE) {
       const nextPickOrder = round.deal.nextRoundPickOrder();
       this._pickOrder = nextPickOrder;
       this._currentRound = null;
-      this.events.emit({ type: "round:complete", nextPickOrder });
+      this.events.emit({ type: ROUND_COMPLETE, nextPickOrder });
     }
   }
 
@@ -222,13 +231,13 @@ export class GameSession {
 
     round.recordDiscard(player);
     this._discardedPlayerIds.add(player.id);
-    this.events.emit({ type: "discard:made", player, cardId });
+    this.events.emit({ type: DISCARD_MADE, player, cardId });
 
-    if (round.phase === "complete") {
+    if (round.phase === ROUND_PHASE_COMPLETE) {
       const nextPickOrder = round.deal.nextRoundPickOrder();
       this._pickOrder = nextPickOrder;
       this._currentRound = null;
-      this.events.emit({ type: "round:complete", nextPickOrder });
+      this.events.emit({ type: ROUND_COMPLETE, nextPickOrder });
     }
   }
 
@@ -238,19 +247,19 @@ export class GameSession {
   }
 
   pause(): void {
-    if (this._phase !== "playing") throw new Error("Can only pause while playing");
-    this._phase = "paused";
-    this.events.emit({ type: "game:paused" });
+    if (this._phase !== GAME_PHASE_PLAYING) throw new Error("Can only pause while playing");
+    this._phase = GAME_PHASE_PAUSED;
+    this.events.emit({ type: GAME_PAUSED });
   }
 
   resume(): void {
-    if (this._phase !== "paused") throw new Error("Can only resume while paused");
-    this._phase = "playing";
-    this.events.emit({ type: "game:resumed" });
+    if (this._phase !== GAME_PHASE_PAUSED) throw new Error("Can only resume while paused");
+    this._phase = GAME_PHASE_PLAYING;
+    this.events.emit({ type: GAME_RESUMED });
   }
 
   private _endGame(): void {
-    this._phase = "finished";
+    this._phase = GAME_PHASE_FINISHED;
     const scores = this._players
       .map((p) => {
         const baseScore = p.score();
@@ -269,7 +278,7 @@ export class GameSession {
         if (largestB !== largestA) return largestB - largestA;
         return b.player.board.totalCrowns() - a.player.board.totalCrowns();
       });
-    this.events.emit({ type: "game:ended", scores });
+    this.events.emit({ type: GAME_ENDED, scores });
   }
 
   /** @internal — test use only. In normal flow, the game loop calls _endGame. */
@@ -307,25 +316,25 @@ export class GameSession {
   isMyTurn(): boolean {
     const me = this.myPlayer();
     if (!me || !this._currentRound) return false;
-    return this._currentRound.phase === "picking" && this._currentRound.currentActor?.id === me.id;
+    return this._currentRound.phase === ROUND_PHASE_PICKING && this._currentRound.currentActor?.id === me.id;
   }
 
   isMyPlace(): boolean {
     const me = this.myPlayer();
     if (!me || !this._currentRound) return false;
-    return this._currentRound.phase === "placing" && this._currentRound.currentActor?.id === me.id;
+    return this._currentRound.phase === ROUND_PHASE_PLACING && this._currentRound.currentActor?.id === me.id;
   }
 
   localCardToPlace(): CardId | undefined {
     const me = this.myPlayer();
-    if (!me || !this._currentRound || this._currentRound.phase !== "placing") return undefined;
+    if (!me || !this._currentRound || this._currentRound.phase !== ROUND_PHASE_PLACING) return undefined;
     if (this._currentRound.currentActor?.id !== me.id) return undefined;
     return this._currentRound.deal.pickedCardFor(me) ?? undefined;
   }
 
   localEligiblePositions(): Array<{ x: number; y: number }> {
     const me = this.myPlayer();
-    if (!me || !this._currentRound || this._currentRound.phase !== "placing") return [];
+    if (!me || !this._currentRound || this._currentRound.phase !== ROUND_PHASE_PLACING) return [];
     if (this._currentRound.currentActor?.id !== me.id) return [];
     const cardId = this._currentRound.deal.pickedCardFor(me);
     if (cardId === null) return [];
@@ -334,7 +343,7 @@ export class GameSession {
 
   localValidDirectionsAt(x: number, y: number): Direction[] {
     const me = this.myPlayer();
-    if (!me || !this._currentRound || this._currentRound.phase !== "placing") return [];
+    if (!me || !this._currentRound || this._currentRound.phase !== ROUND_PHASE_PLACING) return [];
     if (this._currentRound.currentActor?.id !== me.id) return [];
     const cardId = this._currentRound.deal.pickedCardFor(me);
     if (cardId === null) return [];
@@ -346,7 +355,7 @@ export class GameSession {
 
   hasLocalValidPlacement(): boolean {
     const me = this.myPlayer();
-    if (!me || !this._currentRound || this._currentRound.phase !== "placing") return false;
+    if (!me || !this._currentRound || this._currentRound.phase !== ROUND_PHASE_PLACING) return false;
     if (this._currentRound.currentActor?.id !== me.id) return false;
     const cardId = this._currentRound.deal.pickedCardFor(me);
     if (cardId === null) return false;

@@ -1,10 +1,11 @@
 import type { PlayerId, CardId, Direction } from "kingdomino-engine";
+import { PICK_MADE, PLACE_MADE, DISCARD_MADE } from "kingdomino-engine";
 
 // ── Move messages (player actions over the wire) ──────────────────────────────
 
-export const PICK    = "pick:made";
-export const PLACE   = "place:made";
-export const DISCARD = "discard:made";
+export const PICK    = PICK_MADE;
+export const PLACE   = PLACE_MADE;
+export const DISCARD = DISCARD_MADE;
 
 export type PickMessage    = { type: typeof PICK;    playerId: PlayerId; cardId: CardId };
 export type PlaceMessage   = { type: typeof PLACE;   playerId: PlayerId; x: number; y: number; direction: Direction };

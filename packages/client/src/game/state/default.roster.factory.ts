@@ -1,6 +1,8 @@
 import { RandomSeedProvider } from "kingdomino-commitment";
 import type { GameVariant, PlayerId } from "kingdomino-engine";
+import { STANDARD } from "kingdomino-engine";
 import type { RosterConfig, PlayerSlotConfig } from "../../Lobby/lobby.types";
+import { SLOT_LOCAL, SLOT_COUCH, SLOT_AI, SLOT_REMOTE } from "../../Lobby/lobby.types";
 import type { RosterFactory, RosterResult } from "./RosterFactory";
 import { LocalPlayerActor } from "./local.player.actor";
 import { CouchPlayerActor } from "./couch.player.actor";
@@ -13,12 +15,12 @@ type DefaultRosterFactoryOptions = {
 export class DefaultRosterFactory implements RosterFactory {
   private readonly variant: GameVariant;
 
-  constructor({ variant = "standard" }: DefaultRosterFactoryOptions = {}) {
+  constructor({ variant = STANDARD }: DefaultRosterFactoryOptions = {}) {
     this.variant = variant;
   }
 
   async build(config: RosterConfig): Promise<RosterResult> {
-    const hasRemote = config.some((slot) => slot.type === "remote");
+    const hasRemote = config.some((slot) => slot.type === SLOT_REMOTE);
     if (hasRemote) {
       // TODO(remote-factory): inject PeerSession + CommitmentSeedProvider for remote slots
       throw new Error("DefaultRosterFactory: remote slots not yet supported");
@@ -30,7 +32,7 @@ export class DefaultRosterFactory implements RosterFactory {
     const playerIds: PlayerId[] = config.map((_, i) => `p${i + 1}` as PlayerId);
 
     // First non-AI player ID (used as AIPlayerActor's humanPlayerId)
-    const firstHumanIndex = config.findIndex((slot) => slot.type !== "ai");
+    const firstHumanIndex = config.findIndex((slot) => slot.type !== SLOT_AI);
     const firstHumanId = firstHumanIndex >= 0 ? playerIds[firstHumanIndex] : playerIds[0];
 
     const players = config.map((slot: PlayerSlotConfig, i: number) => {
@@ -38,20 +40,20 @@ export class DefaultRosterFactory implements RosterFactory {
       const label = `Player ${i + 1}`;
 
       switch (slot.type) {
-        case "local":
+        case SLOT_LOCAL:
           return { id, actor: new LocalPlayerActor(id) };
-        case "couch":
+        case SLOT_COUCH:
           return { id, actor: new CouchPlayerActor(id, label) };
-        case "ai":
+        case SLOT_AI:
           return { id, actor: new AIPlayerActor(id, firstHumanId, this.variant) };
-        case "remote":
+        case SLOT_REMOTE:
           // Unreachable: guarded by hasRemote check above
           throw new Error(`DefaultRosterFactory: unexpected remote slot at index ${i}`);
       }
     });
 
     // localPlayerId: first local or couch player (the "me" perspective for isMyTurn)
-    const localIndex = config.findIndex((slot) => slot.type === "local" || slot.type === "couch");
+    const localIndex = config.findIndex((slot) => slot.type === SLOT_LOCAL || slot.type === SLOT_COUCH);
     const localPlayerId = localIndex >= 0 ? playerIds[localIndex] : null;
 
     return { players, seedProvider, localPlayerId };

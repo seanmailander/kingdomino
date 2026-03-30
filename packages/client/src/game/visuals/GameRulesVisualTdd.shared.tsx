@@ -3,12 +3,22 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { App } from "../../App/App";
 import { resetAppState, triggerLobbyLeave, triggerLobbyStart, useApp, getCurrentSession } from "../../App/store";
 import type { RosterConfig } from "../../Lobby/lobby.types";
+import { SLOT_LOCAL, SLOT_AI } from "../../Lobby/lobby.types";
 import {
   findPlacementWithin5x5,
   getEligiblePositions,
   getValidDirections,
   staysWithin5x5,
   hashIt,
+  MIGHTY_DUEL,
+  ROUND_PHASE_PICKING,
+  ROUND_PHASE_PLACING,
+  ROUND_STARTED,
+  PICK_MADE,
+  PLACE_MADE,
+  DISCARD_MADE,
+  ROUND_COMPLETE,
+  GAME_ENDED,
 } from "kingdomino-engine";
 import type { GameVariant, SeedProvider } from "kingdomino-engine";
 import type { GameBonuses } from "kingdomino-engine";
@@ -149,7 +159,7 @@ export const DISCARD_WHEN_UNPLACEABLE_SCENARIO: RealGameScenario = {
 // Deal (hashIt(22^202)): [#1, #9, #10, #24]. Pick order: them first.
 // them picks cardIndex 0 → #1 (grain/grain). me picks cardIndex 2 → #24 (wood+1cr/grain).
 export const MIGHTY_DUEL_SCENARIO: RealGameScenario = {
-  variant: "mighty-duel",
+  variant: MIGHTY_DUEL,
   roundLimit: 1,
   localBoardPlacements: [
     { card: 2, x: 7, y: 6, direction: "right" }, // wood at (7,6)(8,6)
@@ -284,7 +294,7 @@ function ScriptedLocalPlayer({
     }
 
     const actionKey =
-      phase === "placing"
+      phase === ROUND_PHASE_PLACING
         ? `${roundIndex.current}:${phase}:${actor.id}:${placementAttemptIndex.current}`
         : `${roundIndex.current}:${phase}:${actor.id}`;
     if (lastActionKey.current === actionKey) {
@@ -293,7 +303,7 @@ function ScriptedLocalPlayer({
     lastActionKey.current = actionKey;
 
     queueMicrotask(() => {
-      if (phase === "picking") {
+      if (phase === ROUND_PHASE_PICKING) {
         let cardId: number;
         if (move.cardIndex !== undefined) {
           const available = (round.deal.snapshot() as ReadonlyArray<{ cardId: number; pickedBy: unknown }>)
@@ -313,7 +323,7 @@ function ScriptedLocalPlayer({
         return;
       }
 
-      if (phase === "placing") {
+      if (phase === ROUND_PHASE_PLACING) {
         if (move.discard === true) {
           session.handleLocalDiscard();
           roundIndex.current += 1;
@@ -406,7 +416,7 @@ function StoryStatePanel({ scriptLog }: { scriptLog: ReadonlyArray<string> }) {
     };
 
     const unsubscribers = [
-      session.events.on("round:started", ({ round }) =>
+      session.events.on(ROUND_STARTED, ({ round }) =>
         append(
           "round-started",
           round.deal
@@ -415,19 +425,19 @@ function StoryStatePanel({ scriptLog }: { scriptLog: ReadonlyArray<string> }) {
             .join(", "),
         ),
       ),
-      session.events.on("pick:made", ({ player, cardId }) =>
+      session.events.on(PICK_MADE, ({ player, cardId }) =>
         append("pick", `${player.id} -> #${cardId}`),
       ),
-      session.events.on("place:made", ({ player, cardId, x, y, direction }) =>
+      session.events.on(PLACE_MADE, ({ player, cardId, x, y, direction }) =>
         append("place", `${player.id} -> #${cardId} @ (${x},${y}) ${direction}`),
       ),
-      session.events.on("discard:made", ({ player, cardId }) =>
+      session.events.on(DISCARD_MADE, ({ player, cardId }) =>
         append("discard", `${player.id} -> #${cardId}`),
       ),
-      session.events.on("round:complete", ({ nextPickOrder }) =>
+      session.events.on(ROUND_COMPLETE, ({ nextPickOrder }) =>
         append("round-complete", nextPickOrder.map((player) => player.id).join(" -> ")),
       ),
-      session.events.on("game:ended", ({ scores }) =>
+      session.events.on(GAME_ENDED, ({ scores }) =>
         append("game-ended", scores.map(({ player, score }) => `${player.id}:${score}`).join(", ")),
       ),
     ];
@@ -501,7 +511,7 @@ function ScriptedRemotePlayer({
   useEffect(() => {
     if (!session) return;
     roundIndexRef.current = 0;
-    const off = session.events.on("round:started", () => {
+    const off = session.events.on(ROUND_STARTED, () => {
       const moveIndex = roundIndexRef.current++;
       if (moveIndex >= moves.length) return;
       connectionRef.current?.scheduleNextRemoteMove();
@@ -555,7 +565,7 @@ export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }
     flow.ready(connection);
 
     if (scenario.autoStart !== false) {
-      const defaultConfig: RosterConfig = [{ type: "local" }, { type: "ai" }];
+      const defaultConfig: RosterConfig = [{ type: SLOT_LOCAL }, { type: SLOT_AI }];
       queueMicrotask(() => triggerLobbyStart(defaultConfig));
     }
 

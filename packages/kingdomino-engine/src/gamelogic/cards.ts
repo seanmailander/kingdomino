@@ -107,7 +107,9 @@ export const generateCardMap = (): CardInfo[] => {
 
 export const generateDeck = () => [...Array(48).keys()] as const;
 
-export type GameVariant = "standard" | "mighty-duel";
+export const STANDARD    = "standard"    as const;
+export const MIGHTY_DUEL = "mighty-duel" as const;
+export type GameVariant = typeof STANDARD | typeof MIGHTY_DUEL;
 
 const cardMap = generateCardMap();
 

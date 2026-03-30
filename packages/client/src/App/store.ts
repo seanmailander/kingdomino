@@ -2,6 +2,7 @@ import { computed, effect, signal } from "alien-signals";
 import { useEffect, useMemo, useState } from "react";
 
 import type { GameSession, GameEvent } from "kingdomino-engine";
+import { GAME_STARTED, ROUND_STARTED, PICK_MADE, PLACE_MADE, DISCARD_MADE, ROUND_COMPLETE, GAME_PAUSED, GAME_RESUMED, GAME_ENDED } from "kingdomino-engine";
 import type { GameEndedEntry } from "kingdomino-engine";
 import { type Room, Splash, computeHint } from "./AppExtras";
 import type { RosterConfig } from "../Lobby/lobby.types";
@@ -24,15 +25,15 @@ const gameOverScoresSignal = signal<GameEndedEntry[]>([]);
 export const getGameOverScores = (): GameEndedEntry[] => gameOverScoresSignal();
 
 const ALL_EVENTS: ReadonlyArray<GameEvent["type"]> = [
-  "game:started",
-  "round:started",
-  "pick:made",
-  "place:made",
-  "discard:made",
-  "round:complete",
-  "game:paused",
-  "game:resumed",
-  "game:ended",
+  GAME_STARTED,
+  ROUND_STARTED,
+  PICK_MADE,
+  PLACE_MADE,
+  DISCARD_MADE,
+  ROUND_COMPLETE,
+  GAME_PAUSED,
+  GAME_RESUMED,
+  GAME_ENDED,
 ];
 
 let sessionUnsubscribers: Array<() => void> = [];
@@ -46,7 +47,7 @@ export const setCurrentSession = (session: GameSession | null): void => {
 
   if (session) {
     // Capture game:ended payload before bumping version so data is ready when React re-renders
-    const unsubscribeEnded = session.events.on("game:ended", ({ scores }) => {
+    const unsubscribeEnded = session.events.on(GAME_ENDED, ({ scores }) => {
       gameOverScoresSignal(scores);
     });
     sessionUnsubscribers.push(unsubscribeEnded);

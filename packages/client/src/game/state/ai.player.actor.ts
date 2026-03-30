@@ -2,6 +2,7 @@ import type { CardId, Direction } from "kingdomino-engine";
 import type { PlayerActor, PlacementResult } from "kingdomino-protocol";
 import { RandomAIPlayer } from "kingdomino-protocol";
 import type { PlayerId, BoardGrid, GameVariant } from "kingdomino-engine";
+import { STANDARD } from "kingdomino-engine";
 
 // TODO: redesign AIPlayerActor for N-player games.
 // RandomAIPlayer takes a single humanPlayerId, which is ambiguous in games
@@ -21,7 +22,7 @@ export class AIPlayerActor implements PlayerActor {
   private readonly ai: RandomAIPlayer;
   private pendingPlacement: PlacementResult | null = null;
 
-  constructor(playerId: PlayerId, humanPlayerId: PlayerId, variant: GameVariant = "standard") {
+  constructor(playerId: PlayerId, humanPlayerId: PlayerId, variant: GameVariant = STANDARD) {
     this.playerId = playerId;
     this.ai = new RandomAIPlayer(playerId, humanPlayerId, variant);
   }
