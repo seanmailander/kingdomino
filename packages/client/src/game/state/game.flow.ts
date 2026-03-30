@@ -9,6 +9,7 @@ import { PICK, PLACE, DISCARD } from "kingdomino-protocol";
 import { SoloConnection } from "./connection.solo";
 import type { GameVariant } from "kingdomino-engine";
 import type { GameBonuses } from "kingdomino-engine";
+import type { RosterConfig } from "../../Lobby/lobby.types";
 
 const CONTROL_TIMEOUT_MS = 5000;
 
@@ -33,7 +34,7 @@ export interface FlowAdapter {
   setPhase(phase: FlowPhase): void;
   getPhase(): FlowPhase;
   oncePhaseIsNot(phase: FlowPhase): Promise<void>;
-  awaitStart(): Promise<void>;
+  awaitStart(): Promise<RosterConfig>;
   awaitLeave(): Promise<void>;
   awaitPause(): Promise<void>;
   awaitResume(): Promise<void>;
@@ -161,15 +162,18 @@ export class LobbyFlow {
 
       // Lobby phase: race start vs leave
       const lobbyResult = await Promise.race([
-        this.adapter.awaitStart().then(() => "start" as const),
-        this.adapter.awaitLeave().then(() => "leave" as const),
+        this.adapter.awaitStart().then((config) => ({ outcome: "start" as const, config })),
+        this.adapter.awaitLeave().then(() => ({ outcome: "leave" as const, config: null })),
       ]);
 
-      if (lobbyResult === "leave") {
+      if (lobbyResult.outcome === "leave") {
         this.adapter.setSession(null);
         this.adapter.setPhase("splash");
         return;
       }
+
+      // TODO(roster-factory-interface): pass config to rosterFactory.build(config) once wired
+      const _rosterConfig = lobbyResult.config;
 
       this.adapter.setPhase("game");
 

@@ -11,6 +11,7 @@ import {
   triggerPauseIntent,
   triggerResumeIntent,
 } from "../../App/store";
+import type { RosterConfig } from "../../Lobby/lobby.types";
 import { Splash, Lobby, Game, GamePaused, GameEnded } from "../../App/AppExtras";
 import { LobbyFlow } from "./game.flow";
 import { AppFlowAdapter } from "../../App/AppFlowAdapter";
@@ -21,6 +22,8 @@ import {
   type WireMessageType,
   TestConnection,
 } from "kingdomino-protocol";
+
+const minimalConfig: RosterConfig = [{ type: "local" }, { type: "ai" }];
 
 class StubConnection {
   readonly peerIdentifiers = {
@@ -106,7 +109,7 @@ describe("LobbyFlow control transitions", () => {
     flow.ready(connection);
 
     await vi.waitFor(() => expect(getRoom()).toBe(Lobby));
-    triggerLobbyStart();
+    triggerLobbyStart(minimalConfig);
     await vi.waitFor(() => expect(getRoom()).toBe(Game));
 
     triggerPauseIntent();
@@ -132,7 +135,7 @@ describe("LobbyFlow control transitions", () => {
     flow.ready(connection);
 
     await vi.waitFor(() => expect(getRoom()).toBe(Lobby));
-    triggerLobbyStart();
+    triggerLobbyStart(minimalConfig);
     await vi.waitFor(() => expect(getRoom()).toBe(Game));
 
     await vi.waitFor(() => expect(getRoom()).toBe(GamePaused), { timeout: 3000 });
@@ -152,7 +155,7 @@ describe("LobbyFlow control transitions", () => {
     flow.ready(connection);
 
     await vi.waitFor(() => expect(getRoom()).toBe(Lobby));
-    triggerLobbyStart();
+    triggerLobbyStart(minimalConfig);
     await vi.waitFor(() => expect(getRoom()).toBe(Game));
 
     triggerPauseIntent();
@@ -179,7 +182,7 @@ describe("LobbyFlow game completion", () => {
     flow.ReadySolo();
 
     await vi.waitFor(() => expect(getRoom()).toBe(Lobby));
-    triggerLobbyStart();
+    triggerLobbyStart(minimalConfig);
     await vi.waitFor(() => expect(getRoom()).toBe(Game), { timeout: 3000 });
 
     // Poll every 50ms: drive the local player whenever it's our turn.

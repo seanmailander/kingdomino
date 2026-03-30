@@ -1,9 +1,10 @@
-import { computed, effect, signal } from "alien-signals";
+import type { RosterConfig } from "../Lobby/lobby.types";
 import { useEffect, useMemo, useState } from "react";
 
 import type { GameSession, GameEvent } from "kingdomino-engine";
 import type { GameEndedEntry } from "kingdomino-engine";
 import { type Room, Splash, computeHint } from "./AppExtras";
+import type { RosterConfig } from "../Lobby/lobby.types";
 
 // ── Session signal ────────────────────────────────────────────────────────────
 
@@ -97,18 +98,18 @@ export const onceRoomIsNot = (room: Room): Promise<void> => {
 // The game flow module calls await awaitLobbyStart() and the Lobby button
 // calls triggerLobbyStart() — no action types involved.
 
-let lobbyStartResolvers: Array<() => void> = [];
+let lobbyStartResolvers: Array<(config: RosterConfig) => void> = [];
 
-export const awaitLobbyStart = (): Promise<void> =>
+export const awaitLobbyStart = (): Promise<RosterConfig> =>
   new Promise((resolve) => {
     lobbyStartResolvers.push(resolve);
   });
 
-export const triggerLobbyStart = (): void => {
+export const triggerLobbyStart = (config: RosterConfig): void => {
   const resolvers = lobbyStartResolvers;
   lobbyStartResolvers = [];
   for (const resolve of resolvers) {
-    resolve();
+    resolve(config);
   }
 };
 

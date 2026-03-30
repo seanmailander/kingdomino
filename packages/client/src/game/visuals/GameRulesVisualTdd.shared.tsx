@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { App } from "../../App/App";
 import { resetAppState, triggerLobbyLeave, triggerLobbyStart, useApp, getCurrentSession } from "../../App/store";
+import type { RosterConfig } from "../../Lobby/lobby.types";
 import {
   findPlacementWithin5x5,
   getEligiblePositions,
@@ -554,7 +555,8 @@ export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }
     flow.ready(connection);
 
     if (scenario.autoStart !== false) {
-      queueMicrotask(() => triggerLobbyStart());
+      const defaultConfig: RosterConfig = [{ type: "local" }, { type: "ai" }];
+      queueMicrotask(() => triggerLobbyStart(defaultConfig));
     }
 
     return () => {

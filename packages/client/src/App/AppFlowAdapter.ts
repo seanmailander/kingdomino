@@ -12,6 +12,7 @@ import {
 import { Lobby, Game, Splash, GamePaused, GameEnded } from "./AppExtras";
 import type { FlowAdapter, FlowPhase } from "../game/state/game.flow";
 import type { GameSession } from "kingdomino-engine";
+import type { RosterConfig } from "../Lobby/lobby.types";
 
 const phaseToRoom = {
   splash: Splash,
@@ -47,7 +48,7 @@ export class AppFlowAdapter implements FlowAdapter {
     return onceRoomIsNot(phaseToRoom[phase]);
   }
 
-  awaitStart(): Promise<void> {
+  awaitStart(): Promise<RosterConfig> {
     return awaitLobbyStart();
   }
 
