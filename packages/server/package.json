@@ -9,7 +9,7 @@
   "scripts": {
     "lint": "eslint",
     "start": "nodemon --exec node --loader ts-node/esm ./index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"No tests for server\""
   },
   "dependencies": {
     "@types/multicast-dns": "^7.2.4",
