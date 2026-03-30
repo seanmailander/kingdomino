@@ -1,37 +1,86 @@
-import React from "react";
+import { useState } from "react";
 
-import { triggerLobbyStart, triggerLobbyLeave } from "../App/store";
-import type { GameSession } from "kingdomino-engine";
+import type { PlayerSlotConfig, PlayerSlotType, RosterConfig } from "./lobby.types";
 
 type LobbyProps = {
-  session: GameSession | null;
+  onStart: (config: RosterConfig) => void;
+  onLeave: () => void;
 };
 
-export function Lobby({ session }: LobbyProps) {
-  const players = session?.players ?? [];
-  const hasEnoughPlayers = session?.hasEnoughPlayers() ?? false;
+const SLOT_TYPES: PlayerSlotType[] = ["local", "couch", "ai", "remote"];
+const SLOT_TYPE_LABELS: Record<PlayerSlotType, string> = {
+  local: "Local",
+  couch: "Couch",
+  ai: "AI",
+  remote: "Remote",
+};
 
-  const startGame = hasEnoughPlayers && (
-    <>
-      Ready!
-      <button aria-label="Start game" onClick={triggerLobbyStart}>
-        Start game
-      </button>
-      <br />
-      <button aria-label="Leave game" onClick={triggerLobbyLeave}>
-        Leave game
-      </button>
-    </>
-  );
+export function Lobby({ onStart, onLeave }: LobbyProps) {
+  const [playerCount, setPlayerCount] = useState<2 | 3 | 4>(2);
+  const [slots, setSlots] = useState<PlayerSlotConfig[]>([{ type: "local" }, { type: "ai" }]);
 
-  const waitingForPlayers = !hasEnoughPlayers && <>Waiting for players</>;
+  const changePlayerCount = (count: 2 | 3 | 4) => {
+    setPlayerCount(count);
+    setSlots((prev) => {
+      if (count > prev.length) {
+        return [...prev, ...Array.from({ length: count - prev.length }, () => ({ type: "ai" as PlayerSlotType }))];
+      }
+      return prev.slice(0, count);
+    });
+  };
+
+  const changeSlotType = (index: number, type: PlayerSlotType) => {
+    setSlots((prev) => prev.map((slot, i) => (i === index ? { ...slot, type, peerId: type === "remote" ? slot.peerId : undefined } : slot)));
+  };
+
+  const changeSlotPeerId = (index: number, peerId: string) => {
+    setSlots((prev) => prev.map((slot, i) => (i === index ? { ...slot, peerId } : slot)));
+  };
+
+  const startDisabled = slots.some((slot) => slot.type === "remote" && !slot.peerId);
 
   return (
     <>
-      Players: {JSON.stringify(players.map((p) => ({ playerId: p.id, isMe: session?.myPlayer()?.id === p.id })))}
-      <br />
-      {waitingForPlayers}
-      {startGame}
+      <h2>Lobby</h2>
+
+      <div>
+        <span>Players: </span>
+        {([2, 3, 4] as const).map((count) => (
+          <button key={count} aria-pressed={playerCount === count} onClick={() => changePlayerCount(count)}>
+            {count}
+          </button>
+        ))}
+      </div>
+
+      <ul>
+        {slots.map((slot, i) => (
+          <li key={i}>
+            <span>Player {i + 1}</span>
+            <div>
+              {SLOT_TYPES.map((type) => (
+                <button key={type} aria-pressed={slot.type === type} onClick={() => changeSlotType(i, type)}>
+                  {SLOT_TYPE_LABELS[type]}
+                </button>
+              ))}
+            </div>
+            {slot.type === "remote" && (
+              <input
+                type="text"
+                placeholder="Peer ID…"
+                value={slot.peerId ?? ""}
+                onChange={(e) => changeSlotPeerId(i, e.target.value)}
+              />
+            )}
+          </li>
+        ))}
+      </ul>
+
+      <div>
+        <button disabled={startDisabled} onClick={() => onStart(slots as RosterConfig)}>
+          Start game
+        </button>
+        <button onClick={onLeave}>Leave</button>
+      </div>
     </>
   );
 }
