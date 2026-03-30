@@ -6,5 +6,8 @@ export type PlayerSlotConfig = {
   peerId?: string
 }
 
-/** Minimum 2, maximum 4 players (runtime guard enforced in DefaultRosterFactory) */
-export type RosterConfig = [PlayerSlotConfig, PlayerSlotConfig, ...PlayerSlotConfig[]]
+/** 2, 3, or 4 player slots — enforced at the type level. */
+export type RosterConfig =
+  | [PlayerSlotConfig, PlayerSlotConfig]
+  | [PlayerSlotConfig, PlayerSlotConfig, PlayerSlotConfig]
+  | [PlayerSlotConfig, PlayerSlotConfig, PlayerSlotConfig, PlayerSlotConfig]
