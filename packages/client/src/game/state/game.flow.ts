@@ -1,7 +1,7 @@
 import { CommitmentSeedProvider, RandomSeedProvider } from "kingdomino-commitment";
 import type { CommitmentTransport } from "kingdomino-commitment";
 import type { SeedProvider } from "kingdomino-engine";
-import { ConnectionManager, RandomAIPlayer } from "kingdomino-protocol";
+import { ConnectionManager, RandomAIPlayer, GameDriver } from "kingdomino-protocol";
 import { GameSession, Player } from "kingdomino-engine";
 import type { GameEventBus, GameEvent, CardId } from "kingdomino-engine";
 import type { WireMessage, WireMessagePayload, WireMessageType } from "kingdomino-protocol";
@@ -10,6 +10,7 @@ import { SoloConnection } from "./connection.solo";
 import type { GameVariant } from "kingdomino-engine";
 import type { GameBonuses } from "kingdomino-engine";
 import type { RosterConfig } from "../../Lobby/lobby.types";
+import type { RosterFactory } from "./RosterFactory";
 
 const CONTROL_TIMEOUT_MS = 5000;
 
@@ -43,10 +44,14 @@ export interface FlowAdapter {
 
 type LobbyFlowOptions = {
   adapter: FlowAdapter;
-  createConnectionManager?: (connection: IGameConnection) => ConnectionManager;
-  createSeedProvider?: (connection: IGameConnection) => SeedProvider;
+  /** Factory that builds actors and a seed provider from the lobby roster config. */
+  rosterFactory?: RosterFactory;
   variant?: GameVariant;
   bonuses?: GameBonuses;
+  /** @deprecated Legacy connection-based options kept for backward-compat with tests. */
+  createConnectionManager?: (connection: IGameConnection) => ConnectionManager;
+  /** @deprecated Legacy connection-based options kept for backward-compat with tests. */
+  createSeedProvider?: (connection: IGameConnection) => SeedProvider;
 };
 
 // ── Event-based waiting (replaces waitForComputed) ──────────────────────────────
@@ -80,6 +85,7 @@ export class LobbyFlow {
   private aiPlayer: RandomAIPlayer | null = null;
   private soloConnection: SoloConnection | null = null;
   private readonly adapter: FlowAdapter;
+  private readonly rosterFactory: RosterFactory | undefined;
   private readonly createConnectionManager: (connection: IGameConnection) => ConnectionManager;
   private readonly createSeedProvider: ((connection: IGameConnection) => SeedProvider) | undefined;
   private readonly variant: GameVariant;
@@ -87,12 +93,30 @@ export class LobbyFlow {
 
   constructor(options: LobbyFlowOptions) {
     this.adapter = options.adapter;
+    this.rosterFactory = options.rosterFactory;
     this.createConnectionManager =
       options.createConnectionManager ??
       ((connection) => new ConnectionManager(connection.send, connection.waitFor));
     this.createSeedProvider = options.createSeedProvider;
     this.variant = options.variant ?? "standard";
     this.bonuses = options.bonuses ?? {};
+  }
+
+  /**
+   * Factory-driven entry point. Begins the lobby phase, waits for the UI to
+   * configure the roster, then builds actors via the injected RosterFactory
+   * and drives the game with GameDriver.
+   *
+   * Requires `rosterFactory` to be provided in LobbyFlowOptions.
+   */
+  start() {
+    if (this.isRunning) return;
+    if (!this.rosterFactory) {
+      console.error("LobbyFlow.start(): no rosterFactory configured — use ready() for legacy flows");
+      return;
+    }
+    this.isRunning = true;
+    void this.runFlowWithFactory();
   }
 
   ready(connection: IGameConnection) {
@@ -114,6 +138,62 @@ export class LobbyFlow {
     // Keep this as a safe no-op until a transport is configured.
     this.adapter.setSession(null);
     this.adapter.setPhase("splash");
+  }
+
+  private async runFlowWithFactory(): Promise<void> {
+    try {
+      this.adapter.setSession(null);
+      this.adapter.setPhase("lobby");
+
+      const lobbyResult = await Promise.race([
+        this.adapter.awaitStart().then((config) => ({ outcome: "start" as const, config })),
+        this.adapter.awaitLeave().then(() => ({ outcome: "leave" as const, config: null })),
+      ]);
+
+      if (lobbyResult.outcome === "leave") {
+        this.adapter.setPhase("splash");
+        return;
+      }
+
+      const { players, seedProvider, localPlayerId } = await this.rosterFactory!.build(lobbyResult.config!);
+
+      const session = new GameSession({
+        variant: this.variant,
+        bonuses: this.bonuses,
+        localPlayerId: localPlayerId ?? players[0].id,
+        seedProvider,
+      });
+      this.session = session;
+
+      for (const { id } of players) {
+        session.addPlayer(new Player(id));
+      }
+      this.adapter.setSession(session);
+      this.adapter.setPhase("game");
+
+      // Sync engine phase changes to adapter
+      session.events.on("game:paused",  () => this.adapter.setPhase("paused"));
+      session.events.on("game:resumed", () => this.adapter.setPhase("game"));
+
+      // Wire local pause/resume/leave intents
+      // TODO(remote-control): Add peer handshake for remote slots
+      void this.adapter.awaitPause().then(() => { if (session.phase === "playing") session.pause(); });
+      void this.adapter.awaitResume().then(() => { if (session.phase === "paused") session.resume(); });
+      void this.adapter.awaitLeave().then(() => this.adapter.reset());
+
+      const actorMap = new Map(players.map(({ id, actor }) => [id, actor]));
+      const driver = new GameDriver(session, actorMap);
+      await driver.run();
+
+      this.adapter.setPhase("ended");
+    } catch (e) {
+      console.error(e);
+      this.adapter.setSession(null);
+      this.adapter.setPhase("splash");
+    } finally {
+      this.session = null;
+      this.isRunning = false;
+    }
   }
 
   private listenForControlMessages(session: GameSession): void {
@@ -172,8 +252,7 @@ export class LobbyFlow {
         return;
       }
 
-      // TODO(roster-factory-interface): pass config to rosterFactory.build(config) once wired
-      const _rosterConfig = lobbyResult.config;
+      // TODO(roster-factory-interface): legacy IGameConnection path — use start() + rosterFactory for new flows
 
       this.adapter.setPhase("game");
 

@@ -6,6 +6,8 @@ import type { RosterConfig } from "../../Lobby/lobby.types";
 export type RosterResult = {
   players: Array<{ id: PlayerId; actor: PlayerActor }>
   seedProvider: SeedProvider
+  /** The player ID that represents "this device's" player (used by GameSession for isMyTurn etc). */
+  localPlayerId: PlayerId | null
 }
 
 export interface RosterFactory {

@@ -6,7 +6,7 @@ import { Lobby as LobbyComponent } from "../Lobby/Lobby";
 import { Game as GameComponent } from "../game/visuals/Game";
 import { GameOverScreen } from "../game/visuals/GameOverScreen";
 import { determineWinners } from "kingdomino-engine";
-import { useApp, getGameOverScores, resetAppState } from "./store";
+import { useApp, getGameOverScores, resetAppState, triggerLobbyStart, triggerLobbyLeave } from "./store";
 
 export function App() {
   const { session, room, hint } = useApp();
@@ -16,7 +16,7 @@ export function App() {
       <h1>Kingdomino</h1>
       <p>{hint}</p>
       {room === "Splash" && <SplashComponent />}
-      {room === "Lobby" && <LobbyComponent session={session} />}
+      {room === "Lobby" && <LobbyComponent onStart={triggerLobbyStart} onLeave={triggerLobbyLeave} />}
       {(room === "Game" || room === "GamePaused") && session && <GameComponent session={session} />}
       {room === "GameEnded" && (
         <GameOverScreen
