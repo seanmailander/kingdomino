@@ -90,42 +90,37 @@ export class MultiplayerConnection {
     });
   };
 
-  /**
-   * Await either a PLACE or DISCARD message, registering a single paired resolver
-   * for both types and cleaning up the losing registration when one arrives.
-   * This prevents stale resolvers from silently consuming messages in later rounds.
-   */
-  waitForPlaceOrDiscard = (): Promise<PlaceMessage | DiscardMessage> => {
+  waitForOneOf = <Types extends WireMessageType[]>(
+    ...types: Types
+  ): Promise<WireMessagePayload<Types[number]>> => {
     this.assertActive();
 
-    // Drain any already-queued PLACE or DISCARD before registering new resolvers.
-    const placeQueue = this.messageQueues.get(PLACE) as PlaceMessage[] | undefined;
-    if (placeQueue && placeQueue.length > 0) {
-      return Promise.resolve(placeQueue.shift()!);
-    }
-    const discardQueue = this.messageQueues.get(DISCARD) as DiscardMessage[] | undefined;
-    if (discardQueue && discardQueue.length > 0) {
-      return Promise.resolve(discardQueue.shift()!);
+    // Drain any already-queued message (first matching type wins).
+    for (const type of types) {
+      const queue = this.messageQueues.get(type) as Array<WireMessagePayload<typeof type>> | undefined;
+      if (queue && queue.length > 0) {
+        return Promise.resolve(queue.shift() as WireMessagePayload<Types[number]>);
+      }
     }
 
-    return new Promise<PlaceMessage | DiscardMessage>((resolve, reject) => {
+    return new Promise<WireMessagePayload<Types[number]>>((resolve, reject) => {
       let settled = false;
 
-      const makeResolver = (
-        ownType: typeof PLACE | typeof DISCARD,
-        otherType: typeof PLACE | typeof DISCARD,
-      ): MessageResolver => ({
+      const makeResolver = (ownType: WireMessageType): MessageResolver => ({
         resolve: (payload) => {
           if (settled) return;
           settled = true;
-          // Remove the companion resolver so it cannot consume a future message.
-          const companions = this.messageResolvers.get(otherType);
-          if (companions) {
-            const idx = companions.indexOf(resolvers.get(otherType)!);
-            if (idx !== -1) companions.splice(idx, 1);
-            if (companions.length === 0) this.messageResolvers.delete(otherType);
+          // Remove companion resolvers for all other types.
+          for (const otherType of types) {
+            if (otherType === ownType) continue;
+            const companions = this.messageResolvers.get(otherType);
+            if (companions) {
+              const idx = companions.indexOf(resolverMap.get(otherType)!);
+              if (idx !== -1) companions.splice(idx, 1);
+              if (companions.length === 0) this.messageResolvers.delete(otherType);
+            }
           }
-          resolve(payload as PlaceMessage | DiscardMessage);
+          resolve(payload as WireMessagePayload<Types[number]>);
         },
         reject: (err) => {
           if (settled) return;
@@ -134,19 +129,24 @@ export class MultiplayerConnection {
         },
       });
 
-      // Build both resolvers before registering either (they reference each other via the Map).
-      const resolvers = new Map<typeof PLACE | typeof DISCARD, MessageResolver>([
-        [PLACE,   makeResolver(PLACE, DISCARD)],
-        [DISCARD, makeResolver(DISCARD, PLACE)],
-      ]);
+      const resolverMap = new Map<WireMessageType, MessageResolver>(
+        types.map((type) => [type, makeResolver(type)]),
+      );
 
-      for (const [type, resolver] of resolvers) {
+      for (const [type, resolver] of resolverMap) {
         const list = this.messageResolvers.get(type) ?? [];
         list.push(resolver);
         this.messageResolvers.set(type, list);
       }
     });
   };
+
+  /**
+   * Await either a PLACE or DISCARD message. Delegates to waitForOneOf,
+   * which registers paired cancellation-aware resolvers for both types.
+   */
+  waitForPlaceOrDiscard = (): Promise<PlaceMessage | DiscardMessage> =>
+    this.waitForOneOf(PLACE, DISCARD) as Promise<PlaceMessage | DiscardMessage>;
 
   receive = (message: WireMessage) => {
     this.assertActive();
