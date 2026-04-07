@@ -66,7 +66,7 @@ describe("RemotePlayerActor", () => {
     const manager = new ConnectionManager(
       local.send,
       local.waitFor,
-      local.waitForPlaceOrDiscard.bind(local),
+      local.waitForOneOf.bind(local),
     );
     const actor = new RemotePlayerActor("remote", manager);
 
@@ -78,5 +78,30 @@ describe("RemotePlayerActor", () => {
     remote.send({ type: "discard:made", playerId: "remote" });
     const result = await actor.awaitPlacement(2, stubBoard);
     expect(result).toEqual({ discard: true });
+  });
+
+  it("waitForNextMoveMessage() in a loop does not accumulate stale resolvers across rounds", async () => {
+    const { local, remote } = makeConnectedPair();
+    const manager = new ConnectionManager(
+      local.send,
+      local.waitFor,
+      local.waitForOneOf.bind(local),
+    );
+
+    // Simulate 3 rounds of PICK messages arriving via the loop.
+    // Without the fix, stale PLACE+DISCARD resolvers pile up and consume future messages.
+    for (let round = 1; round <= 3; round++) {
+      const msgPromise = manager.waitForNextMoveMessage();
+      remote.send({ type: "pick:made", playerId: "remote", cardId: round });
+      const msg = await msgPromise;
+      expect(msg).toMatchObject({ type: "pick:made", cardId: round });
+    }
+
+    // After 3 PICK rounds: without the fix there would be 6 stale PLACE/DISCARD resolvers.
+    // With the fix: 0. Verify by confirming a PLACE message is received correctly.
+    const placeMsgPromise = manager.waitForNextMoveMessage();
+    remote.send({ type: "place:made", playerId: "remote", x: 1, y: 1, direction: "up" });
+    const placeMsg = await placeMsgPromise;
+    expect(placeMsg).toMatchObject({ type: "place:made" });
   });
 });
