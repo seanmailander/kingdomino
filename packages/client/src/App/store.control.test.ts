@@ -6,6 +6,7 @@ import {
   triggerResumeIntent,
   awaitExitConfirm,
   triggerExitConfirm,
+  awaitLobbyLeave,
   resetAppState,
 } from "./store";
 
@@ -26,6 +27,12 @@ describe("store control intents", () => {
     const waiter = awaitExitConfirm();
     resetAppState();
     triggerExitConfirm(true);
+    await expect(waiter).resolves.toBeUndefined();
+  });
+
+  it("resolves pending lobby leave waiters on reset", async () => {
+    const waiter = awaitLobbyLeave();
+    resetAppState();
     await expect(waiter).resolves.toBeUndefined();
   });
 });
