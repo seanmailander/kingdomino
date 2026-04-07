@@ -57,6 +57,8 @@ The racy fallback (used when no `waitForOneOf` is injected) is kept for backward
 
 ### `game.flow.ts` injection site
 
+Use duck-typing via `instanceof MultiplayerConnection` (same as the current check), since `MultiplayerConnection` is already imported at that site:
+
 ```ts
 // Before
 connection instanceof MultiplayerConnection
@@ -64,12 +66,10 @@ connection instanceof MultiplayerConnection
   : undefined
 
 // After
-"waitForOneOf" in connection
-  ? (connection as { waitForOneOf: ... }).waitForOneOf.bind(connection)
+connection instanceof MultiplayerConnection
+  ? connection.waitForOneOf.bind(connection)
   : undefined
 ```
-
-Or, typed via duck-typing against the new optional method on the connections.
 
 ### Dead code removal
 
