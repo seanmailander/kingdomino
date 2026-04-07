@@ -76,7 +76,12 @@ describe("RemotePlayerActor", () => {
 
     // Round 2: remote discards — consumed by stale waiter from round 1 without the fix
     remote.send({ type: "discard:made", playerId: "remote" });
-    const result = await actor.awaitPlacement(2, stubBoard);
+    const result = await Promise.race([
+      actor.awaitPlacement(2, stubBoard),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("awaitPlacement(2) did not resolve within 500ms — possible stale waiter regression")), 500)
+      ),
+    ]);
     expect(result).toEqual({ discard: true });
   });
 
@@ -93,7 +98,12 @@ describe("RemotePlayerActor", () => {
     for (let round = 1; round <= 3; round++) {
       const msgPromise = manager.waitForNextMoveMessage();
       remote.send({ type: "pick:made", playerId: "remote", cardId: round });
-      const msg = await msgPromise;
+      const msg = await Promise.race([
+        msgPromise,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`waitForNextMoveMessage() round ${round} did not resolve within 500ms — possible stale resolver accumulation`)), 500)
+        ),
+      ]);
       expect(msg).toMatchObject({ type: "pick:made", cardId: round });
     }
 
@@ -101,7 +111,12 @@ describe("RemotePlayerActor", () => {
     // With the fix: 0. Verify by confirming a PLACE message is received correctly.
     const placeMsgPromise = manager.waitForNextMoveMessage();
     remote.send({ type: "place:made", playerId: "remote", x: 1, y: 1, direction: "up" });
-    const placeMsg = await placeMsgPromise;
+    const placeMsg = await Promise.race([
+      placeMsgPromise,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("waitForNextMoveMessage() final PLACE did not resolve within 500ms — possible stale resolver accumulation")), 500)
+      ),
+    ]);
     expect(placeMsg).toMatchObject({ type: "place:made" });
   });
 });
