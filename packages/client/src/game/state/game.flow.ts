@@ -106,7 +106,7 @@ export class LobbyFlow {
         connection.send,
         connection.waitFor,
         connection instanceof MultiplayerConnection
-          ? connection.waitForPlaceOrDiscard.bind(connection)
+          ? connection.waitForOneOf.bind(connection)
           : undefined,
       ));
     this.createSeedProvider = options.createSeedProvider;
