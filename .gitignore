@@ -24,8 +24,13 @@ yarn-error.log*
 
 .eslintcache
 
-client/build
+packages/client/build
 
 .cert
 *storybook.log
 storybook-static
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key

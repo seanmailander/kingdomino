@@ -1,0 +1,17 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Shuffles deck > produces stable output for fixed seeds (snapshot — run updateSnapshot on intentional RNG changes) 1`] = `
+[
+  43,
+  4,
+  39,
+  16,
+]
+`;
+
+exports[`chooseOrderFromSeed > produces stable output for fixed seeds (snapshot — run updateSnapshot on intentional RNG changes) 1`] = `
+[
+  "bob",
+  "alice",
+]
+`;

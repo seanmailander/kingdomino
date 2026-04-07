@@ -19,10 +19,13 @@ jobs:
         with:
           node-version-file: ".nvmrc"
 
-      - run: cd client
       - run: npm ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: packages/client
       - run: npm run build --if-present
+        working-directory: packages/client
       - run: npm test
+        working-directory: packages/client
 
   build-server:
     runs-on: ubuntu-latest
@@ -32,7 +35,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-      - run: cd server
       - run: npm ci
       - run: npm run build --if-present
+        working-directory: packages/server
       - run: npm test
+        working-directory: packages/server

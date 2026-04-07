@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "kingdomino",
+  "project_id": "d3ffeeba-b942-4026-90ab-459ade09d8c6"
+}

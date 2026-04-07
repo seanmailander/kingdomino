@@ -1,0 +1,105 @@
+import fs from "node:fs";
+import { defineConfig, type UserConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import storybookTest from "@storybook/addon-vitest/vitest-plugin";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import { playwright } from "@vitest/browser-playwright";
+
+const dirname = path.dirname(fileURLToPath(import.meta.url));
+
+export default defineConfig(() => {
+  const useHttps = process.env.HTTPS === "true";
+  const certFile = process.env.SSL_CRT_FILE;
+  const keyFile = process.env.SSL_KEY_FILE;
+
+  const https =
+    useHttps && certFile && keyFile
+      ? {
+          cert: fs.readFileSync(certFile),
+          key: fs.readFileSync(keyFile),
+        }
+      : undefined;
+
+  return {
+    plugins: [react()],
+    server: {
+      host: process.env.HOST,
+      port: process.env.PORT ? Number.parseInt(process.env.PORT, 10) : undefined,
+      https,
+      proxy: {
+        "/api/peers/peerjs": {
+          target: "http://localhost:3001",
+          ws: true,
+        },
+        "/api": {
+          target: "http://localhost:3001",
+        },
+      },
+    },
+    test: {
+      environment: "node",
+      globals: false,
+      setupFiles: ["./src/setupTests.ts"],
+      // Use `workspace` field in Vitest < 3.2
+      projects: [
+        {
+          extends: true,
+          test: {
+            name: "unit",
+            include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+            exclude: ["src/**/*.stories.ts", "src/**/*.stories.tsx", "src/**/*.mdx"],
+          },
+        },
+        {
+          extends: true,
+          plugins: [
+            storybookTest({
+              // The location of your Storybook config, main.js|ts
+              configDir: path.join(dirname, ".storybook"),
+              tags: {
+                exclude: ["failing-test"],
+              },
+              // This should match your package.json script to run Storybook
+              // The --no-open flag will skip the automatic opening of a browser
+              storybookScript: "npm run storybook -- --no-open",
+            }),
+          ],
+          test: {
+            name: "storybook",
+            // Enable browser mode
+            browser: {
+              enabled: true,
+              // Make sure to install Playwright
+              provider: playwright({}),
+              headless: true,
+              instances: [{ browser: "chromium" }],
+            },
+            // setupFiles: ["./.storybook/vitest.setup.ts"],
+          },
+        },
+        {
+          extends: true,
+          plugins: [
+            storybookTest({
+              configDir: path.join(dirname, ".storybook"),
+              storybookScript: "npm run storybook -- --no-open",
+              tags: {
+                include: ["failing-test"],
+              },
+            }),
+          ],
+          test: {
+            name: "storybook-failing",
+            browser: {
+              enabled: true,
+              provider: playwright({}),
+              headless: true,
+              instances: [{ browser: "chromium" }],
+            },
+          },
+        },
+      ],
+    },
+  } satisfies UserConfig;
+});
