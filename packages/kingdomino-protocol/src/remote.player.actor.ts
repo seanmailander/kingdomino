@@ -16,18 +16,7 @@ export class RemotePlayerActor implements PlayerActor {
   }
 
   async awaitPlacement(_cardId: CardId, _boardSnapshot: BoardGrid): Promise<PlacementResult> {
-    // Pre-register both rejection handlers before any await to prevent unhandled rejections.
-    // NOTE: The losing resolver (whichever of place/discard does not arrive) stays registered
-    // in ConnectionManager's queue. This matches the existing pattern in
-    // ConnectionManager.waitForPickAndPlacement(). If this becomes a problem in multi-round
-    // play (stale waiter consuming a future message), ConnectionManager needs a
-    // waitForPlaceOrDiscard() that handles cancellation internally.
-    const placeOrNull = this.connection.waitForPlace().catch((): null => null);
-    const discardOrNull = this.connection.waitForDiscard().catch((): null => null);
-
-    const msg = await Promise.race([placeOrNull, discardOrNull]);
-    if (!msg) throw new Error("RemotePlayerActor: connection closed while waiting for placement");
-
+    const msg = await this.connection.waitForPlaceOrDiscard();
     if (msg.type === PLACE) {
       return { x: msg.x, y: msg.y, direction: msg.direction };
     }

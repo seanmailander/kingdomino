@@ -1,7 +1,7 @@
 import { CommitmentSeedProvider, RandomSeedProvider } from "kingdomino-commitment";
 import type { CommitmentTransport } from "kingdomino-commitment";
 import type { SeedProvider } from "kingdomino-engine";
-import { ConnectionManager, RandomAIPlayer, GameDriver } from "kingdomino-protocol";
+import { ConnectionManager, RandomAIPlayer, GameDriver, MultiplayerConnection } from "kingdomino-protocol";
 import { GameSession, Player, GAME_PHASE_PLAYING, GAME_PHASE_PAUSED, GAME_STARTED, ROUND_STARTED, GAME_PAUSED, GAME_RESUMED, GAME_ENDED, PICK_MADE, PLACE_MADE, DISCARD_MADE, STANDARD } from "kingdomino-engine";
 import type { GameEventBus, GameEvent, CardId } from "kingdomino-engine";
 import type { WireMessage, WireMessagePayload, WireMessageType } from "kingdomino-protocol";
@@ -102,7 +102,13 @@ export class LobbyFlow {
     this.rosterFactory = options.rosterFactory;
     this.createConnectionManager =
       options.createConnectionManager ??
-      ((connection) => new ConnectionManager(connection.send, connection.waitFor));
+      ((connection) => new ConnectionManager(
+        connection.send,
+        connection.waitFor,
+        connection instanceof MultiplayerConnection
+          ? connection.waitForPlaceOrDiscard.bind(connection)
+          : undefined,
+      ));
     this.createSeedProvider = options.createSeedProvider;
     this.variant = options.variant ?? STANDARD;
     this.bonuses = options.bonuses ?? {};

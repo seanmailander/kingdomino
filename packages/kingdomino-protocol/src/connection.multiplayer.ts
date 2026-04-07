@@ -4,6 +4,7 @@
 // move this to a transport-focused module (e.g. peer.transport.ts) to clarify
 // that MultiplayerConnection is not itself a PlayerActor — it is a building
 // block that RemotePlayerActor wraps.
+import type { PlaceMessage, DiscardMessage } from "./game.messages";
 import {
   COMMITTMENT,
   PICK,
@@ -86,6 +87,64 @@ export class MultiplayerConnection {
         reject,
       });
       this.messageResolvers.set(messageType, resolvers);
+    });
+  };
+
+  /**
+   * Await either a PLACE or DISCARD message, registering a single paired resolver
+   * for both types and cleaning up the losing registration when one arrives.
+   * This prevents stale resolvers from silently consuming messages in later rounds.
+   */
+  waitForPlaceOrDiscard = (): Promise<PlaceMessage | DiscardMessage> => {
+    this.assertActive();
+
+    // Drain any already-queued PLACE or DISCARD before registering new resolvers.
+    const placeQueue = this.messageQueues.get(PLACE) as PlaceMessage[] | undefined;
+    if (placeQueue && placeQueue.length > 0) {
+      return Promise.resolve(placeQueue.shift()!);
+    }
+    const discardQueue = this.messageQueues.get(DISCARD) as DiscardMessage[] | undefined;
+    if (discardQueue && discardQueue.length > 0) {
+      return Promise.resolve(discardQueue.shift()!);
+    }
+
+    return new Promise<PlaceMessage | DiscardMessage>((resolve, reject) => {
+      let settled = false;
+
+      const makeResolver = (
+        ownType: typeof PLACE | typeof DISCARD,
+        otherType: typeof PLACE | typeof DISCARD,
+      ): MessageResolver => ({
+        resolve: (payload) => {
+          if (settled) return;
+          settled = true;
+          // Remove the companion resolver so it cannot consume a future message.
+          const companions = this.messageResolvers.get(otherType);
+          if (companions) {
+            const idx = companions.indexOf(resolvers.get(otherType)!);
+            if (idx !== -1) companions.splice(idx, 1);
+            if (companions.length === 0) this.messageResolvers.delete(otherType);
+          }
+          resolve(payload as PlaceMessage | DiscardMessage);
+        },
+        reject: (err) => {
+          if (settled) return;
+          settled = true;
+          reject(err);
+        },
+      });
+
+      // Build both resolvers before registering either (they reference each other via the Map).
+      const resolvers = new Map<typeof PLACE | typeof DISCARD, MessageResolver>([
+        [PLACE,   makeResolver(PLACE, DISCARD)],
+        [DISCARD, makeResolver(DISCARD, PLACE)],
+      ]);
+
+      for (const [type, resolver] of resolvers) {
+        const list = this.messageResolvers.get(type) ?? [];
+        list.push(resolver);
+        this.messageResolvers.set(type, list);
+      }
     });
   };
 

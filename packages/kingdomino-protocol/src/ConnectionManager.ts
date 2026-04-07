@@ -30,17 +30,21 @@ type WaitForWireMessage = <T extends WireMessageType>(
   messageType: T,
 ) => Promise<WireMessagePayload<T>>;
 type SendWireMessage = (message: WireMessage) => void;
+type WaitForPlaceOrDiscard = () => Promise<PlaceMessage | DiscardMessage>;
 
 export class ConnectionManager {
   private readonly send: SendWireMessage;
   private readonly waitFor: WaitForWireMessage;
+  private readonly waitForPlaceOrDiscardFn: WaitForPlaceOrDiscard | undefined;
 
   constructor(
     send: SendWireMessage,
     waitFor: WaitForWireMessage,
+    waitForPlaceOrDiscard?: WaitForPlaceOrDiscard,
   ) {
     this.send = send;
     this.waitFor = waitFor;
+    this.waitForPlaceOrDiscardFn = waitForPlaceOrDiscard;
   }
 
   sendStart() {
@@ -62,6 +66,26 @@ export class ConnectionManager {
   waitForPick()    { return this.waitFor(PICK) as Promise<PickMessage>; }
   waitForPlace()   { return this.waitFor(PLACE) as Promise<PlaceMessage>; }
   waitForDiscard() { return this.waitFor(DISCARD) as Promise<DiscardMessage>; }
+
+  /**
+   * Await either a PLACE or DISCARD message without leaving a stale resolver for the
+   * losing type. Uses an injected cancellation-aware implementation when available
+   * (provided by MultiplayerConnection.waitForPlaceOrDiscard); falls back to the racy
+   * approach for callers that don't provide one (safe for single-round use only).
+   */
+  waitForPlaceOrDiscard(): Promise<PlaceMessage | DiscardMessage> {
+    if (this.waitForPlaceOrDiscardFn) {
+      return this.waitForPlaceOrDiscardFn();
+    }
+    // Fallback: racy — leaves a stale resolver for the losing type.
+    // Only safe when awaitPlacement() is called at most once per connection lifetime.
+    const placeOrNull = this.waitForPlace().catch((): null => null);
+    const discardOrNull = this.waitForDiscard().catch((): null => null);
+    return Promise.race([placeOrNull, discardOrNull]).then((msg) => {
+      if (!msg) throw new Error("ConnectionManager: connection closed while waiting for place or discard");
+      return msg;
+    });
+  }
 
   /** Await the next move message of any type from the remote peer */
   async waitForNextMoveMessage(): Promise<MoveMessage> {

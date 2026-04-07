@@ -60,4 +60,23 @@ describe("RemotePlayerActor", () => {
     const actor = new RemotePlayerActor("remote", manager);
     expect(() => actor.destroy()).not.toThrow();
   });
+
+  it("awaitPlacement() in round 2 is not blocked by a stale DISCARD waiter from round 1", async () => {
+    const { local, remote } = makeConnectedPair();
+    const manager = new ConnectionManager(
+      local.send,
+      local.waitFor,
+      local.waitForPlaceOrDiscard.bind(local),
+    );
+    const actor = new RemotePlayerActor("remote", manager);
+
+    // Round 1: remote places — this leaves a stale DISCARD resolver without the fix
+    remote.send({ type: "place:made", playerId: "remote", x: 3, y: 2, direction: "right" });
+    await actor.awaitPlacement(1, stubBoard);
+
+    // Round 2: remote discards — consumed by stale waiter from round 1 without the fix
+    remote.send({ type: "discard:made", playerId: "remote" });
+    const result = await actor.awaitPlacement(2, stubBoard);
+    expect(result).toEqual({ discard: true });
+  });
 });
