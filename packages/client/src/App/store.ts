@@ -179,7 +179,9 @@ export const triggerExitConfirm = (confirmed: boolean): void => {
 export const resetAppState = (): void => {
   gameOverScoresSignal([]);
   lobbyStartResolvers = [];
+  const pendingLobbyLeave = lobbyLeaveResolvers;
   lobbyLeaveResolvers = [];
+  for (const resolve of pendingLobbyLeave) resolve();
   const pendingPause = pauseIntentResolvers;
   pauseIntentResolvers = [];
   for (const resolve of pendingPause) resolve(undefined);
