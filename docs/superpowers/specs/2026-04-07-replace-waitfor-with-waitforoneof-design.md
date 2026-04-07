@@ -58,6 +58,20 @@ export interface IGameConnection {
 
 `WaitForOneOfFn` is currently defined privately in `ConnectionManager.ts`. It should be exported from that file and re-exported via `packages/kingdomino-protocol/src/index.ts` (which already re-exports `ConnectionManager`). Since `IGameConnection` lives in `game.flow.ts` in the `client` package which already imports from `"kingdomino-protocol"`, this avoids any circular import concern — the type flows: `ConnectionManager.ts` → `index.ts` → `game.flow.ts`.
 
+`IGameConnection.waitForOneOf` should be typed using `WaitForOneOfFn` by name (imported from `"kingdomino-protocol"`), not inlined, so the interface and `ConnectionManager` constructor share an exact type:
+
+```ts
+// game.flow.ts
+import type { WaitForOneOfFn } from "kingdomino-protocol";
+
+export interface IGameConnection {
+  readonly peerIdentifiers: { me: string; them: string };
+  send: (message: WireMessage) => void;
+  waitForOneOf: WaitForOneOfFn;
+  destroy: () => void;
+}
+```
+
 ## `ConnectionManager` Constructor
 
 ```ts
@@ -104,6 +118,30 @@ All internal `this.waitFor(x)` calls become `this.waitForOneOf(x)`.
 | `packages/client/src/game/state/connection.solo.test.ts` | Replace 4 direct `.waitFor(x)` calls with `.waitForOneOf(x)` |
 | `packages/kingdomino-lobby/src/peer.session.test.ts` | Replace 2 direct `mc.waitFor(x)` calls with `mc.waitForOneOf(x)` |
 | `packages/client/src/game/state/game.flow.test.ts` | Update mock `IGameConnection` at line 36: replace `waitFor` method with `waitForOneOf` |
+
+## `CommitmentTransport` Adapter
+
+`game.flow.ts:238` currently casts the connection directly to `CommitmentTransport`:
+```ts
+?? new CommitmentSeedProvider(connection as unknown as CommitmentTransport);
+```
+
+`CommitmentTransport` requires `waitFor<T>(messageType: string): Promise<T>`. After removing `waitFor` from the concrete connection classes, this cast silently breaks at runtime — TypeScript doesn't catch it due to `as unknown as`.
+
+The fix: replace the cast with an explicit inline adapter in `runFlow`:
+
+```ts
+// game.flow.ts — runFlow (line ~236)
+const commitmentTransport: CommitmentTransport = {
+  send: connection.send,
+  waitFor: (type: string) =>
+    connection.waitForOneOf(type as WireMessageType) as Promise<never>,
+};
+const seedProvider =
+  seedProviderOverride ?? new CommitmentSeedProvider(commitmentTransport);
+```
+
+`COMMITTMENT` and `REVEAL` are already members of `WireMessageType` (defined in `game.messages.ts` lines 18-19), so the cast is safe. Add `game.flow.ts` to the affected files table for this change.
 
 ## Out of Scope
 
