@@ -56,7 +56,7 @@ export interface IGameConnection {
 }
 ```
 
-`WaitForOneOfFn` (already defined in `ConnectionManager.ts`) should be re-exported from `kingdomino-protocol` so `IGameConnection` can reference the same type without duplication.
+`WaitForOneOfFn` is currently defined privately in `ConnectionManager.ts`. It should be exported from that file and re-exported via `packages/kingdomino-protocol/src/index.ts` (which already re-exports `ConnectionManager`). Since `IGameConnection` lives in `game.flow.ts` in the `client` package which already imports from `"kingdomino-protocol"`, this avoids any circular import concern — the type flows: `ConnectionManager.ts` → `index.ts` → `game.flow.ts`.
 
 ## `ConnectionManager` Constructor
 
@@ -99,10 +99,11 @@ All internal `this.waitFor(x)` calls become `this.waitForOneOf(x)`.
 | `packages/client/src/game/state/connection.solo.ts` | Remove `waitFor` method |
 | `packages/kingdomino-protocol/src/connection.testing.ts` | Remove `waitFor` method |
 | `packages/client/src/game/state/default.roster.factory.ts` | Update `ConnectionManager` construction |
-| `packages/kingdomino-protocol/src/remote.player.actor.test.ts` | Update `ConnectionManager` construction (drop `waitFor` arg) |
-| `packages/kingdomino-protocol/src/connection.testing.test.ts` | Replace `.waitFor(x)` with `.waitForOneOf(x)` |
-| `packages/client/src/game/state/connection.solo.test.ts` | Replace `.waitFor(x)` with `.waitForOneOf(x)` |
-| `packages/kingdomino-lobby/src/peer.session.test.ts` | Replace `mc.waitFor(x)` with `mc.waitForOneOf(x)` |
+| `packages/kingdomino-protocol/src/remote.player.actor.test.ts` | Update `ConnectionManager` construction: tests at lines 68-69 and 87-88 currently pass both `waitFor` and `waitForOneOf` as two separate args; new constructor is single-arg `new ConnectionManager(local.send, local.waitForOneOf.bind(local))` |
+| `packages/kingdomino-protocol/src/connection.testing.test.ts` | Replace 4 direct `.waitFor(x)` calls with `.waitForOneOf(x)` |
+| `packages/client/src/game/state/connection.solo.test.ts` | Replace 4 direct `.waitFor(x)` calls with `.waitForOneOf(x)` |
+| `packages/kingdomino-lobby/src/peer.session.test.ts` | Replace 2 direct `mc.waitFor(x)` calls with `mc.waitForOneOf(x)` |
+| `packages/client/src/game/state/game.flow.test.ts` | Update mock `IGameConnection` at line 36: replace `waitFor` method with `waitForOneOf` |
 
 ## Out of Scope
 
