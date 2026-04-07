@@ -55,7 +55,7 @@ export class Board {
     const xB = x + xDirection[direction];
     const yB = y + yDirection[direction];
 
-    if (!isWithinBounds({ x: xB, y: yB })) {
+    if (!isWithinBounds({ x, y }) || !isWithinBounds({ x: xB, y: yB })) {
       return;
     }
 
