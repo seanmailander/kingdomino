@@ -20,6 +20,8 @@ jobs:
           node-version-file: ".nvmrc"
 
       - run: npm ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: packages/client
       - run: npm run build --if-present
         working-directory: packages/client
       - run: npm test
