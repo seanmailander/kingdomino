@@ -30,21 +30,23 @@ type WaitForWireMessage = <T extends WireMessageType>(
   messageType: T,
 ) => Promise<WireMessagePayload<T>>;
 type SendWireMessage = (message: WireMessage) => void;
-type WaitForPlaceOrDiscard = () => Promise<PlaceMessage | DiscardMessage>;
+type WaitForOneOfFn = <Types extends WireMessageType[]>(
+  ...types: Types
+) => Promise<WireMessagePayload<Types[number]>>;
 
 export class ConnectionManager {
   private readonly send: SendWireMessage;
   private readonly waitFor: WaitForWireMessage;
-  private readonly waitForPlaceOrDiscardFn: WaitForPlaceOrDiscard | undefined;
+  private readonly waitForOneOfFn: WaitForOneOfFn | undefined;
 
   constructor(
     send: SendWireMessage,
     waitFor: WaitForWireMessage,
-    waitForPlaceOrDiscard?: WaitForPlaceOrDiscard,
+    waitForOneOf?: WaitForOneOfFn,
   ) {
     this.send = send;
     this.waitFor = waitFor;
-    this.waitForPlaceOrDiscardFn = waitForPlaceOrDiscard;
+    this.waitForOneOfFn = waitForOneOf;
   }
 
   sendStart() {
@@ -69,13 +71,13 @@ export class ConnectionManager {
 
   /**
    * Await either a PLACE or DISCARD message without leaving a stale resolver for the
-   * losing type. Uses an injected cancellation-aware implementation when available
-   * (provided by MultiplayerConnection.waitForPlaceOrDiscard); falls back to the racy
-   * approach for callers that don't provide one (safe for single-round use only).
+   * losing type. Uses the injected cancellation-aware waitForOneOf when available;
+   * falls back to the racy approach for callers that don't provide one (safe for
+   * single-round use only).
    */
   waitForPlaceOrDiscard(): Promise<PlaceMessage | DiscardMessage> {
-    if (this.waitForPlaceOrDiscardFn) {
-      return this.waitForPlaceOrDiscardFn();
+    if (this.waitForOneOfFn) {
+      return this.waitForOneOfFn(PLACE, DISCARD) as Promise<PlaceMessage | DiscardMessage>;
     }
     // Fallback: racy — leaves a stale resolver for the losing type.
     // Only safe when awaitPlacement() is called at most once per connection lifetime.
@@ -89,29 +91,16 @@ export class ConnectionManager {
 
   /** Await the next move message of any type from the remote peer */
   async waitForNextMoveMessage(): Promise<MoveMessage> {
+    if (this.waitForOneOfFn) {
+      return this.waitForOneOfFn(PICK, PLACE, DISCARD) as Promise<MoveMessage>;
+    }
+    // Fallback: racy — accumulates stale resolvers in loops.
+    // Only safe for connections that do not provide waitForOneOf.
     return Promise.race([
       this.waitFor(PICK)    as Promise<PickMessage>,
       this.waitFor(PLACE)   as Promise<PlaceMessage>,
       this.waitFor(DISCARD) as Promise<DiscardMessage>,
     ]);
-  }
-
-  /**
-   * Await both the PICK and the associated PLACE/DISCARD from the remote peer as a unit.
-   * Returns null if the connection is destroyed before both arrive.
-   * Pre-registers all rejection handlers synchronously to prevent unhandled rejections.
-   */
-  async waitForPickAndPlacement(): Promise<{ pick: PickMessage; place: PlaceMessage | DiscardMessage } | null> {
-    // Register rejection handlers synchronously BEFORE any await
-    const pickOrNull = (this.waitFor(PICK) as Promise<PickMessage>).catch((): null => null);
-    const placeOrNull = (this.waitFor(PLACE) as Promise<PlaceMessage>).catch((): null => null);
-    const discardOrNull = (this.waitFor(DISCARD) as Promise<DiscardMessage>).catch((): null => null);
-
-    const pick = await pickOrNull;
-    if (!pick) return null;
-
-    const place = await Promise.race([placeOrNull, discardOrNull]);
-    return place ? { pick, place } : null;
   }
 
   sendPauseRequest()  { this.send(pauseRequestMessage()); }
