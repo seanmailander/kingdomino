@@ -7,7 +7,7 @@ import { Game as GameComponent } from "../game/visuals/Game";
 import { GameOverScreen } from "../game/visuals/GameOverScreen";
 import { determineWinners } from "kingdomino-engine";
 import { useApp, getGameOverScores, resetAppState, triggerLobbyStart, triggerLobbyLeave } from "./store";
-import { peerSession } from "./peerSession";
+import { getPeerSession } from "./peerSession";
 
 export function App() {
   const { session, room, hint } = useApp();
@@ -21,7 +21,7 @@ export function App() {
         <LobbyComponent
           onStart={triggerLobbyStart}
           onLeave={triggerLobbyLeave}
-          joinMatchmaking={() => peerSession.joinMatchmaking()}
+          joinMatchmaking={() => getPeerSession().joinMatchmaking()}
         />
       )}
       {(room === "Game" || room === "GamePaused") && session && <GameComponent session={session} />}
