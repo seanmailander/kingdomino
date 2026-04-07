@@ -24,7 +24,24 @@ type BoardAreaProps = {
 };
 
 function BoardSquare({ handleClick, children, testId }: BoardSquareProps) {
-  return <div onClick={handleClick} data-testid={testId}>{children}</div>;
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleClick();
+    }
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      data-testid={testId}
+    >
+      {children}
+    </div>
+  );
 }
 
 const rotateLookup: Record<Direction, Direction> = {

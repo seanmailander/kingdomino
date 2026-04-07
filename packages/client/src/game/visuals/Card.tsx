@@ -21,15 +21,17 @@ export function Card({ card, isMyTurn, session }: CardProps) {
   const className = `card${isMyTurn && isActive ? "" : " disabled"}`;
 
   return (
-    <div
+    <button
+      type="button"
       className={className}
       key={id}
       data-testid={isMyTurn && isActive ? "available-card" : undefined}
-      onClick={() => isMyTurn && isActive && session.handleLocalPick(id)}
+      disabled={!isMyTurn || !isActive}
+      onClick={() => session.handleLocalPick(id)}
     >
       {tiles.map(({ tile, value }, index) => (
         <Tile key={index} tile={tile} value={value} />
       ))}
-    </div>
+    </button>
   );
 }

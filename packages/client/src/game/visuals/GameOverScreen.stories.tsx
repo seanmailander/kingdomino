@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn } from "storybook/test";
 import { Player } from "kingdomino-engine";
-import { right } from "kingdomino-engine";
 import { GameOverScreen } from "./GameOverScreen";
 import type { ScoreEntry } from "./GameOverScreen";
 

@@ -35,7 +35,11 @@ export function BoardOverlay({
 
     const { flippedX, flippedY, flippedDirection } = getFlippedPosition(x, y, direction, flipped);
 
-    return overlayBoard.place(cardId, flippedX, flippedY, flippedDirection).snapshot();
+    try {
+      return overlayBoard.place(cardId, flippedX, flippedY, flippedDirection).snapshot();
+    } catch {
+      return overlayBoard.snapshot();
+    }
   }, [cardId, x, y, direction, flipped]);
 
   const shouldShowOverlay = isMyPlace && cardId !== undefined && x !== null && y !== null;

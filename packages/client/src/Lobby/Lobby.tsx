@@ -34,7 +34,18 @@ export function Lobby({ onStart, onLeave, joinMatchmaking }: LobbyProps) {
           })),
         ];
       }
+      // Destroy any remote connections on slots being removed
+      prev.slice(count).forEach((slot) => {
+        if (slot.type === SLOT_REMOTE) slot.connection?.destroy();
+      });
       return prev.slice(0, count);
+    });
+    setConnectingSlots((prev) => {
+      const next = new Set(prev);
+      for (const idx of prev) {
+        if (idx >= count) next.delete(idx);
+      }
+      return next;
     });
   };
 
@@ -54,22 +65,34 @@ export function Lobby({ onStart, onLeave, joinMatchmaking }: LobbyProps) {
 
     if (type === SLOT_REMOTE) {
       setConnectingSlots((prev) => new Set([...prev, index]));
-      joinMatchmaking().then((conn) => {
-        setSlots((prev) =>
-          prev.map((slot, i) =>
-            i === index && slot.type === SLOT_REMOTE
-              ? { ...slot, peerId: conn.peerIdentifiers.them, connection: conn }
-              : slot.type === SLOT_LOCAL
-                ? { ...slot, peerId: conn.peerIdentifiers.me }
-                : slot,
-          ),
-        );
-        setConnectingSlots((prev) => {
-          const next = new Set(prev);
-          next.delete(index);
-          return next;
+      joinMatchmaking()
+        .then((conn) => {
+          setSlots((prev) =>
+            prev.map((slot, i) =>
+              i === index && slot.type === SLOT_REMOTE
+                ? { ...slot, peerId: conn.peerIdentifiers.them, connection: conn }
+                : slot.type === SLOT_LOCAL
+                  ? { ...slot, peerId: conn.peerIdentifiers.me }
+                  : slot,
+            ),
+          );
+          setConnectingSlots((prev) => {
+            const next = new Set(prev);
+            next.delete(index);
+            return next;
+          });
+        })
+        .catch(() => {
+          // Matchmaking failed — revert slot to AI and clear connecting state
+          setSlots((prev) =>
+            prev.map((slot, i) => (i === index && slot.type === SLOT_REMOTE ? { type: SLOT_AI } : slot)),
+          );
+          setConnectingSlots((prev) => {
+            const next = new Set(prev);
+            next.delete(index);
+            return next;
+          });
         });
-      });
     }
   };
 

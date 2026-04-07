@@ -8,11 +8,11 @@ export const SLOT_REMOTE = "remote" as const;
 export type PlayerSlotType = typeof SLOT_LOCAL | typeof SLOT_COUCH | typeof SLOT_AI | typeof SLOT_REMOTE
 
 export type PlayerSlotConfig = {
-  type: PlayerSlotType
+  type: PlayerSlotType;
   /** Populated for SLOT_REMOTE once matchmaking completes */
-  peerId?: string
+  peerId?: string;
   /** The established WebRTC connection; only set for SLOT_REMOTE */
-  connection?: MultiplayerConnection
+  connection?: MultiplayerConnection;
 }
 
 /** 2, 3, or 4 player slots — enforced at the type level. */
