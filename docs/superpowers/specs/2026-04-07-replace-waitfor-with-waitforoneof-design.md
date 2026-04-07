@@ -113,7 +113,7 @@ All internal `this.waitFor(x)` calls become `this.waitForOneOf(x)`.
 | `packages/client/src/game/state/connection.solo.ts` | Remove `waitFor` method |
 | `packages/kingdomino-protocol/src/connection.testing.ts` | Remove `waitFor` method |
 | `packages/client/src/game/state/default.roster.factory.ts` | Update `ConnectionManager` construction |
-| `packages/kingdomino-protocol/src/remote.player.actor.test.ts` | Update `ConnectionManager` construction: tests at lines 68-69 and 87-88 currently pass both `waitFor` and `waitForOneOf` as two separate args; new constructor is single-arg `new ConnectionManager(local.send, local.waitForOneOf.bind(local))` |
+| `packages/kingdomino-protocol/src/remote.player.actor.test.ts` | Replace all 6 `local.waitFor` usages (lines 25, 37, 48, 59, 68, 87) with `local.waitForOneOf.bind(local)`; new constructor is single-arg `new ConnectionManager(local.send, local.waitForOneOf.bind(local))` |
 | `packages/kingdomino-protocol/src/connection.testing.test.ts` | Replace 4 direct `.waitFor(x)` calls with `.waitForOneOf(x)` |
 | `packages/client/src/game/state/connection.solo.test.ts` | Replace 4 direct `.waitFor(x)` calls with `.waitForOneOf(x)` |
 | `packages/kingdomino-lobby/src/peer.session.test.ts` | Replace 2 direct `mc.waitFor(x)` calls with `mc.waitForOneOf(x)` |
