@@ -1,0 +1,12 @@
+{
+  "lspServers": {
+    "typescript": {
+      "command": "/Users/seanmailander/.local/share/nvm/v24.14.0/bin/typescript-language-server",
+      "args": ["--stdio"],
+      "fileExtensions": {
+        ".ts": "typescript",
+        ".tsx": "typescript"
+      }
+    }
+  }
+}

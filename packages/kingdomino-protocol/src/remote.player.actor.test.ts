@@ -22,7 +22,7 @@ const stubBoard = {} as BoardGrid;
 describe("RemotePlayerActor", () => {
   it("awaitPick() resolves with the card ID from the peer's PICK message", async () => {
     const { local, remote } = makeConnectedPair();
-    const manager = new ConnectionManager(local.send, local.waitFor);
+    const manager = new ConnectionManager(local.send, local.waitForOneOf.bind(local));
     const actor = new RemotePlayerActor("remote", manager);
 
     // Peer sends a pick message
@@ -34,7 +34,7 @@ describe("RemotePlayerActor", () => {
 
   it("awaitPlacement() resolves with x/y/direction from a PLACE message", async () => {
     const { local, remote } = makeConnectedPair();
-    const manager = new ConnectionManager(local.send, local.waitFor);
+    const manager = new ConnectionManager(local.send, local.waitForOneOf.bind(local));
     const actor = new RemotePlayerActor("remote", manager);
 
     remote.send({ type: "place:made", playerId: "remote", x: 7, y: 6, direction: "right" });
@@ -45,7 +45,7 @@ describe("RemotePlayerActor", () => {
 
   it("awaitPlacement() resolves with { discard: true } from a DISCARD message", async () => {
     const { local, remote } = makeConnectedPair();
-    const manager = new ConnectionManager(local.send, local.waitFor);
+    const manager = new ConnectionManager(local.send, local.waitForOneOf.bind(local));
     const actor = new RemotePlayerActor("remote", manager);
 
     remote.send({ type: "discard:made", playerId: "remote" });
@@ -56,7 +56,7 @@ describe("RemotePlayerActor", () => {
 
   it("destroy() does not throw", () => {
     const { local } = makeConnectedPair();
-    const manager = new ConnectionManager(local.send, local.waitFor);
+    const manager = new ConnectionManager(local.send, local.waitForOneOf.bind(local));
     const actor = new RemotePlayerActor("remote", manager);
     expect(() => actor.destroy()).not.toThrow();
   });
@@ -65,7 +65,6 @@ describe("RemotePlayerActor", () => {
     const { local, remote } = makeConnectedPair();
     const manager = new ConnectionManager(
       local.send,
-      local.waitFor,
       local.waitForOneOf.bind(local),
     );
     const actor = new RemotePlayerActor("remote", manager);
@@ -89,7 +88,6 @@ describe("RemotePlayerActor", () => {
     const { local, remote } = makeConnectedPair();
     const manager = new ConnectionManager(
       local.send,
-      local.waitFor,
       local.waitForOneOf.bind(local),
     );
 

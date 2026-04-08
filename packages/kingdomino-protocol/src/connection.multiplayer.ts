@@ -72,24 +72,6 @@ export class MultiplayerConnection {
     this.transport.send(message);
   };
 
-  waitFor = <T extends WireMessageType>(messageType: T): Promise<WireMessagePayload<T>> => {
-    this.assertActive();
-
-    const queue = this.messageQueues.get(messageType) as Array<WireMessagePayload<T>> | undefined;
-    if (queue && queue.length > 0) {
-      return Promise.resolve(queue.shift() as WireMessagePayload<T>);
-    }
-
-    return new Promise<WireMessagePayload<T>>((resolve, reject) => {
-      const resolvers = this.messageResolvers.get(messageType) ?? [];
-      resolvers.push({
-        resolve: (payload) => resolve(payload as WireMessagePayload<T>),
-        reject,
-      });
-      this.messageResolvers.set(messageType, resolvers);
-    });
-  };
-
   waitForOneOf = <Types extends WireMessageType[]>(
     ...types: Types
   ): Promise<WireMessagePayload<Types[number]>> => {
@@ -140,13 +122,6 @@ export class MultiplayerConnection {
       }
     });
   };
-
-  /**
-   * Await either a PLACE or DISCARD message. Delegates to waitForOneOf,
-   * which registers paired cancellation-aware resolvers for both types.
-   */
-  waitForPlaceOrDiscard = (): Promise<PlaceMessage | DiscardMessage> =>
-    this.waitForOneOf(PLACE, DISCARD) as Promise<PlaceMessage | DiscardMessage>;
 
   receive = (message: WireMessage) => {
     this.assertActive();
