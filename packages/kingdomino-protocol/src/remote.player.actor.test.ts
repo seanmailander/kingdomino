@@ -22,7 +22,7 @@ const stubBoard = {} as BoardGrid;
 describe("RemotePlayerActor", () => {
   it("awaitPick() resolves with the card ID from the peer's PICK message", async () => {
     const { local, remote } = makeConnectedPair();
-    const manager = new ConnectionManager(local.send, local.waitFor);
+    const manager = new ConnectionManager(local.send, local.waitForOneOf.bind(local));
     const actor = new RemotePlayerActor("remote", manager);
 
     // Peer sends a pick message
@@ -34,7 +34,7 @@ describe("RemotePlayerActor", () => {
 
   it("awaitPlacement() resolves with x/y/direction from a PLACE message", async () => {
     const { local, remote } = makeConnectedPair();
-    const manager = new ConnectionManager(local.send, local.waitFor);
+    const manager = new ConnectionManager(local.send, local.waitForOneOf.bind(local));
     const actor = new RemotePlayerActor("remote", manager);
 
     remote.send({ type: "place:made", playerId: "remote", x: 7, y: 6, direction: "right" });
@@ -45,7 +45,7 @@ describe("RemotePlayerActor", () => {
 
   it("awaitPlacement() resolves with { discard: true } from a DISCARD message", async () => {
     const { local, remote } = makeConnectedPair();
-    const manager = new ConnectionManager(local.send, local.waitFor);
+    const manager = new ConnectionManager(local.send, local.waitForOneOf.bind(local));
     const actor = new RemotePlayerActor("remote", manager);
 
     remote.send({ type: "discard:made", playerId: "remote" });
@@ -56,8 +56,65 @@ describe("RemotePlayerActor", () => {
 
   it("destroy() does not throw", () => {
     const { local } = makeConnectedPair();
-    const manager = new ConnectionManager(local.send, local.waitFor);
+    const manager = new ConnectionManager(local.send, local.waitForOneOf.bind(local));
     const actor = new RemotePlayerActor("remote", manager);
     expect(() => actor.destroy()).not.toThrow();
+  });
+
+  it("awaitPlacement() in round 2 is not blocked by a stale DISCARD waiter from round 1", async () => {
+    const { local, remote } = makeConnectedPair();
+    const manager = new ConnectionManager(
+      local.send,
+      local.waitForOneOf.bind(local),
+    );
+    const actor = new RemotePlayerActor("remote", manager);
+
+    // Round 1: remote places — this leaves a stale DISCARD resolver without the fix
+    remote.send({ type: "place:made", playerId: "remote", x: 3, y: 2, direction: "right" });
+    await actor.awaitPlacement(1, stubBoard);
+
+    // Round 2: remote discards — consumed by stale waiter from round 1 without the fix
+    remote.send({ type: "discard:made", playerId: "remote" });
+    const result = await Promise.race([
+      actor.awaitPlacement(2, stubBoard),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("awaitPlacement(2) did not resolve within 500ms — possible stale waiter regression")), 500)
+      ),
+    ]);
+    expect(result).toEqual({ discard: true });
+  });
+
+  it("waitForNextMoveMessage() in a loop does not accumulate stale resolvers across rounds", async () => {
+    const { local, remote } = makeConnectedPair();
+    const manager = new ConnectionManager(
+      local.send,
+      local.waitForOneOf.bind(local),
+    );
+
+    // Simulate 3 rounds of PICK messages arriving via the loop.
+    // Without the fix, stale PLACE+DISCARD resolvers pile up and consume future messages.
+    for (let round = 1; round <= 3; round++) {
+      const msgPromise = manager.waitForNextMoveMessage();
+      remote.send({ type: "pick:made", playerId: "remote", cardId: round });
+      const msg = await Promise.race([
+        msgPromise,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`waitForNextMoveMessage() round ${round} did not resolve within 500ms — possible stale resolver accumulation`)), 500)
+        ),
+      ]);
+      expect(msg).toMatchObject({ type: "pick:made", cardId: round });
+    }
+
+    // After 3 PICK rounds: without the fix there would be 6 stale PLACE/DISCARD resolvers.
+    // With the fix: 0. Verify by confirming a PLACE message is received correctly.
+    const placeMsgPromise = manager.waitForNextMoveMessage();
+    remote.send({ type: "place:made", playerId: "remote", x: 1, y: 1, direction: "up" });
+    const placeMsg = await Promise.race([
+      placeMsgPromise,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("waitForNextMoveMessage() final PLACE did not resolve within 500ms — possible stale resolver accumulation")), 500)
+      ),
+    ]);
+    expect(placeMsg).toMatchObject({ type: "place:made" });
   });
 });

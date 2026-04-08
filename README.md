@@ -48,9 +48,7 @@ See [research](./RESEARCH.md) for more info
 
 ## NOW
 
-1. Split pick from move — both are independent player actions; decouple in game state and connection interface
-2. Normalize `notifyLocalDiscard` into the standard send/waitFor message pipeline (remove special-case handling)
-3. Add mid-game debug states
+1. Add mid-game debug states
 
 ## NEXT
 

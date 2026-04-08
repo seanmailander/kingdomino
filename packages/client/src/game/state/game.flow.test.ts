@@ -33,7 +33,7 @@ class StubConnection {
 
   send(_message: WireMessage) {}
 
-  waitFor<T extends WireMessageType>(_messageType: T): Promise<WireMessagePayload<T>> {
+  waitForOneOf<Types extends WireMessageType[]>(..._types: Types): Promise<WireMessagePayload<Types[number]>> {
     return new Promise(() => undefined);
   }
 
