@@ -14,7 +14,7 @@ These (arbitrary) constraints force the use of technologies like:
 - [mDNS](https://en.wikipedia.org/wiki/Multicast_DNS)
 - [Committment scheme](https://en.wikipedia.org/wiki/Commitment_scheme)
 
-See [research](./RESEARCH.md) for more info
+See [research](./docs/RESEARCH.md) for more info
 
 # Current state
 
