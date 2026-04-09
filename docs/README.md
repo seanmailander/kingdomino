@@ -15,8 +15,10 @@ The authoritative agent context is **[`AGENTS.md`](../AGENTS.md)** at the repo r
 | File | Purpose |
 |------|---------|
 | [`README.md`](../README.md) | Project overview, roadmap, constraints |
-| [`rules.md`](../rules.md) | Official Kingdomino board game rules |
-| [`RESEARCH.md`](../RESEARCH.md) | Research notes: fair-play crypto, shuffling, P2P |
+| [`docs/rules.md`](rules.md) | Official Kingdomino board game rules |
+| [`docs/RESEARCH.md`](RESEARCH.md) | Research notes: fair-play crypto, shuffling, P2P |
+| [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) | **Evergreen architecture reference**: packages, layers, PlayerActor model, seams, conventions |
+| [`docs/todos.md`](todos.md) | Prioritized TODO list (Immediate / Now / Next / Nirvana) |
 
 ---
 
