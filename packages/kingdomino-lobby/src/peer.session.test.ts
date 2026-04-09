@@ -215,7 +215,7 @@ describe("PeerSession — outbound connection", () => {
 
     const mc = await connectPromise;
 
-    const waitPromise = mc.waitFor("START");
+    const waitPromise = mc.waitForOneOf("START");
     fakeConn.listeners.data.forEach((h) => h({ type: "START" }));
 
     await expect(waitPromise).resolves.toBeDefined();
@@ -241,12 +241,12 @@ describe("PeerSession — outbound connection", () => {
     fakeConn.listeners.open.forEach((h) => h());
 
     const mc = await connectPromise;
-    const waitPromise = mc.waitFor("START");
+    const waitPromise = mc.waitForOneOf("START");
 
     // Simulate DataChannel closing
     fakeConn.listeners.close.forEach((h) => h());
 
-    // waitFor should reject because the connection was destroyed
+    // waitForOneOf should reject because the connection was destroyed
     await expect(waitPromise).rejects.toThrow();
   });
 });

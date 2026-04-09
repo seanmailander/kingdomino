@@ -12,14 +12,14 @@ const makeAiPlayer = () => {
 describe("SoloConnection control messages", () => {
   it("responds to PAUSE_REQUEST with PAUSE_ACK", async () => {
     const conn = new SoloConnection(makeAiPlayer());
-    const ack = conn.waitFor(PAUSE_ACK);
+    const ack = conn.waitForOneOf(PAUSE_ACK);
     conn.send(pauseRequestMessage());
     await expect(ack).resolves.toMatchObject({ type: "CONTROL_PAUSE_ACK" });
   });
 
   it("responds to RESUME_REQUEST with RESUME_ACK", async () => {
     const conn = new SoloConnection(makeAiPlayer());
-    const ack = conn.waitFor(RESUME_ACK);
+    const ack = conn.waitForOneOf(RESUME_ACK);
     conn.send(resumeRequestMessage());
     await expect(ack).resolves.toMatchObject({ type: "CONTROL_RESUME_ACK" });
   });
@@ -32,8 +32,8 @@ describe("SoloConnection — notifyRoundStarted delegates to RandomAIPlayer", ()
     ai.beginRound([4, 22, 28, 46]);
 
     const conn = new SoloConnection(ai);
-    const pickPromise = conn.waitFor(PICK);
-    const placePromise = conn.waitFor(PLACE);
+    const pickPromise = conn.waitForOneOf(PICK);
+    const placePromise = conn.waitForOneOf(PLACE);
 
     // Trigger the AI's first move after round has started
     conn.notifyRoundStarted();

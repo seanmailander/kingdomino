@@ -4,6 +4,7 @@
 // move this to a transport-focused module (e.g. peer.transport.ts) to clarify
 // that MultiplayerConnection is not itself a PlayerActor — it is a building
 // block that RemotePlayerActor wraps.
+import type { PlaceMessage, DiscardMessage } from "./game.messages";
 import {
   COMMITTMENT,
   PICK,
@@ -71,21 +72,54 @@ export class MultiplayerConnection {
     this.transport.send(message);
   };
 
-  waitFor = <T extends WireMessageType>(messageType: T): Promise<WireMessagePayload<T>> => {
+  waitForOneOf = <Types extends WireMessageType[]>(
+    ...types: Types
+  ): Promise<WireMessagePayload<Types[number]>> => {
     this.assertActive();
 
-    const queue = this.messageQueues.get(messageType) as Array<WireMessagePayload<T>> | undefined;
-    if (queue && queue.length > 0) {
-      return Promise.resolve(queue.shift() as WireMessagePayload<T>);
+    // Drain any already-queued message (first matching type wins).
+    for (const type of types) {
+      const queue = this.messageQueues.get(type) as Array<WireMessagePayload<typeof type>> | undefined;
+      if (queue && queue.length > 0) {
+        return Promise.resolve(queue.shift() as WireMessagePayload<Types[number]>);
+      }
     }
 
-    return new Promise<WireMessagePayload<T>>((resolve, reject) => {
-      const resolvers = this.messageResolvers.get(messageType) ?? [];
-      resolvers.push({
-        resolve: (payload) => resolve(payload as WireMessagePayload<T>),
-        reject,
+    return new Promise<WireMessagePayload<Types[number]>>((resolve, reject) => {
+      let settled = false;
+
+      const makeResolver = (ownType: WireMessageType): MessageResolver => ({
+        resolve: (payload) => {
+          if (settled) return;
+          settled = true;
+          // Remove companion resolvers for all other types.
+          for (const otherType of types) {
+            if (otherType === ownType) continue;
+            const companions = this.messageResolvers.get(otherType);
+            if (companions) {
+              const idx = companions.indexOf(resolverMap.get(otherType)!);
+              if (idx !== -1) companions.splice(idx, 1);
+              if (companions.length === 0) this.messageResolvers.delete(otherType);
+            }
+          }
+          resolve(payload as WireMessagePayload<Types[number]>);
+        },
+        reject: (err) => {
+          if (settled) return;
+          settled = true;
+          reject(err);
+        },
       });
-      this.messageResolvers.set(messageType, resolvers);
+
+      const resolverMap = new Map<WireMessageType, MessageResolver>(
+        types.map((type) => [type, makeResolver(type)]),
+      );
+
+      for (const [type, resolver] of resolverMap) {
+        const list = this.messageResolvers.get(type) ?? [];
+        list.push(resolver);
+        this.messageResolvers.set(type, list);
+      }
     });
   };
 

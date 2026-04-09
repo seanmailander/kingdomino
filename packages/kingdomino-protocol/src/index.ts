@@ -5,6 +5,7 @@ export * from "./game.messages";
 
 // Protocol adapter
 export { ConnectionManager } from "./ConnectionManager";
+export type { WaitForOneOfFn } from "./ConnectionManager";
 
 // Transport layer (used by RemotePlayerActor; see TODO in connection.multiplayer.ts)
 export { MultiplayerConnection } from "./connection.multiplayer";

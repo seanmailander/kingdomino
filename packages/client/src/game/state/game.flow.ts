@@ -2,9 +2,9 @@ import { CommitmentSeedProvider, RandomSeedProvider } from "kingdomino-commitmen
 import type { CommitmentTransport } from "kingdomino-commitment";
 import type { SeedProvider } from "kingdomino-engine";
 import { ConnectionManager, RandomAIPlayer, GameDriver } from "kingdomino-protocol";
+import type { WireMessage, WaitForOneOfFn } from "kingdomino-protocol";
 import { GameSession, Player, GAME_PHASE_PLAYING, GAME_PHASE_PAUSED, GAME_STARTED, ROUND_STARTED, GAME_PAUSED, GAME_RESUMED, GAME_ENDED, PICK_MADE, PLACE_MADE, DISCARD_MADE, STANDARD } from "kingdomino-engine";
 import type { GameEventBus, GameEvent, CardId } from "kingdomino-engine";
-import type { WireMessage, WireMessagePayload, WireMessageType } from "kingdomino-protocol";
 import { PICK, PLACE, DISCARD } from "kingdomino-protocol";
 import { SoloConnection } from "./connection.solo";
 import type { GameVariant } from "kingdomino-engine";
@@ -19,7 +19,7 @@ const CONTROL_TIMEOUT_MS = 5000;
 export interface IGameConnection {
   readonly peerIdentifiers: { me: string; them: string };
   send: (message: WireMessage) => void;
-  waitFor: <T extends WireMessageType>(messageType: T) => Promise<WireMessagePayload<T>>;
+  waitForOneOf: WaitForOneOfFn;
   destroy: () => void;
 }
 
@@ -102,7 +102,10 @@ export class LobbyFlow {
     this.rosterFactory = options.rosterFactory;
     this.createConnectionManager =
       options.createConnectionManager ??
-      ((connection) => new ConnectionManager(connection.send, connection.waitFor));
+      ((connection) => new ConnectionManager(
+        connection.send,
+        connection.waitForOneOf.bind(connection),
+      ));
     this.createSeedProvider = options.createSeedProvider;
     this.variant = options.variant ?? STANDARD;
     this.bonuses = options.bonuses ?? {};
@@ -227,9 +230,13 @@ export class LobbyFlow {
   }
 
   private async runFlow(connection: IGameConnection, seedProviderOverride?: SeedProvider) {
+    const commitmentTransport: CommitmentTransport = {
+      send: connection.send,
+      waitFor: (type) => connection.waitForOneOf(type as Parameters<typeof connection.waitForOneOf>[0]) as Promise<never>,
+    };
     const seedProvider = seedProviderOverride
       ?? this.createSeedProvider?.(connection)
-      ?? new CommitmentSeedProvider(connection as unknown as CommitmentTransport);
+      ?? new CommitmentSeedProvider(commitmentTransport);
 
     const session = new GameSession({
       variant: this.variant,

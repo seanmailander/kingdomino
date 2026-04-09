@@ -7,7 +7,10 @@ import { TestConnection } from "./connection.testing";
 
 /** Adapts TestConnection to CommitmentTransport for CommitmentSeedProvider */
 function asTransport(connection: TestConnection): CommitmentTransport {
-  return connection as unknown as CommitmentTransport;
+  return {
+    send: connection.send,
+    waitFor: (type) => connection.waitForOneOf(type as Parameters<typeof connection.waitForOneOf>[0]) as Promise<never>,
+  };
 }
 
 describe("TestConnection", () => {
@@ -53,18 +56,18 @@ describe("TestConnection", () => {
 
     await provider.nextSeed(); // pick-order seed (no move emitted)
     await provider.nextSeed(); // round 1 seed (move 0 emitted)
-    await expect(connection.waitFor("pick:made")).resolves.toEqual({
+    await expect(connection.waitForOneOf("pick:made")).resolves.toEqual({
       type: "pick:made", playerId: "remote-player", cardId: 26,
     });
-    await expect(connection.waitFor("place:made")).resolves.toEqual({
+    await expect(connection.waitForOneOf("place:made")).resolves.toEqual({
       type: "place:made", playerId: "remote-player", x: 5, y: 6, direction: left,
     });
 
     await provider.nextSeed(); // round 2 seed (move 1 emitted)
-    await expect(connection.waitFor("pick:made")).resolves.toEqual({
+    await expect(connection.waitForOneOf("pick:made")).resolves.toEqual({
       type: "pick:made", playerId: "remote-player", cardId: 18,
     });
-    await expect(connection.waitFor("place:made")).resolves.toEqual({
+    await expect(connection.waitForOneOf("place:made")).resolves.toEqual({
       type: "place:made", playerId: "remote-player", x: 7, y: 6, direction: right,
     });
   });

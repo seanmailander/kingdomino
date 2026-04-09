@@ -53,7 +53,7 @@ export class DefaultRosterFactory implements RosterFactory {
           return { id, actor: new AIPlayerActor(id, firstHumanId, this.variant) };
         case SLOT_REMOTE: {
           const conn = slot.connection!;
-          const cm = new ConnectionManager(conn.send, conn.waitFor);
+          const cm = new ConnectionManager(conn.send, conn.waitFor, conn.waitForOneOf.bind(conn));
           return { id, actor: new RemotePlayerActor(id, cm) };
         }
       }

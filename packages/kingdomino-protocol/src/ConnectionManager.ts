@@ -26,21 +26,21 @@ import {
   type MoveMessage,
 } from "./game.messages";
 
-type WaitForWireMessage = <T extends WireMessageType>(
-  messageType: T,
-) => Promise<WireMessagePayload<T>>;
 type SendWireMessage = (message: WireMessage) => void;
+export type WaitForOneOfFn = <Types extends WireMessageType[]>(
+  ...types: Types
+) => Promise<WireMessagePayload<Types[number]>>;
 
 export class ConnectionManager {
   private readonly send: SendWireMessage;
-  private readonly waitFor: WaitForWireMessage;
+  private readonly waitFor: WaitForOneOfFn;
 
   constructor(
     send: SendWireMessage,
-    waitFor: WaitForWireMessage,
+    waitForOneOf: WaitForOneOfFn,
   ) {
     this.send = send;
-    this.waitFor = waitFor;
+    this.waitFor = waitForOneOf;
   }
 
   sendStart() {
@@ -63,31 +63,14 @@ export class ConnectionManager {
   waitForPlace()   { return this.waitFor(PLACE) as Promise<PlaceMessage>; }
   waitForDiscard() { return this.waitFor(DISCARD) as Promise<DiscardMessage>; }
 
-  /** Await the next move message of any type from the remote peer */
-  async waitForNextMoveMessage(): Promise<MoveMessage> {
-    return Promise.race([
-      this.waitFor(PICK)    as Promise<PickMessage>,
-      this.waitFor(PLACE)   as Promise<PlaceMessage>,
-      this.waitFor(DISCARD) as Promise<DiscardMessage>,
-    ]);
+  /** Await either a PLACE or DISCARD message without leaving a stale resolver for the losing type. */
+  waitForPlaceOrDiscard(): Promise<PlaceMessage | DiscardMessage> {
+    return this.waitFor(PLACE, DISCARD) as Promise<PlaceMessage | DiscardMessage>;
   }
 
-  /**
-   * Await both the PICK and the associated PLACE/DISCARD from the remote peer as a unit.
-   * Returns null if the connection is destroyed before both arrive.
-   * Pre-registers all rejection handlers synchronously to prevent unhandled rejections.
-   */
-  async waitForPickAndPlacement(): Promise<{ pick: PickMessage; place: PlaceMessage | DiscardMessage } | null> {
-    // Register rejection handlers synchronously BEFORE any await
-    const pickOrNull = (this.waitFor(PICK) as Promise<PickMessage>).catch((): null => null);
-    const placeOrNull = (this.waitFor(PLACE) as Promise<PlaceMessage>).catch((): null => null);
-    const discardOrNull = (this.waitFor(DISCARD) as Promise<DiscardMessage>).catch((): null => null);
-
-    const pick = await pickOrNull;
-    if (!pick) return null;
-
-    const place = await Promise.race([placeOrNull, discardOrNull]);
-    return place ? { pick, place } : null;
+  /** Await the next move message of any type from the remote peer */
+  waitForNextMoveMessage(): Promise<MoveMessage> {
+    return this.waitFor(PICK, PLACE, DISCARD) as Promise<MoveMessage>;
   }
 
   sendPauseRequest()  { this.send(pauseRequestMessage()); }
