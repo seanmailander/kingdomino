@@ -179,7 +179,7 @@ describe("Bonus scoring in GameSession.endGame()", () => {
     const them = new Player("them");
     session.addPlayer(me);
     session.addPlayer(them);
-    session.startGame([me, them]);
+    session.startGame();
     return { session, me, them };
   };
 

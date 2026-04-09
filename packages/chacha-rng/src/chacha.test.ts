@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ChaChaRng, BLOCK_WORDS, BUFFER_NUM_BLOCKS, BUFFER_WORDS } from "./index.ts";
+import { ChaChaRng, BLOCK_WORDS, BUFFER_NUM_BLOCKS, BUFFER_WORDS } from "./index";
 
 describe("ChaChaRng", () => {
   it("construction via fromSeed and fromRng", () => {
