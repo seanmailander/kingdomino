@@ -65,7 +65,7 @@ export default defineConfig(() => {
               // The --no-open flag will skip the automatic opening of a browser
               storybookScript: "npm run storybook -- --no-open",
             }),
-            storybookVis(),
+            storybookVis({ subject: '[data-testid="subject"]' }),
           ],
           test: {
             name: "storybook",
@@ -91,7 +91,7 @@ export default defineConfig(() => {
                 include: ["failing-test"],
               },
             }),
-            storybookVis(),
+            storybookVis({ subject: '[data-testid="subject"]' }),
           ],
           test: {
             name: "storybook-failing",

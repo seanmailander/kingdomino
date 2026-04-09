@@ -9,6 +9,13 @@ const meta = {
   title: "Game/Tile",
   component: Tile,
   tags: ["autodocs", "snapshot"],
+  decorators: [
+    (Story) => (
+      <div data-testid="subject" style={{ width: 80, height: 80, display: "inline-block" }}>
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof Tile>;
 
 export default meta;
