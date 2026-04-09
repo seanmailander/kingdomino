@@ -14,8 +14,23 @@
   float: left;
   height: 80px;
   width: 80px;
+  position: relative;
 }
 
 .card img {
   width: 100%;
+}
+
+.crown-overlay {
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 18px;
+  line-height: 1;
+  background: rgba(0, 0, 0, 0.45);
+  color: #ffe066;
+  pointer-events: none;
+  border-radius: 0 0 3px 3px;
 }
