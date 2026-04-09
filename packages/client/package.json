@@ -48,6 +48,7 @@
     "jest-extended": "^4.0.2",
     "playwright": "^1.58.2",
     "storybook": "^10.3.3",
+    "storybook-addon-vis": "^3.1.4",
     "typescript": "^5.9.3",
     "vite": "^8.0.0",
     "vitest": "^4.0.0"

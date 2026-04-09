@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { defineConfig, type UserConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import storybookTest from "@storybook/addon-vitest/vitest-plugin";
+import { storybookVis } from "storybook-addon-vis/vitest-plugin";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { playwright } from "@vitest/browser-playwright";
@@ -64,6 +65,7 @@ export default defineConfig(() => {
               // The --no-open flag will skip the automatic opening of a browser
               storybookScript: "npm run storybook -- --no-open",
             }),
+            storybookVis(),
           ],
           test: {
             name: "storybook",
@@ -76,6 +78,7 @@ export default defineConfig(() => {
               instances: [{ browser: "chromium" }],
             },
             // setupFiles: ["./.storybook/vitest.setup.ts"],
+          setupFiles: ["./.storybook/vitest.setup.ts"],
           },
         },
         {
@@ -88,6 +91,7 @@ export default defineConfig(() => {
                 include: ["failing-test"],
               },
             }),
+            storybookVis(),
           ],
           test: {
             name: "storybook-failing",
@@ -97,6 +101,7 @@ export default defineConfig(() => {
               headless: true,
               instances: [{ browser: "chromium" }],
             },
+            setupFiles: ["./.storybook/vitest.setup.ts"],
           },
         },
       ],

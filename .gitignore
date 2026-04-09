@@ -30,6 +30,11 @@ packages/client/build
 *storybook.log
 storybook-static
 
+# Visual snapshot testing
+**/__vis__/**/__diffs__
+**/__vis__/**/__results__
+**/__vis__/local
+
 # Beads / Dolt files (added by bd init)
 .dolt/
 *.db
