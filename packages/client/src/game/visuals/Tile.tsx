@@ -1,4 +1,5 @@
 import React from "react";
+import "./Tile.css";
 import { blank, castle, grain, grass, marsh, mine, water, wood } from "kingdomino-engine";
 
 const imageNamesByTile = {
@@ -19,7 +20,7 @@ type TileProps = {
   allowHighlight?: boolean;
 };
 
-export function Tile({ tile, value: _value, disabled = false, allowHighlight = false }: TileProps) {
+export function Tile({ tile, value = 0, disabled = false, allowHighlight = false }: TileProps) {
   const imageName =
     tile !== undefined && tile !== null && tile in imageNamesByTile
       ? imageNamesByTile[tile as keyof typeof imageNamesByTile]
@@ -30,6 +31,14 @@ export function Tile({ tile, value: _value, disabled = false, allowHighlight = f
   return (
     <div className={className}>
       {imageName ? <img src={imageName} alt={imageName}></img> : null}
+      {value > 0 && (
+        <div
+          className="crown-overlay"
+          aria-label={`${value} crown${value > 1 ? "s" : ""}`}
+        >
+          {"♛".repeat(value)}
+        </div>
+      )}
     </div>
   );
 }

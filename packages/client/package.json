@@ -10,6 +10,7 @@
     "build": "vite build --outDir build",
     "preview": "vite preview --host",
     "test": "vitest run --project unit --project storybook",
+    "test:update-snapshots": "vitest run --project unit --project storybook --update",
     "test:failing": "vitest run --project storybook-failing",
     "tscheck": "tsc --noEmit",
     "storybook": "storybook dev -p 6006",
@@ -48,6 +49,7 @@
     "jest-extended": "^4.0.2",
     "playwright": "^1.58.2",
     "storybook": "^10.3.3",
+    "storybook-addon-vis": "^3.1.4",
     "typescript": "^5.9.3",
     "vite": "^8.0.0",
     "vitest": "^4.0.0"
