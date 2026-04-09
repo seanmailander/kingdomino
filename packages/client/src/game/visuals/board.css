@@ -34,7 +34,6 @@
   float: left;
   height: 30px;
   width: 30px;
-  position: relative;
 
   outline: 1px dashed rgba(0, 0, 0, 0.01);
 }

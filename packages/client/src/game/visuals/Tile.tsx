@@ -1,4 +1,5 @@
 import React from "react";
+import "./Tile.css";
 import { blank, castle, grain, grass, marsh, mine, water, wood } from "kingdomino-engine";
 
 const imageNamesByTile = {
