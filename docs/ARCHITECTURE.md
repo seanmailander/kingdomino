@@ -278,6 +278,25 @@ For all-local games (solo, couch, AI), no signaling server contact is required. 
 
 ---
 
+## State Ownership (Client Package)
+
+> **Applies to `packages/client/` — motivated by React conventions but the principle is general.**
+
+### Principle: Isolation by unreachability, not by cleanup
+
+App state lifetime must be scoped to the component tree that uses it, not to the JS module that defines it. When a component tree unmounts, its state becomes unreachable — old async flows can keep writing to it harmlessly since no subscribers exist. No cleanup functions, no cancellation tokens, no promise rejection needed.
+
+**Why this matters:** Module-level singleton state (signals, resolver queues, event subscriptions at file scope) creates implicit coupling between every consumer. Cleanup functions that attempt to drain or reset shared state are inherently racy — async flows from the previous owner continue executing and compete with the new owner's setup. The fix is not better cleanup; it's eliminating the need for cleanup by making state instance-scoped.
+
+### Rules
+
+1. **No mutable state at module scope.** Signals, resolver arrays, and subscription lists belong in class instances, not `let` declarations at file scope.
+2. **State instances are owned by React context providers.** The provider creates the instance on mount and (optionally) disposes on unmount. Components access state via context hooks.
+3. **Async flows hold references to their own state instance.** If the component tree that created a flow unmounts, the flow writes to a disconnected instance that nobody reads — harmless, garbage-collected when the promise chain completes.
+4. **No `resetState()` functions.** If you need a reset, mount a new provider. Fresh provider = fresh instance = clean state.
+
+---
+
 ## Open Application-Layer Seams
 
 These are genuine client app concerns that packaging alone cannot solve:
@@ -285,7 +304,7 @@ These are genuine client app concerns that packaging alone cannot solve:
 | Priority | Seam | Pattern to apply |
 |----------|------|------------------|
 | 1 | **UI directly calls session mutation methods** — components reach into `GameSession` bypassing any interceptor | `GameCommands` dispatch interface: `pick()`, `place()`, `discard()` |
-| 2 | **Global resolver arrays in store.ts** — 5 mutable `resolve[]` arrays as async bridges between clicks and flow logic | `UIIntentBus` event emitter: flow subscribes, UI emits |
+| 2 | ~~**Global resolver arrays in store.ts**~~ | ~~Addressed by scoped `GameStore` instances (see State Ownership above)~~ |
 | 3 | **Inconsistent subscription cleanup** — some `off()` calls captured, others not, causing listener accumulation on restart | `SubscriptionScope`: all subscriptions added to a scope, one `disposeAll()` on teardown |
 | 4 | **Phase state triplicated** — `GamePhase` (engine) → `FlowPhase` (orchestration) → `Room` (UI) kept in sync manually | Single source of truth (engine) with pure projection functions |
 | 5 | **Components check global room state** — leaf components read `room === GameRoom` to decide interactivity | Prop/context capability flag passed from parent `<GameScreen>` |
