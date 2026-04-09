@@ -22,6 +22,7 @@ export function Game({ session }: GameProps) {
   const players = session.players;
   const deal = session.deal();
   const isMyTurn = session.isMyTurn();
+  const dealSnapshot = session.currentRound?.deal.snapshot() ?? [];
 
   const handleExitIntent = () => setShowExitConfirm(true);
   const handleExitConfirm = () => {
@@ -47,9 +48,11 @@ export function Game({ session }: GameProps) {
         </div>
       )}
       <div className="deal">
-        {deal.map((card) => (
-          <Card key={card.id} card={card} isMyTurn={isMyTurn} session={session} />
-        ))}
+        {deal.map((card) => {
+          const slot = dealSnapshot.find((s) => s.cardId === card.id);
+          const isPicked = slot?.pickedBy !== null && slot?.pickedBy !== undefined;
+          return <Card key={card.id} card={card} isMyTurn={isMyTurn && !isPicked} session={session} />;
+        })}
       </div>
       <div className="boards">
         {players.map((player) => (

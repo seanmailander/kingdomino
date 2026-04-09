@@ -210,7 +210,7 @@ export const BONUS_SCENARIO: RealGameScenario = {
 // Use with triggerPauseIntent() in story play to reach GamePaused state.
 export const PAUSABLE_GAME_SCENARIO: RealGameScenario = {
   handshakes: [
-    { localSecret: 11, remoteSecret: 101 }, // pick-order seed (local picks first)
+    { localSecret: 1, remoteSecret: 100 },  // pick-order seed (local picks first)
     { localSecret: 22, remoteSecret: 202 }, // round 1 seed
     { localSecret: 33, remoteSecret: 303 }, // round 2 seed (if resumed)
   ],
@@ -409,7 +409,10 @@ function ScriptedLocalPlayer({
 
     const move = localMoves[roundIndex.current];
     if (!move) {
-      throw new Error(`No scripted local move for round ${roundIndex.current + 1}`);
+      // No scripted move — let the LocalPlayerActor hang awaiting input.
+      // This is intentional for scenarios like PAUSABLE_GAME_SCENARIO
+      // where the game should idle in a waiting state.
+      return;
     }
 
     const actionKey =

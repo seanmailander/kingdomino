@@ -23,10 +23,10 @@ export class AIPlayerActor implements PlayerActor {
     const findPlacement =
       this.variant === MIGHTY_DUEL ? findPlacementWithin7x7 : findPlacementWithin5x5;
 
-    // Shuffle for randomness
-    const shuffled = [...availableCards].sort(() => Math.random() - 0.5);
+    // Pick first placeable card in ascending ID order (deterministic)
+    const sorted = [...availableCards].sort((a, b) => a - b);
 
-    for (const cardId of shuffled) {
+    for (const cardId of sorted) {
       const placement = findPlacement(boardSnapshot, cardId);
       if (placement !== null) {
         this.pendingPlacement = {
