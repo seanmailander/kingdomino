@@ -11,7 +11,6 @@
     "preview": "vite preview --host",
     "test": "vitest run --project unit --project storybook",
     "test:update-snapshots": "vitest run --project unit --project storybook --update",
-    "test:failing": "vitest run --project storybook-failing",
     "tscheck": "tsc --noEmit",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"

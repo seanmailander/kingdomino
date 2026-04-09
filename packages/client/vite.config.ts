@@ -58,9 +58,6 @@ export default defineConfig(() => {
             storybookTest({
               // The location of your Storybook config, main.js|ts
               configDir: path.join(dirname, ".storybook"),
-              tags: {
-                exclude: ["failing-test"],
-              },
               // This should match your package.json script to run Storybook
               // The --no-open flag will skip the automatic opening of a browser
               storybookScript: "npm run storybook -- --no-open",
@@ -73,30 +70,6 @@ export default defineConfig(() => {
             browser: {
               enabled: true,
               // Make sure to install Playwright
-              provider: playwright({}),
-              headless: true,
-              instances: [{ browser: "chromium" }],
-            },
-            // setupFiles: ["./.storybook/vitest.setup.ts"],
-          setupFiles: ["./.storybook/vitest.setup.ts"],
-          },
-        },
-        {
-          extends: true,
-          plugins: [
-            storybookTest({
-              configDir: path.join(dirname, ".storybook"),
-              storybookScript: "npm run storybook -- --no-open",
-              tags: {
-                include: ["failing-test"],
-              },
-            }),
-            storybookVis({ subject: '[data-testid="subject"]' }),
-          ],
-          test: {
-            name: "storybook-failing",
-            browser: {
-              enabled: true,
               provider: playwright({}),
               headless: true,
               instances: [{ browser: "chromium" }],
