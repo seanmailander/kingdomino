@@ -29,13 +29,26 @@ export class GameDriver {
    */
   driveUntilEnd(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
+      let settled = false;
+
+      const cleanup = () => {
+        offRound();
+        offEnd();
+      };
+
       const offRound = this.session.events.on(ROUND_STARTED, ({ round }) => {
-        void this._driveRound(round).catch(reject);
+        void this._driveRound(round).catch((err) => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(err);
+        });
       });
 
       const offEnd = this.session.events.on(GAME_ENDED, () => {
-        offRound();
-        offEnd();
+        if (settled) return;
+        settled = true;
+        cleanup();
         resolve();
       });
     });

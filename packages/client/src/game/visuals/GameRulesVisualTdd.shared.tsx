@@ -288,15 +288,28 @@ class ScriptedPlayerActor implements PlayerActor {
   }
 
   async awaitPlacement(_cardId: CardId, _boardSnapshot: BoardGrid): Promise<PlacementResult> {
+    const round = this.roundIndex + 1;
     const move = this.moves[this.roundIndex];
     this.roundIndex++;
 
     if (!move) throw new Error(`ScriptedPlayerActor: no move for placement`);
     if (move.discard) return { discard: true };
+
+    const missingFields: string[] = [];
+    if (move.x === undefined) missingFields.push("x");
+    if (move.y === undefined) missingFields.push("y");
+    if (move.direction === undefined) missingFields.push("direction");
+
+    if (missingFields.length > 0) {
+      throw new Error(
+        `ScriptedPlayerActor: missing ${missingFields.join("/")} for round ${round}`,
+      );
+    }
+
     return {
       x: move.x!,
       y: move.y!,
-      direction: move.direction! as Direction,
+      direction: move.direction as Direction,
     };
   }
 
