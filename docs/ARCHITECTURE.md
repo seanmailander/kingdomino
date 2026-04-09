@@ -43,7 +43,7 @@ kingdomino-commitment         (depends on: kingdomino-engine)
 
 kingdomino-protocol           (depends on: kingdomino-engine)
   └── wire message vocabulary, ConnectionManager, PlayerActor interface,
-      RemotePlayerActor, GameDriver
+      RemotePlayerActor, GameDriver (turn-level actor coordinator)
       needed by: all active game clients (UI, bots)
 
 kingdomino-lobby              (depends on: kingdomino-protocol)
@@ -84,7 +84,7 @@ The distinction between "local" and "remote" lives outside the session, at the U
 | Method | Phase | Description |
 |--------|-------|-------------|
 | `addPlayer(player)` | lobby | Register a participant |
-| `startGame()` | lobby → playing | Begin; engine seeds pick order, drives round loop internally |
+| `startGame()` | lobby → playing | Begin; engine seeds pick order, drives round loop internally via SeedProvider |
 | `handlePick(playerId, cardId)` | playing | Record a pick |
 | `handlePlacement(playerId, x, y, direction)` | playing | Record a placement |
 | `handleDiscard(playerId)` | playing | Record a discard |
@@ -157,9 +157,9 @@ The engine doesn't need to know how a move was produced. It just needs the move.
 
 ## GameDriver: The Turn Loop
 
-`GameDriver` owns a `GameSession` and a map of player IDs to their actors. It drives the game loop by asking each actor for their move in turn order and feeding results into the session. That's its entire job — nothing else.
+`GameDriver` drives actor decisions within each round. When the session starts a new round, the driver asks each actor for their pick and placement in turn order and feeds results back into the session. That's its entire job — nothing else.
 
-This replaces scattered event subscriptions in `LobbyFlow` with one explicit ownership relationship: the driver owns the turn sequence; actors own move production. The driver is completely ignorant of how any actor works.
+The driver does **not** own the outer game loop. Deck generation, seed management, round creation, pause/resume, and game lifecycle all belong to `GameSession`. The driver is a pure turn-level coordinator, completely ignorant of how any actor works.
 
 ---
 
@@ -218,8 +218,8 @@ Browser / PeerJS
             LobbyFlow (orchestrator — owns game lifecycle)
               ├─ FlowAdapter (injected)
               ├─ RosterFactory (injected; produces PlayerActors + SeedProvider)
-              ├─ GameDriver (drives turn loop)
-              └─ GameSession (from kingdomino-engine)
+              ├─ GameDriver (subscribes to round:started, drives actor decisions)
+              └─ GameSession (from kingdomino-engine; owns game loop, seeds, rounds)
                     ├─ GameEventBus (typed pub/sub)
                     ├─ Player[] → Board (per player)
                     └─ SeedProvider
