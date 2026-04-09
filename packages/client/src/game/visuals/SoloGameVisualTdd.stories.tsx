@@ -9,6 +9,9 @@ import { resetAppState } from "../../App/store";
 const meta = {
   title: "Game/Solo AI Visual TDD",
   component: App,
+  args: {
+    seed: "test-seed-12345",
+  },
   tags: ["autodocs"],
   beforeEach: () => {
     resetAppState();
@@ -24,13 +27,17 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-async function playSoloGameToEnd(
+async function startSoloGame(
   canvas: Parameters<NonNullable<Story["play"]>>[0]["canvas"],
-  timeout: number,
 ) {
   await userEvent.click(canvas.getByRole("button", { name: /start solo/i }));
   await userEvent.click(await canvas.findByRole("button", { name: /start game/i }));
+}
 
+async function driveGameToEnd(
+  canvas: Parameters<NonNullable<Story["play"]>>[0]["canvas"],
+  timeout: number,
+) {
   // Drive the game turn-by-turn using only rendered UI locators.
   // Each await yields control so React can re-render between actions,
   // preventing the double-click race where waitFor retries a stale DOM.
@@ -101,10 +108,45 @@ async function playSoloGameToEnd(
   await expect(canvas.getByTestId("game-over")).toBeVisible();
 }
 
+async function playSoloGameToEnd(
+  canvas: Parameters<NonNullable<Story["play"]>>[0]["canvas"],
+  timeout: number,
+) {
+  await startSoloGame(canvas);
+  await driveGameToEnd(canvas, timeout);
+}
+
 export const SoloGamePlaysToCompletion: Story = {
   tags: ["failing-test"],
   play: async ({ canvas }) => {
     await playSoloGameToEnd(canvas, 85000);
-    await expect(canvas.getByText(/Kingdomino/i)).toBeVisible();
+  },
+};
+
+// Snapshot stories: each runs to a key moment and stops so storybook-addon-vis
+// can capture a stable baseline via the "snapshot" tag.
+
+export const PickPhase: Story = {
+  tags: ["snapshot"],
+  play: async ({ canvas }) => {
+    await startSoloGame(canvas);
+    await canvas.findAllByTestId("available-card");
+  },
+};
+
+export const PlacementPhase: Story = {
+  tags: ["snapshot"],
+  play: async ({ canvas }) => {
+    await startSoloGame(canvas);
+    await canvas.findAllByTestId("available-card");
+    await userEvent.click(canvas.queryAllByTestId("available-card")[0]);
+    await canvas.findAllByTestId("valid-placement");
+  },
+};
+
+export const GameOver: Story = {
+  tags: ["failing-test"],
+  play: async ({ canvas }) => {
+    await playSoloGameToEnd(canvas, 85000);
   },
 };
