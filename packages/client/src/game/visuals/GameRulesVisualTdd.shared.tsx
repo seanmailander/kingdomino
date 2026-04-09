@@ -20,13 +20,16 @@ import {
   ROUND_COMPLETE,
   GAME_ENDED,
 } from "kingdomino-engine";
-import type { GameVariant, SeedProvider } from "kingdomino-engine";
+import type { CardId, GameVariant, PlayerId, SeedProvider } from "kingdomino-engine";
 import type { GameBonuses } from "kingdomino-engine";
-import type { BoardPlacement } from "kingdomino-engine";
+import type { BoardPlacement, BoardGrid } from "kingdomino-engine";
 import { LobbyFlow } from "../state/game.flow";
 import { AppFlowAdapter } from "../../App/AppFlowAdapter";
-import { TestConnection, type TestConnectionScenario } from "kingdomino-protocol";
+import type { TestConnectionScenario } from "kingdomino-protocol";
 import type { Direction } from "kingdomino-engine";
+import type { PlayerActor, PlacementResult } from "kingdomino-protocol";
+import { LocalPlayerActor } from "../state/local.player.actor";
+import type { RosterFactory, RosterResult } from "../state/RosterFactory";
 
 type HandshakeScript = {
   localSecret: number;
@@ -220,6 +223,8 @@ export type RuleScenarioProps = {
   expectedOutcome: string;
 };
 
+// ── Seed provider ──────────────────────────────────────────────────────────────
+
 /**
  * Produces the same deterministic seeds as the old commitment protocol did for
  * these fixed secrets: seed = hashIt(localSecret ^ remoteSecret).
@@ -249,13 +254,107 @@ class SequentialSeedProvider implements SeedProvider {
   }
 }
 
+// ── Scripted remote player actor ───────────────────────────────────────────────
+
+type ScriptedMove = TestConnectionScenario["moves"][number];
+
+/**
+ * A PlayerActor that replays scripted moves. Used for the remote player in
+ * visual TDD scenarios where moves are predetermined.
+ */
+class ScriptedPlayerActor implements PlayerActor {
+  readonly playerId: PlayerId;
+  private readonly moves: ReadonlyArray<ScriptedMove>;
+  private roundIndex = 0;
+
+  constructor(playerId: PlayerId, moves: ReadonlyArray<ScriptedMove>) {
+    this.playerId = playerId;
+    this.moves = moves;
+  }
+
+  async awaitPick(availableCards: CardId[], _boardSnapshot: BoardGrid): Promise<CardId> {
+    const move = this.moves[this.roundIndex];
+    if (!move) throw new Error(`ScriptedPlayerActor: no move for round ${this.roundIndex + 1}`);
+
+    if (move.card !== undefined) return move.card as CardId;
+    if (move.cardIndex !== undefined) {
+      const cardId = availableCards[move.cardIndex];
+      if (cardId === undefined) {
+        throw new Error(`ScriptedPlayerActor: cardIndex ${move.cardIndex} out of range`);
+      }
+      return cardId;
+    }
+    throw new Error(`ScriptedPlayerActor: no card or cardIndex for round ${this.roundIndex + 1}`);
+  }
+
+  async awaitPlacement(_cardId: CardId, _boardSnapshot: BoardGrid): Promise<PlacementResult> {
+    const move = this.moves[this.roundIndex];
+    this.roundIndex++;
+
+    if (!move) throw new Error(`ScriptedPlayerActor: no move for placement`);
+    if (move.discard) return { discard: true };
+    return {
+      x: move.x!,
+      y: move.y!,
+      direction: move.direction! as Direction,
+    };
+  }
+
+  destroy(): void { /* no-op */ }
+}
+
+// ── Story roster factory ───────────────────────────────────────────────────────
+
+/**
+ * A RosterFactory for visual TDD stories. Creates a LocalPlayerActor for the
+ * local player and a ScriptedPlayerActor for the remote player, with a
+ * SequentialSeedProvider for deterministic seeds.
+ */
+class StoryRosterFactory implements RosterFactory {
+  private readonly scenario: RealGameScenario;
+  /** Exposed so ScriptedLocalPlayer can resolve picks/placements on the actor. */
+  localActor: LocalPlayerActor | null = null;
+
+  constructor(scenario: RealGameScenario) {
+    this.scenario = scenario;
+  }
+
+  async build(_config: RosterConfig): Promise<RosterResult> {
+    const meId = (this.scenario.me ?? "me") as PlayerId;
+    const themId = (this.scenario.them ?? "them") as PlayerId;
+
+    const localActor = new LocalPlayerActor(meId);
+    this.localActor = localActor;
+
+    const remoteActor = new ScriptedPlayerActor(themId, this.scenario.remoteMoves);
+
+    const seedProvider = new SequentialSeedProvider(
+      this.scenario.handshakes,
+      () => getCurrentSession()?.endGame(),
+    );
+
+    return {
+      players: [
+        { id: meId, actor: localActor },
+        { id: themId, actor: remoteActor },
+      ],
+      seedProvider,
+      localPlayerId: meId,
+    };
+  }
+}
+
+// ── Scripted local player component ────────────────────────────────────────────
+
 function ScriptedLocalPlayer({
   localMoves,
   localBoardPlacements,
+  localActorRef,
   onPlacementRejected,
 }: {
   localMoves: ReadonlyArray<LocalMoveScript>;
   localBoardPlacements?: ReadonlyArray<BoardPlacement>;
+  localActorRef: React.RefObject<LocalPlayerActor | null>;
   onPlacementRejected?: (message: string) => void;
 }) {
   const { session } = useApp();
@@ -288,6 +387,9 @@ function ScriptedLocalPlayer({
       return;
     }
 
+    const localActor = localActorRef.current;
+    if (!localActor) return;
+
     const move = localMoves[roundIndex.current];
     if (!move) {
       throw new Error(`No scripted local move for round ${roundIndex.current + 1}`);
@@ -319,13 +421,13 @@ function ScriptedLocalPlayer({
         } else {
           throw new Error(`No card or cardIndex for round ${roundIndex.current + 1}`);
         }
-        session.handleLocalPick(cardId);
+        localActor.resolvePick(cardId as CardId);
         return;
       }
 
       if (phase === ROUND_PHASE_PLACING) {
         if (move.discard === true) {
-          session.handleLocalDiscard();
+          localActor.resolvePlacement({ discard: true });
           roundIndex.current += 1;
           placementAttemptIndex.current = 0;
           return;
@@ -383,22 +485,35 @@ function ScriptedLocalPlayer({
               })()
             : placementStep;
 
-        try {
-          session.handleLocalPlacement(placement.x, placement.y, placement.direction);
-          roundIndex.current += 1;
-          placementAttemptIndex.current = 0;
-        } catch (error) {
-          const reason = error instanceof Error ? error.message : String(error);
-          // Keep trying scripted attempts for the same round until one succeeds.
-          placementAttemptIndex.current += 1;
-          onPlacementRejected?.(`place-rejected: ${reason}`);
+        // Validate placement before resolving on the actor. If invalid, increment
+        // attempt index and let the next render try the next scripted attempt.
+        const cardToPlace = session.localCardToPlace();
+        const board = session.myPlayer()?.board.snapshot();
+        if (cardToPlace !== undefined && board) {
+          const isEligible = getEligiblePositions(board, cardToPlace).some(
+            (pos) => pos.x === placement.x && pos.y === placement.y,
+          );
+          const isValidDir = getValidDirections(board, cardToPlace, placement.x, placement.y)
+            .includes(placement.direction);
+
+          if (!isEligible || !isValidDir) {
+            placementAttemptIndex.current += 1;
+            onPlacementRejected?.(`place-rejected: invalid placement at (${placement.x},${placement.y}) ${placement.direction}`);
+            return;
+          }
         }
+
+        localActor.resolvePlacement({ x: placement.x, y: placement.y, direction: placement.direction });
+        roundIndex.current += 1;
+        placementAttemptIndex.current = 0;
       }
     });
-  }, [actorId, localBoardPlacements, localMoves, onPlacementRejected, phase, round, session]);
+  }, [actorId, localActorRef, localBoardPlacements, localMoves, onPlacementRejected, phase, round, session]);
 
   return null;
 }
+
+// ── Story state panel ──────────────────────────────────────────────────────────
 
 function StoryStatePanel({ scriptLog }: { scriptLog: ReadonlyArray<string> }) {
   const { hint, room, session } = useApp();
@@ -498,71 +613,34 @@ function StoryStatePanel({ scriptLog }: { scriptLog: ReadonlyArray<string> }) {
   );
 }
 
-function ScriptedRemotePlayer({
-  moves,
-  connectionRef,
-}: {
-  moves: RealGameScenario["remoteMoves"];
-  connectionRef: React.RefObject<TestConnection | null>;
-}) {
-  const { session } = useApp();
-  const roundIndexRef = useRef(0);
-
-  useEffect(() => {
-    if (!session) return;
-    roundIndexRef.current = 0;
-    const off = session.events.on(ROUND_STARTED, () => {
-      const moveIndex = roundIndexRef.current++;
-      if (moveIndex >= moves.length) return;
-      connectionRef.current?.scheduleNextRemoteMove();
-    });
-    return off;
-  }, [session, moves, connectionRef]);
-
-  return null;
-}
+// ── Main harness ───────────────────────────────────────────────────────────────
 
 export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }) {
   const [scriptLog, setScriptLog] = useState<string[]>([]);
-  const connectionRef = useRef<TestConnection | null>(null);
+  const localActorRef = useRef<LocalPlayerActor | null>(null);
+
+  const storyFactory = useMemo(() => new StoryRosterFactory(scenario), [scenario]);
 
   const flow = useMemo(() => {
     return new LobbyFlow({
       adapter: new AppFlowAdapter(),
-      createSeedProvider: () => new SequentialSeedProvider(
-        scenario.handshakes,
-        () => getCurrentSession()?.endGame(),
-      ),
+      rosterFactory: {
+        async build(config: RosterConfig) {
+          const result = await storyFactory.build(config);
+          localActorRef.current = storyFactory.localActor;
+          return result;
+        },
+      },
       variant: scenario.variant,
       bonuses: scenario.bonuses,
     });
-  }, [scenario.handshakes, scenario.roundLimit, scenario.variant, scenario.bonuses]);
+  }, [storyFactory, scenario.variant, scenario.bonuses]);
 
   useEffect(() => {
     resetAppState();
     setScriptLog([]);
 
-    const connection = new TestConnection({
-      me: scenario.me,
-      them: scenario.them,
-      scenario: {
-        // Handshakes are provided for backward compatibility with control scenarios
-        // (pause/resume/exit), but seeding is now handled by SequentialSeedProvider.
-        handshakes: scenario.handshakes.map(({ remoteSecret, remoteCommittment }) => ({
-          secret: remoteSecret,
-          committment: remoteCommittment,
-        })),
-        moves: scenario.remoteMoves,  // consumed by scheduleNextRemoteMove() via ScriptedRemotePlayer
-        control: scenario.remoteControl,
-      },
-      getAvailableCards: () =>
-        (getCurrentSession()?.currentRound?.deal.snapshot() as ReadonlyArray<{ cardId: number; pickedBy: unknown }> ?? [])
-          .filter((s) => s.pickedBy === null)
-          .map((s) => s.cardId),
-    });
-    connectionRef.current = connection;
-
-    flow.ready(connection);
+    flow.start();
 
     if (scenario.autoStart !== false) {
       const defaultConfig: RosterConfig = [{ type: SLOT_LOCAL }, { type: SLOT_AI }];
@@ -570,7 +648,7 @@ export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }
     }
 
     return () => {
-      connectionRef.current = null;
+      localActorRef.current = null;
       triggerLobbyLeave();
       resetAppState();
       setScriptLog([]);
@@ -583,9 +661,9 @@ export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }
       <ScriptedLocalPlayer
         localBoardPlacements={scenario.localBoardPlacements}
         localMoves={scenario.localMoves}
+        localActorRef={localActorRef}
         onPlacementRejected={(message) => setScriptLog((current) => [...current, message])}
       />
-      <ScriptedRemotePlayer moves={scenario.remoteMoves} connectionRef={connectionRef} />
       <StoryStatePanel scriptLog={scriptLog} />
     </>
   );

@@ -1,23 +1,22 @@
 import type { GameSession, Round } from "kingdomino-engine";
 import type { PlayerId, CardId } from "kingdomino-engine";
-import { generateDeck, getNextFourCards } from "kingdomino-engine";
+import { ROUND_STARTED, GAME_ENDED } from "kingdomino-engine";
 import type { PlayerActor } from "./player.actor";
 
-// TODO: Two known gaps in this implementation:
-//
-//  1. SeedProvider: the driver generates seeds with Math.random(), which works
-//     for all-local games but is not suitable for multiplayer. The driver should
-//     accept a SeedProvider (e.g. CommitmentSeedProvider from kingdomino-commitment)
-//     so both clients derive the same shuffle. Per architecture-report §8.5,
-//     the roster factory should supply the correct provider; GameDriver should
-//     consume it rather than calling Math.random() directly.
-//
-//  2. @internal APIs: session.beginRound() and session.endGame() are marked
-//     @internal on GameSession. GameSession's internal _runGameLoop() requires
-//     a SeedProvider to run and exits immediately without one, so the driver
-//     owns the loop itself via these internal entry points. If the engine
-//     promotes an external-drive contract to its public API, update accordingly.
-
+/**
+ * Drives the turn loop for a game session by asking each actor for their
+ * move in turn order and feeding results into the session.
+ *
+ * Does NOT own the outer game loop (deck, seeds, round creation, pause).
+ * That belongs to GameSession._runGameLoop(). The driver subscribes to
+ * round:started events and drives actor decisions within each round.
+ *
+ * Usage:
+ *   const driver = new GameDriver(session, actorMap);
+ *   const finished = driver.driveUntilEnd();
+ *   session.startGame();        // starts the internal game loop
+ *   await finished;             // resolves when game:ended fires
+ */
 export class GameDriver {
   constructor(
     private readonly session: GameSession,
@@ -25,46 +24,26 @@ export class GameDriver {
   ) {}
 
   /**
-   * Drive the game to completion.
-   * Resolves when all rounds have been played (game:ended fires).
-   * Rejects if any actor's `awaitPick()` or `awaitPlacement()` throws.
-   *
-   * Owns the outer game loop: calls session.beginRound() for each round and
-   * session.endGame() when the deck is exhausted. This is required because
-   * GameSession's internal _runGameLoop() exits immediately when no
-   * SeedProvider is configured — the driver provides its own loop instead.
+   * Subscribe to round:started and drive each round's actor decisions.
+   * Returns a promise that resolves when the game ends.
    */
-  run(): Promise<void> {
+  driveUntilEnd(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      void this._driveGame().then(resolve, reject);
+      const offRound = this.session.events.on(ROUND_STARTED, ({ round }) => {
+        void this._driveRound(round).catch(reject);
+      });
+
+      const offEnd = this.session.events.on(GAME_ENDED, () => {
+        offRound();
+        offEnd();
+        resolve();
+      });
     });
-  }
-
-  private async _driveGame(): Promise<void> {
-    // Use a fresh deck independent of the one startGame() generated internally,
-    // since _runGameLoop() exits immediately without a SeedProvider and never
-    // consumes it.
-    let remainingDeck: number[] = [...generateDeck()];
-
-    while (remainingDeck.length >= 4) {
-      const seed = Math.random().toString();
-      const { next: cardIds, remaining } = getNextFourCards(seed, remainingDeck);
-      remainingDeck = remaining;
-
-      // beginRound() emits round:started and sets session.currentRound.
-      this.session.beginRound(cardIds as [CardId, CardId, CardId, CardId]);
-      await this._driveRound(this.session.currentRound!);
-    }
-
-    // Computes scores and emits game:ended.
-    this.session.endGame();
   }
 
   private async _driveRound(round: Round): Promise<void> {
     const pickedCards = new Map<PlayerId, CardId>();
 
-    // Single loop over the pick→place→pick→place→…→complete phase machine.
-    // RoundPhase alternates: picking → placing (per player) until complete.
     while (round.phase !== "complete") {
       const player = round.currentActor;
       if (!player) break;
@@ -82,7 +61,10 @@ export class GameDriver {
         const cardId = await actor.awaitPick(availableCards, boardSnapshot);
 
         pickedCards.set(player.id, cardId);
-        this.session.handlePick(player.id, cardId);
+        // Guard: skip if the UI already applied this pick to the session.
+        if (round.phase === "picking" && round.currentActor?.id === player.id) {
+          this.session.handlePick(player.id, cardId);
+        }
       } else {
         // placing phase
         const pickedSlot = round.deal
@@ -96,10 +78,13 @@ export class GameDriver {
         const boardSnapshot = this.session.boardFor(player.id);
         const result = await actor.awaitPlacement(cardId, boardSnapshot);
 
-        if ("discard" in result) {
-          this.session.handleDiscard(player.id);
-        } else {
-          this.session.handlePlacement(player.id, result.x, result.y, result.direction);
+        // Guard: skip if the UI already applied this placement to the session.
+        if (round.phase === "placing" && round.currentActor?.id === player.id) {
+          if ("discard" in result) {
+            this.session.handleDiscard(player.id);
+          } else {
+            this.session.handlePlacement(player.id, result.x, result.y, result.direction);
+          }
         }
       }
     }

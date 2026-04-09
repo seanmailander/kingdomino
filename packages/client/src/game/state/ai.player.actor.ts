@@ -1,41 +1,46 @@
 import type { CardId, Direction } from "kingdomino-engine";
 import type { PlayerActor, PlacementResult } from "kingdomino-protocol";
-import { RandomAIPlayer } from "kingdomino-protocol";
 import type { PlayerId, BoardGrid, GameVariant } from "kingdomino-engine";
-import { STANDARD } from "kingdomino-engine";
+import { findPlacementWithin5x5, findPlacementWithin7x7, STANDARD, MIGHTY_DUEL } from "kingdomino-engine";
 
-// TODO: redesign AIPlayerActor for N-player games.
-// RandomAIPlayer takes a single humanPlayerId, which is ambiguous in games
-// with multiple non-AI players. Initial implementation passes first non-AI player's ID.
-// Long-term: replace with stateless MoveStrategy per architecture-report §8.5.
-
-type AIMove =
-  | { playerId: string; cardId: CardId; discard: true }
-  | { playerId: string; cardId: CardId; x: number; y: number; direction: Direction };
-
-function isDiscardMove(move: AIMove): move is { playerId: string; cardId: CardId; discard: true } {
-  return "discard" in move && move.discard === true;
-}
-
+/**
+ * Stateless AI actor that picks a random placeable card from the available
+ * cards and finds a valid in-bounds placement. Uses the availableCards and
+ * boardSnapshot provided by the GameDriver rather than maintaining a shadow
+ * session.
+ */
 export class AIPlayerActor implements PlayerActor {
   readonly playerId: PlayerId;
-  private readonly ai: RandomAIPlayer;
+  private readonly variant: GameVariant;
   private pendingPlacement: PlacementResult | null = null;
 
-  constructor(playerId: PlayerId, humanPlayerId: PlayerId, variant: GameVariant = STANDARD) {
+  constructor(playerId: PlayerId, _humanPlayerId: PlayerId, variant: GameVariant = STANDARD) {
     this.playerId = playerId;
-    this.ai = new RandomAIPlayer(playerId, humanPlayerId, variant);
+    this.variant = variant;
   }
 
-  awaitPick(_availableCards: CardId[], _boardSnapshot: BoardGrid): Promise<CardId> {
-    const move = this.ai.generateMove() as AIMove;
-    // Store the placement decision now; awaitPlacement() will return it
-    if (isDiscardMove(move)) {
-      this.pendingPlacement = { discard: true };
-    } else {
-      this.pendingPlacement = { x: move.x, y: move.y, direction: move.direction };
+  awaitPick(availableCards: CardId[], boardSnapshot: BoardGrid): Promise<CardId> {
+    const findPlacement =
+      this.variant === MIGHTY_DUEL ? findPlacementWithin7x7 : findPlacementWithin5x5;
+
+    // Shuffle for randomness
+    const shuffled = [...availableCards].sort(() => Math.random() - 0.5);
+
+    for (const cardId of shuffled) {
+      const placement = findPlacement(boardSnapshot, cardId);
+      if (placement !== null) {
+        this.pendingPlacement = {
+          x: placement.x,
+          y: placement.y,
+          direction: placement.direction,
+        };
+        return Promise.resolve(cardId);
+      }
     }
-    return Promise.resolve(move.cardId);
+
+    // No valid in-bounds placement for any card — pick first and discard
+    this.pendingPlacement = { discard: true };
+    return Promise.resolve(availableCards[0]);
   }
 
   awaitPlacement(_cardId: CardId, _boardSnapshot: BoardGrid): Promise<PlacementResult> {
@@ -44,12 +49,5 @@ export class AIPlayerActor implements PlayerActor {
     return Promise.resolve(result);
   }
 
-  /** Expose the underlying RandomAIPlayer for game lifecycle hooks (startGame, beginRound, etc.) */
-  get rawAI(): RandomAIPlayer {
-    return this.ai;
-  }
-
-  destroy(): void {
-    this.ai.destroy();
-  }
+  destroy(): void { /* stateless — nothing to clean up */ }
 }
