@@ -74,6 +74,15 @@ App (reads store from context)
 
 Old flows that outlive their story write to a disconnected `GameStore` instance — harmless, GC'd when the promise chain completes.
 
+### Trigger functions from story `play()` callbacks
+
+Story `play()` functions run outside the React tree — they can't call `useGameStore()`. Two patterns:
+
+1. **DOM interaction** (preferred): Click the Pause button in the rendered UI, which internally calls the store's trigger. This is what real users do.
+2. **Exposed ref**: `RealGameRuleHarness` can expose the store instance via a module-level ref or a `data-*` attribute on a DOM node, letting `play()` reach it. This is acceptable for test harnesses only.
+
+`triggerPauseIntent()` in `PlayRulesVisualTdd.stories.tsx` currently calls the module-level function directly. After this change, the harness exposes the store and the story calls `store.triggerPauseIntent()` instead.
+
 ## Scope
 
 ### Changed files
