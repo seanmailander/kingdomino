@@ -11,7 +11,7 @@ const meta = {
   tags: ["autodocs", "snapshot"],
   decorators: [
     (Story) => (
-      <div data-testid="subject" style={{ width: 80, height: 80, display: "inline-block" }}>
+      <div data-testid="subject" style={{ width: 80, height: 80, display: "inline-block", overflow: "hidden" }}>
         <Story />
       </div>
     ),
