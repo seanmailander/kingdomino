@@ -10,7 +10,6 @@ import {
   pickMessage,
   placeMessage,
   discardMessage,
-  startMessage,
   pauseRequestMessage,
   pauseAckMessage,
   resumeRequestMessage,
@@ -41,10 +40,6 @@ export class ConnectionManager {
   ) {
     this.send = send;
     this.waitFor = waitForOneOf;
-  }
-
-  sendStart() {
-    this.send(startMessage());
   }
 
   sendPick(playerId: PlayerId, cardId: CardId) {
