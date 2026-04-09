@@ -8,7 +8,7 @@ import { wood, grain, water, mine, noCrown, oneCrown, twoCrown, threeCrown } fro
 const meta = {
   title: "Game/Tile",
   component: Tile,
-  tags: ["autodocs"],
+  tags: ["autodocs", "snapshot"],
 } satisfies Meta<typeof Tile>;
 
 export default meta;
