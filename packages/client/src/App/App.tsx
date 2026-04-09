@@ -6,12 +6,24 @@ import { Lobby as LobbyComponent } from "../Lobby/Lobby";
 import { Game as GameComponent } from "../game/visuals/Game";
 import { GameOverScreen } from "../game/visuals/GameOverScreen";
 import { determineWinners } from "kingdomino-engine";
-import { useApp, getGameOverScores, resetAppState, triggerLobbyStart, triggerLobbyLeave } from "./store";
+import { useApp } from "./store";
+import { useGameStore } from "./GameStoreContext";
 import { getPeerSession } from "./peerSession";
-import { createGameLobby, gameLobby } from "./gameLobby";
+import { AppFlowAdapter } from "./AppFlowAdapter";
+import { LobbyFlow } from "../game/state/game.flow";
+import { DefaultRosterFactory } from "../game/state/default.roster.factory";
+import { Splash } from "./AppExtras";
 
 export function App({ seed }: { seed?: string }) {
-  const lobby = useMemo(() => (seed ? createGameLobby(seed) : gameLobby), [seed]);
+  const store = useGameStore();
+  const lobby = useMemo(() => {
+    const adapter = new AppFlowAdapter(store);
+    return new LobbyFlow({
+      adapter,
+      rosterFactory: new DefaultRosterFactory({ seed }),
+    });
+  }, [store, seed]);
+
   const { session, room, hint } = useApp();
 
   return (
@@ -21,16 +33,16 @@ export function App({ seed }: { seed?: string }) {
       {room === "Splash" && <SplashComponent lobby={lobby} />}
       {room === "Lobby" && (
         <LobbyComponent
-          onStart={triggerLobbyStart}
-          onLeave={triggerLobbyLeave}
+          onStart={(config) => store.triggerLobbyStart(config)}
+          onLeave={() => store.triggerLobbyLeave()}
           joinMatchmaking={() => getPeerSession().joinMatchmaking()}
         />
       )}
       {(room === "Game" || room === "GamePaused") && session && <GameComponent session={session} />}
       {room === "GameEnded" && (
         <GameOverScreen
-          scores={determineWinners(getGameOverScores())}
-          onReturnToLobby={resetAppState}
+          scores={determineWinners(store.getGameOverScores())}
+          onReturnToLobby={() => store.setRoom(Splash)}
         />
       )}
     </div>

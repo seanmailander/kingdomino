@@ -9,8 +9,8 @@ import {
   PLACEMENT_CONNECT_LEGALITY_SCENARIO,
   RealGameRuleHarness,
   RuleScenarioScaffold,
+  currentHarnessStore,
 } from "./GameRulesVisualTdd.shared";
-import { triggerPauseIntent } from "../../App/store";
 
 const meta = {
   title: "Game/Rules Visual TDD/Play",
@@ -129,7 +129,7 @@ export const PausedState: Story = {
     await expect(await canvas.findByText("Room: Game")).toBeVisible();
 
     // Trigger pause from the store (simulates Pause button in UI)
-    triggerPauseIntent();
+    currentHarnessStore!.triggerPauseIntent();
 
     // PauseOverlay should appear
     await expect(await canvas.findByRole("button", { name: /resume/i })).toBeVisible();
@@ -154,7 +154,7 @@ export const ExitConfirmState: Story = {
 
     // Reach Game state and pause
     await expect(await canvas.findByText("Room: Game")).toBeVisible();
-    triggerPauseIntent();
+    currentHarnessStore!.triggerPauseIntent();
     const exitBtn = await canvas.findByRole("button", { name: /^exit$/i });
     await expect(exitBtn).toBeVisible();
 

@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { App } from "../../App/App";
-import { resetAppState, triggerLobbyLeave, triggerLobbyStart, useApp, getCurrentSession } from "../../App/store";
+import { useApp } from "../../App/store";
+import { useGameStore } from "../../App/GameStoreContext";
+import { GameStoreProvider } from "../../App/GameStoreContext";
+import type { GameStore } from "../../App/GameStore";
 import type { RosterConfig } from "../../Lobby/lobby.types";
 import { SLOT_LOCAL, SLOT_AI } from "../../Lobby/lobby.types";
 import {
@@ -25,6 +28,7 @@ import type { GameBonuses } from "kingdomino-engine";
 import type { BoardPlacement, BoardGrid } from "kingdomino-engine";
 import { LobbyFlow } from "../state/game.flow";
 import { AppFlowAdapter } from "../../App/AppFlowAdapter";
+import { GameStore as GameStoreClass } from "../../App/GameStore";
 import type { TestConnectionScenario } from "kingdomino-protocol";
 import type { Direction } from "kingdomino-engine";
 import type { PlayerActor, PlacementResult } from "kingdomino-protocol";
@@ -343,7 +347,7 @@ class StoryRosterFactory implements RosterFactory {
 
     const seedProvider = new SequentialSeedProvider(
       this.scenario.handshakes,
-      () => getCurrentSession()?.endGame(),
+      () => currentHarnessStore?.getSession()?.endGame(),
     );
 
     return {
@@ -626,9 +630,14 @@ function StoryStatePanel({ scriptLog }: { scriptLog: ReadonlyArray<string> }) {
   );
 }
 
+// ── Module-level ref for story play() functions ───────────────────────────────
+
+export let currentHarnessStore: GameStore | null = null;
+
 // ── Main harness ───────────────────────────────────────────────────────────────
 
-export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }) {
+function RealGameRuleHarnessInner({ scenario }: { scenario: RealGameScenario }) {
+  const store = useGameStore();
   const [scriptLog, setScriptLog] = useState<string[]>([]);
   const localActorRef = useRef<LocalPlayerActor | null>(null);
 
@@ -636,7 +645,7 @@ export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }
 
   const flow = useMemo(() => {
     return new LobbyFlow({
-      adapter: new AppFlowAdapter(),
+      adapter: new AppFlowAdapter(store),
       rosterFactory: {
         async build(config: RosterConfig) {
           const result = await storyFactory.build(config);
@@ -647,26 +656,24 @@ export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }
       variant: scenario.variant,
       bonuses: scenario.bonuses,
     });
-  }, [storyFactory, scenario.variant, scenario.bonuses]);
+  }, [store, storyFactory, scenario.variant, scenario.bonuses]);
 
   useEffect(() => {
-    resetAppState();
+    currentHarnessStore = store;
     setScriptLog([]);
 
     flow.start();
 
     if (scenario.autoStart !== false) {
       const defaultConfig: RosterConfig = [{ type: SLOT_LOCAL }, { type: SLOT_AI }];
-      queueMicrotask(() => triggerLobbyStart(defaultConfig));
+      queueMicrotask(() => store.triggerLobbyStart(defaultConfig));
     }
 
     return () => {
       localActorRef.current = null;
-      triggerLobbyLeave();
-      resetAppState();
-      setScriptLog([]);
+      currentHarnessStore = null;
     };
-  }, [flow, scenario]);
+  }, [flow, scenario, store]);
 
   return (
     <>
@@ -679,6 +686,14 @@ export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }
       />
       <StoryStatePanel scriptLog={scriptLog} />
     </>
+  );
+}
+
+export function RealGameRuleHarness({ scenario }: { scenario: RealGameScenario }) {
+  return (
+    <GameStoreProvider>
+      <RealGameRuleHarnessInner scenario={scenario} />
+    </GameStoreProvider>
   );
 }
 

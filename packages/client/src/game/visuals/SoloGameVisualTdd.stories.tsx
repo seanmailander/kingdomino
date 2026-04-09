@@ -4,7 +4,7 @@ import { action } from "storybook/actions";
 import { expect, userEvent, spyOn } from "storybook/test";
 
 import { App } from "../../App/App";
-import { resetAppState } from "../../App/store";
+import { GameStoreProvider } from "../../App/GameStoreContext";
 
 const meta = {
   title: "Game/Solo AI Visual TDD",
@@ -13,15 +13,13 @@ const meta = {
     seed: "test-seed-12345",
   },
   tags: ["autodocs"],
-  beforeEach: () => {
-    resetAppState();
-    // Surface any console.error calls (e.g. caught flow errors) as test failures
-    spyOn(console, "error")
-      .mockName("")
-      .mockImplementation((...args) => {
-        action("console.log")(args);
-      });
-  },
+  decorators: [
+    (Story) => (
+      <GameStoreProvider>
+        <Story />
+      </GameStoreProvider>
+    ),
+  ],
 } satisfies Meta<typeof App>;
 
 export default meta;
