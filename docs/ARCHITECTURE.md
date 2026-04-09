@@ -311,12 +311,12 @@ These are genuine client app concerns that packaging alone cannot solve:
 
 **Unit tests** (`*.test.ts`): pure game logic — scoring, placement validation, deck operations. Use `RandomSeedProvider` for deterministic seeds.
 
-**Integration/flow tests** (`state/*.test.ts`): use `TestConnection` (in `kingdomino-protocol`) for scripted deterministic scenarios. No network, no React.
+**Integration/flow tests** (`state/*.test.ts`): use `DefaultRosterFactory` and `AppFlowAdapter` for scripted deterministic scenarios. No network, no React.
 
-**Visual TDD** (`*.stories.tsx`): Storybook stories with `play()` functions assert on real rendered DOM. `RealGameRuleHarness` wraps `GameSession` + `TestConnection` to run full game flows through the real UI.
+**Visual TDD** (`*.stories.tsx`): Storybook stories with `play()` functions assert on real rendered DOM. `RealGameRuleHarness` wraps `GameSession` + `StoryRosterFactory` to run full game flows through the real UI.
 
 **Brittleness is a feature** for integration stories. If a story fails because the game no longer proceeds correctly through lobby → pick → place → scoring, that failure is desirable — the story is providing high-friction confirmation that the end-to-end system works. Do not paper over failures with abstraction.
 
 **Storybook/UI rule:** production components must not contain Storybook-specific branches. All scenario configuration belongs in story support code.
 
-**Error policy:** invalid scripted moves from `TestConnection` should fail immediately. Missing scenario setup should fail immediately. Story helpers must not silently repair broken state.
+**Error policy:** invalid scripted moves should fail immediately. Missing scenario setup should fail immediately. Story helpers must not silently repair broken state.

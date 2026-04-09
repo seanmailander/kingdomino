@@ -38,12 +38,15 @@ A browser-based multiplayer **Kingdomino** board game by Bruno Cathala — recre
 
 ## Key Abstractions
 
-- **`IGameConnection`** (in `game.flow.ts`) — the connection interface; three implementations:
-  - `SoloConnection` — single-player / self-play
-  - `MultiplayerConnection` — WebRTC via PeerJS _(not yet fully wired)_
-  - `TestConnection` — scripted deterministic scenarios for unit/integration tests
-- **`GameSession`** — OOP session manager with `GameEventBus` for typed pub/sub events (`player:joined`, `game:started`, `round:started`, `pick:made`, `place:made`, `round:complete`, `game:ended`)
+- **`PlayerActor`** (in `kingdomino-protocol`) — the move-source interface; implementations:
+  - `LocalPlayerActor` — UI input on this device
+  - `CouchPlayerActor` — UI input after device-handoff
+  - `AIPlayerActor` — stateless, computed from board state
+  - `RemotePlayerActor` — network messages from a peer
+- **`GameSession`** — OOP session manager with `GameEventBus` for typed pub/sub events (`game:started`, `round:started`, `pick:made`, `place:made`, `discard:made`, `round:complete`, `game:ended`)
+- **`GameDriver`** — subscribes to `round:started` events and drives actor decisions within each round
 - **`LobbyFlow`** — orchestrates the splash → lobby → game → end state machine
+- **`RosterFactory`** — builds actors + seed provider from lobby roster config
 
 ## Code Conventions (`packages/client/src/CLAUDE.md`)
 
@@ -60,8 +63,8 @@ A browser-based multiplayer **Kingdomino** board game by Bruno Cathala — recre
 | --------------------------------------- | --------------------------------------------------------------------------------------- |
 | `client/src/game/tests/*.test.ts`       | Unit tests for game logic (scoring, placement, deck, board)                             |
 | `client/src/game/gamelogic/*.test.ts`   | Unit tests for pure game logic functions                                                |
-| `client/src/game/state/*.test.ts`       | Integration/flow tests; use `TestConnection` for scripted scenarios                     |
-| `client/src/game/visuals/*.stories.tsx` | Visual TDD via Storybook — `RealGameRuleHarness` wraps `GameSession` + `TestConnection` |
+| `client/src/game/state/*.test.ts`       | Integration/flow tests using `DefaultRosterFactory` and `AppFlowAdapter`                |
+| `client/src/game/visuals/*.stories.tsx` | Visual TDD via Storybook — `RealGameRuleHarness` wraps `GameSession` + `StoryRosterFactory` |
 | `client/src/setupTests.ts`              | Test setup — extends Vitest `expect` with `jest-extended` matchers                      |
 
 **Run all client tests:** `cd client && npm test`
