@@ -32,3 +32,4 @@ jobs:
         with:
           commit_message: "Update client snapshots"
           file_pattern: "packages/client/__vis__/**/__baselines__/**/*"
+          branch: ci-update-snapshots
