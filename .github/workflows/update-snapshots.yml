@@ -11,7 +11,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          # Value already defaults to true, but `persist-credentials` is required to push new commits to the repository.
+          persist-credentials: true
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
@@ -23,3 +26,11 @@ jobs:
         working-directory: packages/client
       - run: npm run test:update-snapshots
         working-directory: packages/client
+      - name: Commit and push updated snapshots
+        if: ${{ always() }}
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Update client snapshots"
+          file_pattern: "packages/client/__vis__/**/__baselines__/**/*"
+          branch: ci-update-snapshots
+          create_branch: true
