@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 
 import "./index.css";
 import { App } from "./App/App";
+import { GameStoreProvider } from "./App/GameStoreContext";
 
 const rootElement = document.getElementById("root");
 
@@ -12,6 +13,8 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <React.StrictMode>
-    <App />
+    <GameStoreProvider>
+      <App />
+    </GameStoreProvider>
   </React.StrictMode>,
 );

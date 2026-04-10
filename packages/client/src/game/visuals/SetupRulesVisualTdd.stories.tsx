@@ -40,7 +40,6 @@ export const SetupByPlayerCount: Story = {
 };
 
 export const MightyDuelUsesSevenBySevenGrid: Story = {
-  tags: ["failing-test"],
   args: {
     title: "Mighty Duel uses 7x7 grid in 2-player game",
     ruleFocus: "Mighty Duel variant expands kingdom size to 7x7 with full domino set",

@@ -9,8 +9,8 @@ import {
   PLACEMENT_CONNECT_LEGALITY_SCENARIO,
   RealGameRuleHarness,
   RuleScenarioScaffold,
+  getHarnessStore,
 } from "./GameRulesVisualTdd.shared";
-import { triggerPauseIntent } from "../../App/store";
 
 const meta = {
   title: "Game/Rules Visual TDD/Play",
@@ -45,7 +45,6 @@ export const TurnOrderFromDominoSelection: Story = {
 };
 
 export const PlacementMustConnectLegally: Story = {
-  tags: ["failing-test"],
   // In scope for docs/superpowers/plans/2026-03-25-supported-story-conversion-next-steps.md.
   args: {
     title: "Placement must connect to castle or matching terrain",
@@ -63,7 +62,6 @@ export const PlacementMustConnectLegally: Story = {
 };
 
 export const DiscardWhenUnplaceable: Story = {
-  tags: ["failing-test"],
   args: {
     title: "Discard domino when no legal placement exists",
     ruleFocus: "Unplaceable domino is discarded and scores zero",
@@ -129,7 +127,7 @@ export const PausedState: Story = {
     await expect(await canvas.findByText("Room: Game")).toBeVisible();
 
     // Trigger pause from the store (simulates Pause button in UI)
-    triggerPauseIntent();
+    getHarnessStore(canvas).triggerPauseIntent();
 
     // PauseOverlay should appear
     await expect(await canvas.findByRole("button", { name: /resume/i })).toBeVisible();
@@ -154,7 +152,7 @@ export const ExitConfirmState: Story = {
 
     // Reach Game state and pause
     await expect(await canvas.findByText("Room: Game")).toBeVisible();
-    triggerPauseIntent();
+    getHarnessStore(canvas).triggerPauseIntent();
     const exitBtn = await canvas.findByRole("button", { name: /^exit$/i });
     await expect(exitBtn).toBeVisible();
 

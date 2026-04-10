@@ -1,17 +1,19 @@
 import { describe, it, expect } from "vitest";
 import { GameSession, Player, findPlacementWithin5x5 } from "kingdomino-engine";
-import type { CardId, BoardGrid } from "kingdomino-engine";
+import type { CardId, BoardGrid, SeedProvider } from "kingdomino-engine";
 import type { PlayerActor, PlacementResult } from "./player.actor";
 import { GameDriver } from "./game.driver";
+
+/** Simple seed provider that returns incrementing numbers as seeds. */
+function makeTestSeedProvider(): SeedProvider {
+  let i = 0;
+  return { nextSeed: async () => String(i++) };
+}
 
 /**
  * A scripted PlayerActor that always picks the first available card and finds
  * the first valid in-bounds placement using the engine's own helper.
  * Falls back to { discard: true } only when no valid placement exists.
- * This is safe to use across multiple rounds on the same board.
- *
- * NOTE: handleDiscard() in the engine throws if a valid placement exists,
- * so the actor MUST use findPlacementWithin5x5 and only discard as fallback.
  */
 function makeScriptedActor(playerId: string): PlayerActor {
   return {
@@ -27,7 +29,7 @@ function makeScriptedActor(playerId: string): PlayerActor {
 
 describe("GameDriver", () => {
   it("runs a complete 2-player game and resolves when game:ended fires", async () => {
-    const session = new GameSession({ variant: "standard" });
+    const session = new GameSession({ variant: "standard", seedProvider: makeTestSeedProvider() });
     const alice = new Player("alice");
     const bob = new Player("bob");
     session.addPlayer(alice);
@@ -39,13 +41,14 @@ describe("GameDriver", () => {
     ]);
 
     const driver = new GameDriver(session, actors);
+    const finished = driver.driveUntilEnd();
     session.startGame();
 
-    await expect(driver.run()).resolves.toBeUndefined();
+    await expect(finished).resolves.toBeUndefined();
   });
 
   it("rejects when an actor throws during awaitPick", async () => {
-    const session = new GameSession({ variant: "standard" });
+    const session = new GameSession({ variant: "standard", seedProvider: makeTestSeedProvider() });
     const alice = new Player("alice");
     const bob = new Player("bob");
     session.addPlayer(alice);
@@ -64,8 +67,9 @@ describe("GameDriver", () => {
     ]);
 
     const driver = new GameDriver(session, actors);
+    const finished = driver.driveUntilEnd();
     session.startGame();
 
-    await expect(driver.run()).rejects.toThrow("actor failed");
+    await expect(finished).rejects.toThrow("actor failed");
   });
 });

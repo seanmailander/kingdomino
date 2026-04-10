@@ -77,30 +77,6 @@ export default defineConfig(() => {
               headless: true,
               instances: [{ browser: "chromium" }],
             },
-            // setupFiles: ["./.storybook/vitest.setup.ts"],
-          setupFiles: ["./.storybook/vitest.setup.ts"],
-          },
-        },
-        {
-          extends: true,
-          plugins: [
-            storybookTest({
-              configDir: path.join(dirname, ".storybook"),
-              storybookScript: "npm run storybook -- --no-open",
-              tags: {
-                include: ["failing-test"],
-              },
-            }),
-            storybookVis({ subject: '[data-testid="subject"]' }),
-          ],
-          test: {
-            name: "storybook-failing",
-            browser: {
-              enabled: true,
-              provider: playwright({}),
-              headless: true,
-              instances: [{ browser: "chromium" }],
-            },
             setupFiles: ["./.storybook/vitest.setup.ts"],
           },
         },

@@ -7,7 +7,7 @@ import { PauseOverlay } from "./PauseOverlay";
 import { ExitConfirmDialog } from "./ExitConfirmDialog";
 import type { GameSession } from "kingdomino-engine";
 import { useApp } from "../../App/store";
-import { triggerPauseIntent, triggerResumeIntent, triggerExitConfirm } from "../../App/store";
+import { useGameStore } from "../../App/GameStoreContext";
 import { Game as GameRoom, GamePaused } from "../../App/AppExtras";
 
 type GameProps = {
@@ -16,39 +16,43 @@ type GameProps = {
 
 export function Game({ session }: GameProps) {
   const { room } = useApp();
+  const store = useGameStore();
   const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   const players = session.players;
   const deal = session.deal();
   const isMyTurn = session.isMyTurn();
+  const dealSnapshot = session.currentRound?.deal.snapshot() ?? [];
 
   const handleExitIntent = () => setShowExitConfirm(true);
   const handleExitConfirm = () => {
     setShowExitConfirm(false);
-    triggerExitConfirm(true);
+    store.triggerExitConfirm(true);
   };
   const handleExitCancel = () => {
     setShowExitConfirm(false);
-    triggerExitConfirm(false);
+    store.triggerExitConfirm(false);
   };
 
   return (
     <>
       {room === GamePaused && !showExitConfirm && (
-        <PauseOverlay onResume={triggerResumeIntent} onExit={handleExitIntent} />
+        <PauseOverlay onResume={() => store.triggerResumeIntent()} onExit={handleExitIntent} />
       )}
       {showExitConfirm && (
         <ExitConfirmDialog onConfirm={handleExitConfirm} onCancel={handleExitCancel} />
       )}
       {room === GameRoom && (
         <div className="game-controls">
-          <button onClick={triggerPauseIntent}>Pause</button>
+          <button onClick={() => store.triggerPauseIntent()}>Pause</button>
         </div>
       )}
       <div className="deal">
-        {deal.map((card) => (
-          <Card key={card.id} card={card} isMyTurn={isMyTurn} session={session} />
-        ))}
+        {deal.map((card) => {
+          const slot = dealSnapshot.find((s) => s.cardId === card.id);
+          const isPicked = slot?.pickedBy !== null && slot?.pickedBy !== undefined;
+          return <Card key={card.id} card={card} isMyTurn={isMyTurn && !isPicked} session={session} />;
+        })}
       </div>
       <div className="boards">
         {players.map((player) => (

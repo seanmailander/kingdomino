@@ -57,7 +57,6 @@ export const pickMessage    = (playerId: PlayerId, cardId: CardId): PickMessage 
 export const placeMessage   = (playerId: PlayerId, x: number, y: number, direction: Direction): PlaceMessage => ({ type: PLACE, playerId, x, y, direction });
 export const discardMessage = (playerId: PlayerId): DiscardMessage => ({ type: DISCARD, playerId });
 
-export const startMessage       = (): StartGameMessage       => ({ type: START });
 export const committmentMessage = (committment: string): CommittmentGameMessage => ({ type: COMMITTMENT, content: { committment } });
 export const revealMessage      = (secret: string | number): RevealGameMessage  => ({ type: REVEAL, content: { secret } });
 

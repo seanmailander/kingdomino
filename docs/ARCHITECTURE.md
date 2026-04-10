@@ -43,7 +43,7 @@ kingdomino-commitment         (depends on: kingdomino-engine)
 
 kingdomino-protocol           (depends on: kingdomino-engine)
   └── wire message vocabulary, ConnectionManager, PlayerActor interface,
-      RemotePlayerActor, GameDriver
+      RemotePlayerActor, GameDriver (turn-level actor coordinator)
       needed by: all active game clients (UI, bots)
 
 kingdomino-lobby              (depends on: kingdomino-protocol)
@@ -84,7 +84,7 @@ The distinction between "local" and "remote" lives outside the session, at the U
 | Method | Phase | Description |
 |--------|-------|-------------|
 | `addPlayer(player)` | lobby | Register a participant |
-| `startGame()` | lobby → playing | Begin; engine seeds pick order, drives round loop internally |
+| `startGame()` | lobby → playing | Begin; engine seeds pick order, drives round loop internally via SeedProvider |
 | `handlePick(playerId, cardId)` | playing | Record a pick |
 | `handlePlacement(playerId, x, y, direction)` | playing | Record a placement |
 | `handleDiscard(playerId)` | playing | Record a discard |
@@ -157,9 +157,9 @@ The engine doesn't need to know how a move was produced. It just needs the move.
 
 ## GameDriver: The Turn Loop
 
-`GameDriver` owns a `GameSession` and a map of player IDs to their actors. It drives the game loop by asking each actor for their move in turn order and feeding results into the session. That's its entire job — nothing else.
+`GameDriver` drives actor decisions within each round. When the session starts a new round, the driver asks each actor for their pick and placement in turn order and feeds results back into the session. That's its entire job — nothing else.
 
-This replaces scattered event subscriptions in `LobbyFlow` with one explicit ownership relationship: the driver owns the turn sequence; actors own move production. The driver is completely ignorant of how any actor works.
+The driver does **not** own the outer game loop. Deck generation, seed management, round creation, pause/resume, and game lifecycle all belong to `GameSession`. The driver is a pure turn-level coordinator, completely ignorant of how any actor works.
 
 ---
 
@@ -218,8 +218,8 @@ Browser / PeerJS
             LobbyFlow (orchestrator — owns game lifecycle)
               ├─ FlowAdapter (injected)
               ├─ RosterFactory (injected; produces PlayerActors + SeedProvider)
-              ├─ GameDriver (drives turn loop)
-              └─ GameSession (from kingdomino-engine)
+              ├─ GameDriver (subscribes to round:started, drives actor decisions)
+              └─ GameSession (from kingdomino-engine; owns game loop, seeds, rounds)
                     ├─ GameEventBus (typed pub/sub)
                     ├─ Player[] → Board (per player)
                     └─ SeedProvider
@@ -278,6 +278,25 @@ For all-local games (solo, couch, AI), no signaling server contact is required. 
 
 ---
 
+## State Ownership (Client Package)
+
+> **Applies to `packages/client/` — motivated by React conventions but the principle is general.**
+
+### Principle: Isolation by unreachability, not by cleanup
+
+App state lifetime must be scoped to the component tree that uses it, not to the JS module that defines it. When a component tree unmounts, its state becomes unreachable — old async flows can keep writing to it harmlessly since no subscribers exist. No cleanup functions, no cancellation tokens, no promise rejection needed.
+
+**Why this matters:** Module-level singleton state (signals, resolver queues, event subscriptions at file scope) creates implicit coupling between every consumer. Cleanup functions that attempt to drain or reset shared state are inherently racy — async flows from the previous owner continue executing and compete with the new owner's setup. The fix is not better cleanup; it's eliminating the need for cleanup by making state instance-scoped.
+
+### Rules
+
+1. **No mutable state at module scope.** Signals, resolver arrays, and subscription lists belong in class instances, not `let` declarations at file scope.
+2. **State instances are owned by React context providers.** The provider creates the instance on mount and (optionally) disposes on unmount. Components access state via context hooks.
+3. **Async flows hold references to their own state instance.** If the component tree that created a flow unmounts, the flow writes to a disconnected instance that nobody reads — harmless, garbage-collected when the promise chain completes.
+4. **No `resetState()` functions.** If you need a reset, mount a new provider. Fresh provider = fresh instance = clean state.
+
+---
+
 ## Open Application-Layer Seams
 
 These are genuine client app concerns that packaging alone cannot solve:
@@ -285,7 +304,7 @@ These are genuine client app concerns that packaging alone cannot solve:
 | Priority | Seam | Pattern to apply |
 |----------|------|------------------|
 | 1 | **UI directly calls session mutation methods** — components reach into `GameSession` bypassing any interceptor | `GameCommands` dispatch interface: `pick()`, `place()`, `discard()` |
-| 2 | **Global resolver arrays in store.ts** — 5 mutable `resolve[]` arrays as async bridges between clicks and flow logic | `UIIntentBus` event emitter: flow subscribes, UI emits |
+| 2 | ~~**Global resolver arrays in store.ts**~~ | ~~Addressed by scoped `GameStore` instances (see State Ownership above)~~ |
 | 3 | **Inconsistent subscription cleanup** — some `off()` calls captured, others not, causing listener accumulation on restart | `SubscriptionScope`: all subscriptions added to a scope, one `disposeAll()` on teardown |
 | 4 | **Phase state triplicated** — `GamePhase` (engine) → `FlowPhase` (orchestration) → `Room` (UI) kept in sync manually | Single source of truth (engine) with pure projection functions |
 | 5 | **Components check global room state** — leaf components read `room === GameRoom` to decide interactivity | Prop/context capability flag passed from parent `<GameScreen>` |
@@ -311,12 +330,12 @@ These are genuine client app concerns that packaging alone cannot solve:
 
 **Unit tests** (`*.test.ts`): pure game logic — scoring, placement validation, deck operations. Use `RandomSeedProvider` for deterministic seeds.
 
-**Integration/flow tests** (`state/*.test.ts`): use `TestConnection` (in `kingdomino-protocol`) for scripted deterministic scenarios. No network, no React.
+**Integration/flow tests** (`state/*.test.ts`): use `DefaultRosterFactory` and `AppFlowAdapter` for scripted deterministic scenarios. No network, no React.
 
-**Visual TDD** (`*.stories.tsx`): Storybook stories with `play()` functions assert on real rendered DOM. `RealGameRuleHarness` wraps `GameSession` + `TestConnection` to run full game flows through the real UI.
+**Visual TDD** (`*.stories.tsx`): Storybook stories with `play()` functions assert on real rendered DOM. `RealGameRuleHarness` wraps `GameSession` + `StoryRosterFactory` to run full game flows through the real UI.
 
 **Brittleness is a feature** for integration stories. If a story fails because the game no longer proceeds correctly through lobby → pick → place → scoring, that failure is desirable — the story is providing high-friction confirmation that the end-to-end system works. Do not paper over failures with abstraction.
 
 **Storybook/UI rule:** production components must not contain Storybook-specific branches. All scenario configuration belongs in story support code.
 
-**Error policy:** invalid scripted moves from `TestConnection` should fail immediately. Missing scenario setup should fail immediately. Story helpers must not silently repair broken state.
+**Error policy:** invalid scripted moves should fail immediately. Missing scenario setup should fail immediately. Story helpers must not silently repair broken state.

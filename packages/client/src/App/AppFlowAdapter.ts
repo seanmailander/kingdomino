@@ -1,19 +1,10 @@
-import {
-  setCurrentSession,
-  setRoom,
-  getRoom,
-  onceRoomIsNot,
-  awaitLobbyStart,
-  awaitLobbyLeave,
-  awaitPauseIntent,
-  awaitResumeIntent,
-  resetAppState,
-} from "./store";
-import { Lobby, Game, Splash, GamePaused, GameEnded } from "./AppExtras";
+import type { GameStore } from "./GameStore";
 import type { FlowAdapter, FlowPhase } from "../game/state/game.flow";
 import { FLOW_SPLASH, FLOW_LOBBY, FLOW_GAME, FLOW_PAUSED, FLOW_ENDED } from "../game/state/game.flow";
 import type { GameSession } from "kingdomino-engine";
 import type { RosterConfig } from "../Lobby/lobby.types";
+import { Lobby, Game, Splash, GamePaused, GameEnded } from "./AppExtras";
+import type { Room } from "./AppExtras";
 
 const phaseToRoom = {
   [FLOW_SPLASH]: Splash,
@@ -23,8 +14,7 @@ const phaseToRoom = {
   [FLOW_ENDED]:  GameEnded,
 } as const;
 
-const roomToPhase = (): FlowPhase => {
-  const room = getRoom();
+const roomToPhase = (room: Room): FlowPhase => {
   if (room === GamePaused) return FLOW_PAUSED;
   if (room === GameEnded) return FLOW_ENDED;
   if (room === Game) return FLOW_GAME;
@@ -33,39 +23,42 @@ const roomToPhase = (): FlowPhase => {
 };
 
 export class AppFlowAdapter implements FlowAdapter {
+  constructor(private readonly store: GameStore) {}
+
   setSession(session: GameSession | null): void {
-    setCurrentSession(session);
+    this.store.setCurrentSession(session);
   }
 
   setPhase(phase: FlowPhase): void {
-    setRoom(phaseToRoom[phase]);
+    this.store.setRoom(phaseToRoom[phase]);
   }
 
   getPhase(): FlowPhase {
-    return roomToPhase();
+    return roomToPhase(this.store.getRoom());
   }
 
   oncePhaseIsNot(phase: FlowPhase): Promise<void> {
-    return onceRoomIsNot(phaseToRoom[phase]);
+    return this.store.onceRoomIsNot(phaseToRoom[phase]);
   }
 
   awaitStart(): Promise<RosterConfig> {
-    return awaitLobbyStart();
+    return this.store.awaitLobbyStart();
   }
 
   awaitLeave(): Promise<void> {
-    return awaitLobbyLeave();
+    return this.store.awaitLobbyLeave();
   }
 
   awaitPause(): Promise<void> {
-    return awaitPauseIntent();
+    return this.store.awaitPauseIntent();
   }
 
   awaitResume(): Promise<void> {
-    return awaitResumeIntent();
+    return this.store.awaitResumeIntent();
   }
 
   reset(): void {
-    resetAppState();
+    // No-op — isolation by unreachability. The store is scoped to the
+    // provider; when the provider unmounts, the store becomes unreachable.
   }
 }

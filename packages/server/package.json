@@ -9,7 +9,8 @@
   "scripts": {
     "lint": "eslint",
     "start": "nodemon --exec node --loader ts-node/esm ./index.ts",
-    "test": "echo \"No tests for server\""
+    "test": "echo \"No tests for server\"",
+    "tscheck": "tsc --noEmit"
   },
   "dependencies": {
     "@types/multicast-dns": "^7.2.4",

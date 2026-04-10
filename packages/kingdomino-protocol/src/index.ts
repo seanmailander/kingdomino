@@ -18,8 +18,6 @@ export { RemotePlayerActor } from "./remote.player.actor";
 // Turn loop driver
 export { GameDriver } from "./game.driver";
 
-// Legacy: RandomAIPlayer (shadow-session design; see TODO in ai.player.ts)
-export { RandomAIPlayer } from "./ai.player";
 
 // Test utilities (see TODO in connection.testing.ts)
 export { TestConnection } from "./connection.testing";

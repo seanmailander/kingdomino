@@ -11,14 +11,17 @@ import { ConnectionManager, RemotePlayerActor } from "kingdomino-protocol";
 import type { CommitmentTransport } from "kingdomino-commitment";
 
 type DefaultRosterFactoryOptions = {
+  seed?: string;
   variant?: GameVariant;
 };
 
 export class DefaultRosterFactory implements RosterFactory {
   private readonly variant: GameVariant;
+  private readonly seed?: string;
 
-  constructor({ variant = STANDARD }: DefaultRosterFactoryOptions = {}) {
+  constructor({ variant = STANDARD, seed }: DefaultRosterFactoryOptions = {}) {
     this.variant = variant;
+    this.seed = seed;
   }
 
   async build(config: RosterConfig): Promise<RosterResult> {
@@ -31,7 +34,7 @@ export class DefaultRosterFactory implements RosterFactory {
     const firstRemote = remoteSlots[0];
     const seedProvider = firstRemote
       ? new CommitmentSeedProvider(firstRemote.connection as unknown as CommitmentTransport)
-      : new RandomSeedProvider();
+      : new RandomSeedProvider({ fixed: this.seed });
 
     // Assign stable player IDs: p1, p2, p3, p4
     const playerIds: PlayerId[] = config.map((_, i) => `p${i + 1}` as PlayerId);
@@ -53,7 +56,7 @@ export class DefaultRosterFactory implements RosterFactory {
           return { id, actor: new AIPlayerActor(id, firstHumanId, this.variant) };
         case SLOT_REMOTE: {
           const conn = slot.connection!;
-          const cm = new ConnectionManager(conn.send, conn.waitFor, conn.waitForOneOf.bind(conn));
+          const cm = new ConnectionManager(conn.send, conn.waitForOneOf.bind(conn));
           return { id, actor: new RemotePlayerActor(id, cm) };
         }
       }

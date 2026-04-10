@@ -305,10 +305,6 @@ export class GameSession {
     return this._players.find((p) => p.id === this._localPlayerId);
   }
 
-  playerById(id: PlayerId): Player | undefined {
-    return this._players.find((p) => p.id === id);
-  }
-
   hasEnoughPlayers(): boolean {
     return this._players.length >= 2;
   }
