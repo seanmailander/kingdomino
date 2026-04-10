@@ -1,4 +1,4 @@
-import { computed, effect, signal } from "alien-signals";
+import { effect, signal } from "alien-signals";
 
 import type { GameSession, GameEvent } from "kingdomino-engine";
 import { GAME_STARTED, ROUND_STARTED, PICK_MADE, PLACE_MADE, DISCARD_MADE, ROUND_COMPLETE, GAME_PAUSED, GAME_RESUMED, GAME_ENDED } from "kingdomino-engine";

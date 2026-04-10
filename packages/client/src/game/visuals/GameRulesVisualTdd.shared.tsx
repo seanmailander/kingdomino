@@ -329,11 +329,13 @@ class ScriptedPlayerActor implements PlayerActor {
  */
 class StoryRosterFactory implements RosterFactory {
   private readonly scenario: RealGameScenario;
+  private readonly store: GameStoreClass;
   /** Exposed so ScriptedLocalPlayer can resolve picks/placements on the actor. */
   localActor: LocalPlayerActor | null = null;
 
-  constructor(scenario: RealGameScenario) {
+  constructor(scenario: RealGameScenario, store: GameStoreClass) {
     this.scenario = scenario;
+    this.store = store;
   }
 
   async build(_config: RosterConfig): Promise<RosterResult> {
@@ -347,7 +349,7 @@ class StoryRosterFactory implements RosterFactory {
 
     const seedProvider = new SequentialSeedProvider(
       this.scenario.handshakes,
-      () => currentHarnessStore?.getSession()?.endGame(),
+      () => this.store.getSession()?.endGame(),
     );
 
     return {
@@ -633,9 +635,23 @@ function StoryStatePanel({ scriptLog }: { scriptLog: ReadonlyArray<string> }) {
   );
 }
 
-// ── Module-level ref for story play() functions ───────────────────────────────
+// ── DOM-scoped store access for story play() functions ────────────────────────
 
-export let currentHarnessStore: GameStore | null = null;
+const STORE_PROP = "__gameStore__" as const;
+
+/**
+ * Retrieve the GameStore instance attached to the harness DOM node.
+ * Used by story play() functions that need to call store methods (e.g. triggerPauseIntent)
+ * without relying on module-level mutable state.
+ */
+export function getHarnessStore(
+  canvas: { getByTestId: (id: string) => HTMLElement },
+): GameStore {
+  const el = canvas.getByTestId("harness-root") as HTMLElement & { [STORE_PROP]?: GameStore };
+  const store = el[STORE_PROP];
+  if (!store) throw new Error("GameStore not found on harness-root element");
+  return store;
+}
 
 // ── Main harness ───────────────────────────────────────────────────────────────
 
@@ -643,8 +659,9 @@ function RealGameRuleHarnessInner({ scenario }: { scenario: RealGameScenario }) 
   const store = useGameStore();
   const [scriptLog, setScriptLog] = useState<string[]>([]);
   const localActorRef = useRef<LocalPlayerActor | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
-  const storyFactory = useMemo(() => new StoryRosterFactory(scenario), [scenario]);
+  const storyFactory = useMemo(() => new StoryRosterFactory(scenario, store), [scenario, store]);
 
   const flow = useMemo(() => {
     return new LobbyFlow({
@@ -662,7 +679,10 @@ function RealGameRuleHarnessInner({ scenario }: { scenario: RealGameScenario }) 
   }, [store, storyFactory, scenario.variant, scenario.bonuses]);
 
   useEffect(() => {
-    currentHarnessStore = store;
+    // Attach store to DOM node so play() functions can access it per-story
+    if (rootRef.current) {
+      (rootRef.current as HTMLElement & { [STORE_PROP]?: GameStore })[STORE_PROP] = store;
+    }
     setScriptLog([]);
 
     flow.start();
@@ -674,12 +694,11 @@ function RealGameRuleHarnessInner({ scenario }: { scenario: RealGameScenario }) 
 
     return () => {
       localActorRef.current = null;
-      currentHarnessStore = null;
     };
   }, [flow, scenario, store]);
 
   return (
-    <>
+    <div ref={rootRef} data-testid="harness-root">
       <App />
       <ScriptedLocalPlayer
         localBoardPlacements={scenario.localBoardPlacements}
@@ -688,7 +707,7 @@ function RealGameRuleHarnessInner({ scenario }: { scenario: RealGameScenario }) 
         onPlacementRejected={(message) => setScriptLog((current) => [...current, message])}
       />
       <StoryStatePanel scriptLog={scriptLog} />
-    </>
+    </div>
   );
 }
 
