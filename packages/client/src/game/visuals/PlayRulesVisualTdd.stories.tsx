@@ -45,7 +45,6 @@ export const TurnOrderFromDominoSelection: Story = {
 };
 
 export const PlacementMustConnectLegally: Story = {
-  tags: ["failing-test"],
   // In scope for docs/superpowers/plans/2026-03-25-supported-story-conversion-next-steps.md.
   args: {
     title: "Placement must connect to castle or matching terrain",
@@ -63,7 +62,6 @@ export const PlacementMustConnectLegally: Story = {
 };
 
 export const DiscardWhenUnplaceable: Story = {
-  tags: ["failing-test"],
   args: {
     title: "Discard domino when no legal placement exists",
     ruleFocus: "Unplaceable domino is discarded and scores zero",

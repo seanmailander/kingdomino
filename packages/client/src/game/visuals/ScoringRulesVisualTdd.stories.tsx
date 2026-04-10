@@ -19,7 +19,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const PrestigeScoringByProperty: Story = {
-  tags: ["failing-test"],
   args: {
     title: "Property scoring equals area x crowns",
     ruleFocus: "Connected same-terrain regions score tiles multiplied by crowns",
@@ -43,7 +42,6 @@ export const PrestigeScoringByProperty: Story = {
 };
 
 export const TieBreakResolution: Story = {
-  tags: ["failing-test"],
   args: {
     title: "Tie break by largest property then crowns",
     ruleFocus: "Resolve ties by largest property, then by crown count",
@@ -68,7 +66,6 @@ export const TieBreakResolution: Story = {
 };
 
 export const VariantBonusesMiddleKingdomAndHarmony: Story = {
-  tags: ["failing-test"],
   args: {
     title: "Variant bonuses: Middle Kingdom and Harmony",
     ruleFocus: "Apply +10 middle kingdom and +5 harmony when enabled",
