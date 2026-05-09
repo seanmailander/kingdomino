@@ -24,7 +24,7 @@ const __filename = fileURLToPath(import.meta.url)
 const HARNESS_DIR = dirname(__filename)
 const DIST_DIR = `${HARNESS_DIR}/dist-harness`
 const SERVER_ENTRY = `${DIST_DIR}/mcp-server.js`
-const TSCONFIG = `${HARNESS_DIR}/tsconfig.harness.json`
+const TSCONFIG = `${HARNESS_DIR}/tsconfig.json`
 
 // ── State ───────────────────────────────────────────────────────────────────
 

@@ -7,9 +7,21 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist-harness",
+    "rootDir": "./",
     "lib": ["ES2022"],
-    "noEmit": true
+    "incremental": true,
+    "tsBuildInfoFile": "./dist-harness/.tsbuildinfo"
   },
-  "include": ["./**/*.ts"],
-  "exclude": ["node_modules", "dist-harness", "**/*.test.ts"]
+  "include": [
+    "./**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist-harness",
+    "**/*.test.ts"
+  ]
 }

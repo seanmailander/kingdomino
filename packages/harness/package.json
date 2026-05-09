@@ -2,13 +2,10 @@
   "name": "kingdomino-harness",
   "version": "0.0.1",
   "type": "module",
-  "exports": {
-    ".": "./src/index.ts"
-  },
+
   "scripts": {
     "test": "vitest run",
-    "tscheck": "tsc -p tsconfig.json && tsc -p tsconfig.harness.json",
-    "build": "tsc -p tsconfig.harness.json",
+    "build": "tsc",
     "harness": "node dist-harness/harness.js",
     "harness:server": "node dist-harness/mcp-server.js"
   },
