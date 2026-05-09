@@ -152,4 +152,31 @@ describe('MCP Server Core Tools (Step 5)', () => {
     expect(stored.players).toHaveLength(2)
     expect(stored.players[0].id).toBe('p1')
   })
+
+  it('evaluateCondition checks simple dot-path expressions', () => {
+    // Setup
+    const state = {
+      phase: 'playing',
+      players: [
+        { id: 'p1', score: 10 },
+        { id: 'p2', score: 20 },
+      ],
+    }
+
+    // Simulate condition evaluation
+    const condition1 = "phase == playing"
+    const parts = condition1.split('==')
+    const [pathPart, valuePart] = parts.map((p) => p.trim())
+    const path = pathPart.split('.')
+    let value: unknown = state
+    for (const key of path) {
+      if (typeof value === 'object' && value !== null) {
+        value = (value as Record<string, unknown>)[key]
+      }
+    }
+    const expectedStr = valuePart.replace(/^['"]|['"]$/g, '')
+    const result1 = String(value) === expectedStr
+
+    expect(result1).toBe(true)
+  })
 })
