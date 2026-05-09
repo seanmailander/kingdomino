@@ -1,1 +1,0 @@
-{"version":3,"file":"aggressive.d.ts","sourceRoot":"","sources":["../../behaviors/aggressive.ts"],"names":[],"mappings":"AAAA;;;;GAIG;AAEH,OAAO,EAAE,cAAc,EAAE,MAAM,SAAS,CAAA;AAExC;;;;;;;GAOG;AACH,qBAAa,kBAAmB,YAAW,cAAc;IACvD,YAAY,CAAC,KAAK,EAAE,OAAO,EAAE,QAAQ,EAAE,MAAM,GAAG,OAAO;IAqCvD,OAAO,CAAC,aAAa;CAQtB"}
