@@ -7,7 +7,10 @@
   },
   "scripts": {
     "test": "vitest run",
-    "tscheck": "tsc --noEmit -p tsconfig.json"
+    "tscheck": "tsc --noEmit -p tsconfig.json",
+    "build": "tsc -p tsconfig.json",
+    "harness": "node dist/harness.js",
+    "harness:server": "node dist/mcp-server.js"
   },
   "dependencies": {
     "kingdomino-engine": "*"
