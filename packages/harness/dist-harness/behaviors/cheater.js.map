@@ -1,0 +1,1 @@
+{"version":3,"file":"cheater.js","sourceRoot":"","sources":["../../behaviors/cheater.ts"],"names":[],"mappings":"AAAA;;;;;GAKG;AAIH;;;;;GAKG;AACH,MAAM,OAAO,eAAe;IAC1B,YAAY;QACV,8CAA8C;QAC9C,sDAAsD;QACtD,OAAO;YACL,MAAM,EAAE,mBAAmB;YAC3B,MAAM,EAAE;gBACN,MAAM,EAAE,kDAAkD;aAC3D;SACF,CAAA;IACH,CAAC;CACF"}

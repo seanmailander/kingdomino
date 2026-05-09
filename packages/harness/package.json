@@ -7,10 +7,11 @@
   },
   "scripts": {
     "test": "vitest run",
-    "tscheck": "tsc --noEmit -p tsconfig.json",
+    "tscheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.harness.json",
     "build": "tsc -p tsconfig.json",
-    "harness": "node dist/harness.js",
-    "harness:server": "node dist/mcp-server.js"
+    "harness:build": "tsc -p tsconfig.harness.json",
+    "harness": "node dist-harness/harness.js",
+    "harness:server": "node dist-harness/mcp-server.js"
   },
   "dependencies": {
     "kingdomino-engine": "*"
@@ -18,5 +19,8 @@
   "devDependencies": {
     "typescript": "^5.9.3",
     "vitest": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }

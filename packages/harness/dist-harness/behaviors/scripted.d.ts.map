@@ -1,0 +1,1 @@
+{"version":3,"file":"scripted.d.ts","sourceRoot":"","sources":["../../behaviors/scripted.ts"],"names":[],"mappings":"AAAA;;;;;GAKG;AAEH,OAAO,EAAE,cAAc,EAAE,MAAM,SAAS,CAAA;AAExC;;;;;GAKG;AACH,qBAAa,gBAAiB,YAAW,cAAc;IACrD,OAAO,CAAC,MAAM,CAAU;IACxB,OAAO,CAAC,KAAK,CAAY;gBAEb,MAAM,EAAE,MAAM,EAAE;IAI5B,YAAY,IAAI,OAAO;CA8BxB"}
