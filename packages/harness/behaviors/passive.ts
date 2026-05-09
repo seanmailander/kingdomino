@@ -5,7 +5,7 @@
  * Useful for testing without interference from AI aggression.
  */
 
-import { ClientBehavior } from './index'
+import type { ClientBehavior } from './index.ts'
 
 /**
  * PassiveBehavior picks the action that minimizes impact or changes.

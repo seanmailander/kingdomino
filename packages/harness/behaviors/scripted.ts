@@ -5,7 +5,7 @@
  * and the agent will play them in order. Throws if script is exhausted.
  */
 
-import { ClientBehavior } from './index'
+import type { ClientBehavior } from './index.ts'
 
 /**
  * ScriptedBehavior executes a sequence of predetermined actions.

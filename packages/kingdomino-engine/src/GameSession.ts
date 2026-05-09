@@ -2,8 +2,8 @@
  * GameSession — OOP game state management
  */
 
-import { getCard, generateDeck } from "./gamelogic/cards";
-import { STANDARD, MIGHTY_DUEL } from "./gamelogic/cards";
+import { getCard, generateDeck } from "./gamelogic/cards.ts";
+import { STANDARD, MIGHTY_DUEL } from "./gamelogic/cards.ts";
 import {
   findPlacementWithin5x5,
   findPlacementWithin7x7,
@@ -11,20 +11,20 @@ import {
   getValidDirections,
   staysWithin5x5,
   staysWithin7x7,
-} from "./gamelogic/board";
-import type { PlayerId, CardId, Direction } from "./types";
-import type { SeedProvider } from "./SeedProvider";
-import { chooseOrderFromSeed, getNextFourCards } from "./gamelogic/utils";
-import type { BoardGrid } from "./Board";
-import { Player } from "./Player";
-import { Deal } from "./Deal";
-import { Round, ROUND_PHASE_COMPLETE, ROUND_PHASE_PICKING, ROUND_PHASE_PLACING } from "./Round";
-import { GameEventBus } from "./GameEventBus";
-import type { GameVariant } from "./gamelogic/cards";
+} from "./gamelogic/board.ts";
+import type { PlayerId, CardId, Direction } from "./types.ts";
+import type { SeedProvider } from "./SeedProvider.ts";
+import { chooseOrderFromSeed, getNextFourCards } from "./gamelogic/utils.ts";
+import type { BoardGrid } from "./Board.ts";
+import { Player } from "./Player.ts";
+import { Deal } from "./Deal.ts";
+import { Round, ROUND_PHASE_COMPLETE, ROUND_PHASE_PICKING, ROUND_PHASE_PLACING } from "./Round.ts";
+import { GameEventBus } from "./GameEventBus.ts";
+import type { GameVariant } from "./gamelogic/cards.ts";
 import {
   GAME_STARTED, ROUND_STARTED, PICK_MADE, PLACE_MADE, DISCARD_MADE,
   ROUND_COMPLETE, GAME_PAUSED, GAME_RESUMED, GAME_ENDED,
-} from "./GameEvent";
+} from "./GameEvent.ts";
 
 export const GAME_PHASE_LOBBY    = "lobby"    as const;
 export const GAME_PHASE_PLAYING  = "playing"  as const;

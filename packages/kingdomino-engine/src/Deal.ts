@@ -1,5 +1,5 @@
-import type { CardId } from "./types";
-import type { Player } from "./Player";
+import type { CardId } from "./types.ts";
+import type { Player } from "./Player.ts";
 
 type PickSlot = { cardId: CardId; pickedBy: Player | null };
 

@@ -9,9 +9,9 @@
  * Randomness is always seeded and deterministic.
  */
 
-import { MCPServer } from './mcp'
-import { createRng } from './seed'
-import { resolveBehavior, type BehaviorSpec, type ClientBehavior } from './behaviors'
+import { MCPServer } from './mcp.ts'
+import { createRng } from './seed.ts'
+import { resolveBehavior, type BehaviorSpec, type ClientBehavior } from './behaviors/index.ts'
 import {
   GameSession,
   Player,
@@ -681,6 +681,8 @@ server.tool(
       max_turns?: number
     }
 
+    const MAX_ERRORS = 20
+
     if (!gameSession) {
       return {
         ok: false,
@@ -690,6 +692,8 @@ server.tool(
 
     let turnsPlayed = 0
     let conditionMet = false
+    const errors: string[] = []
+    let errorsSuppressed = 0
 
     while (turnsPlayed < max_turns) {
       const state = serializeGameState(gameSession)
@@ -718,7 +722,9 @@ server.tool(
           const isLegal = legalActions.some((a) => a.action === actionName)
 
           if (!isLegal) {
-            continue // Skip illegal actions
+            if (errors.length < MAX_ERRORS) errors.push(`[turn ${turnsPlayed}] ${player.id}: behavior chose illegal action "${actionName}" (legal: ${legalActions.map((a) => (a as any).action).join(', ') || 'none'})`)
+            else errorsSuppressed++
+            continue
           }
 
           if (actionName === 'pick' && params.cardId) {
@@ -731,7 +737,8 @@ server.tool(
             }
           }
         } catch (error) {
-          // Ignore errors in auto-play
+          if (errors.length < MAX_ERRORS) errors.push(`[turn ${turnsPlayed}] ${player.id}: ${error instanceof Error ? error.message : String(error)}`)
+          else errorsSuppressed++
           continue
         }
       }
@@ -746,6 +753,8 @@ server.tool(
       turns_played: turnsPlayed,
       state: finalState,
       condition_met: conditionMet,
+      errors: errors.length > 0 ? errors : undefined,
+      errors_suppressed: errorsSuppressed > 0 ? errorsSuppressed : undefined,
     }
   },
 )

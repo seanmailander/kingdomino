@@ -5,7 +5,7 @@
  * returns structured error responses with reason codes.
  */
 
-import { ClientBehavior } from './index'
+import type { ClientBehavior } from './index.ts'
 
 /**
  * CheaterBehavior attempts an action that is NOT in the legal actions set.

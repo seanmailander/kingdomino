@@ -4,7 +4,7 @@
  * Prioritizes high-impact moves that benefit this player or harm opponents.
  */
 
-import { ClientBehavior } from './index'
+import type { ClientBehavior } from './index.ts'
 
 /**
  * AggressiveBehavior picks the action with highest estimated impact.

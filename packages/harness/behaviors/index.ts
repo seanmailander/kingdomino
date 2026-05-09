@@ -6,11 +6,11 @@
  * various game scenarios.
  */
 
-import { ScriptedBehavior } from './scripted'
-import { RandomBehavior } from './random'
-import { PassiveBehavior } from './passive'
-import { AggressiveBehavior } from './aggressive'
-import { CheaterBehavior } from './cheater'
+import { ScriptedBehavior } from './scripted.ts'
+import { RandomBehavior } from './random.ts'
+import { PassiveBehavior } from './passive.ts'
+import { AggressiveBehavior } from './aggressive.ts'
+import { CheaterBehavior } from './cheater.ts'
 
 /**
  * Specification for a client behavior at game initialization.

@@ -4,9 +4,9 @@ import {
   largestRegion,
   totalCrowns as computeTotalCrowns,
   isCastleCentered as computeIsCastleCentered,
-} from "./gamelogic/board";
-import { castle, getCard, up, down, left, right } from "./gamelogic/cards";
-import type { Direction, CardId } from "./types";
+} from "./gamelogic/board.ts";
+import { castle, getCard, up, down, left, right } from "./gamelogic/cards.ts";
+import type { Direction, CardId } from "./types.ts";
 
 /** Legacy cell format used by board.ts utilities and visual components */
 export type BoardCell = { tile?: number; value?: number };

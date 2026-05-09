@@ -5,7 +5,7 @@
  * Never attempts illegal moves.
  */
 
-import { ClientBehavior } from './index'
+import type { ClientBehavior } from './index.ts'
 
 /**
  * RandomBehavior picks randomly from the available legal actions.

@@ -22,9 +22,7 @@ import { dirname } from 'path'
 
 const __filename = fileURLToPath(import.meta.url)
 const HARNESS_DIR = dirname(__filename)
-const DIST_DIR = `${HARNESS_DIR}/dist`
-const SERVER_ENTRY = `${DIST_DIR}/mcp-server.js`
-const TSCONFIG = `${HARNESS_DIR}/tsconfig.json`
+const SERVER_ENTRY = `${HARNESS_DIR}/mcp-server.ts`
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -34,18 +32,18 @@ let isRebuildInProgress = false
 // ── Build & Launch ──────────────────────────────────────────────────────────
 
 /**
- * Compile TypeScript.
+ * Verify TypeScript types (no compilation).
  */
-function build(): void {
-  console.error('[harness] Compiling TypeScript...')
+function verify(): void {
+  console.error('[harness] Verifying TypeScript...')
   try {
-    execSync(`npx tsc -p ${TSCONFIG}`, {
+    execSync('npx tsc --noEmit', {
       stdio: ['pipe', 'pipe', 'inherit'],
       cwd: HARNESS_DIR,
     })
-    console.error('[harness] Build succeeded')
+    console.error('[harness] Verification succeeded')
   } catch (error) {
-    console.error('[harness] Build failed:', error)
+    console.error('[harness] Verification failed:', error)
     throw error
   }
 }
@@ -53,9 +51,9 @@ function build(): void {
 /**
  * Spawn the MCP server child process.
  */
-function launchServer(): ChildProcess {
+function launchServer(onOutput?: (data: Buffer) => void): ChildProcess {
   console.error('[harness] Launching server...')
-  const proc = spawn('node', [SERVER_ENTRY], {
+  const proc = spawn('node', ['--experimental-strip-types', SERVER_ENTRY], {
     stdio: ['pipe', 'pipe', 'inherit'],
     cwd: HARNESS_DIR,
   })
@@ -71,6 +69,11 @@ function launchServer(): ChildProcess {
       process.exit(code || 0)
     }
   })
+
+  // Attach stdout listener if provided
+  if (onOutput && proc.stdout) {
+    proc.stdout.on('data', onOutput)
+  }
 
   console.error('[harness] Server launched')
   return proc
@@ -88,15 +91,15 @@ function killServer(): void {
 }
 
 /**
- * Rebuild: compile and relaunch without closing the wrapper's connection.
+ * Rebuild: verify and relaunch without closing the wrapper's connection.
  */
-async function rebuild(): Promise<void> {
+async function rebuild(onOutput?: (data: Buffer) => void): Promise<void> {
   console.error('[harness] Rebuild requested')
   isRebuildInProgress = true
   try {
     killServer()
-    build()
-    serverProcess = launchServer()
+    verify()
+    serverProcess = launchServer(onOutput)
   } finally {
     isRebuildInProgress = false
   }
@@ -135,14 +138,18 @@ function createRebuildResponse(id: unknown): unknown {
 async function main(): Promise<void> {
   console.error('[harness] Starting...')
 
-  // Initial build and launch
-  build()
-  serverProcess = launchServer()
+  // Output handler to forward from server to stdout
+  const forwardOutput = (data: Buffer) => {
+    process.stdout.write(data)
+  }
 
-  // Set up readline for stdin
+  // Initial verify and launch
+  verify()
+  serverProcess = launchServer(forwardOutput)
+
+  // Set up stdin line-by-line reading without output management
   const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout,
     terminal: false,
   })
 
@@ -156,7 +163,7 @@ async function main(): Promise<void> {
 
       // Check for rebuild request
       if (isRebuildRequest(request)) {
-        await rebuild()
+        await rebuild(forwardOutput)
         const response = createRebuildResponse(request.id)
         process.stdout.write(JSON.stringify(response) + '\n')
         return
@@ -176,13 +183,6 @@ async function main(): Promise<void> {
     killServer()
     process.exit(0)
   })
-
-  // Forward server output to stdout
-  if (serverProcess && serverProcess.stdout) {
-    serverProcess.stdout.on('data', (data) => {
-      process.stdout.write(data)
-    })
-  }
 }
 
 // ── Entry point ─────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
-import type { Player } from "./Player";
-import type { Round } from "./Round";
-import type { CardId, Direction } from "./types";
+import type { Player } from "./Player.ts";
+import type { Round } from "./Round.ts";
+import type { CardId, Direction } from "./types.ts";
 
 export type GameScore = {
   player: Player;

@@ -8,9 +8,9 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest'
-import { MCPServer } from './mcp'
-import { createRng } from './seed'
-import { resolveBehavior, type BehaviorSpec } from './behaviors'
+import { MCPServer } from './mcp.ts'
+import { createRng } from './seed.ts'
+import { resolveBehavior, type BehaviorSpec } from './behaviors/index.ts'
 import {
   GameSession,
   Player,
