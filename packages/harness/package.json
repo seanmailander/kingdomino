@@ -1,0 +1,19 @@
+{
+  "name": "kingdomino-harness",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "tscheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "kingdomino-engine": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.0"
+  }
+}
