@@ -6,8 +6,8 @@
   "scripts": {
     "test": "vitest run",
     "build": "tsc",
-    "harness": "node dist-harness/harness.js",
-    "harness:server": "node dist-harness/mcp-server.js"
+    "harness": "node dist/harness.js",
+    "harness:server": "node dist/mcp-server.js"
   },
   "dependencies": {
     "kingdomino-engine": "*"
