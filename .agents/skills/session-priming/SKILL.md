@@ -71,14 +71,14 @@ Know: are tests green before you touch anything? If not, note failures — they'
 
 Summarize to the user:
 
-| Item | What to report |
-|------|---------------|
-| **Branch** | Current branch, clean/dirty status |
-| **Recent work** | Last 3–5 commits (one-line) |
-| **Open issues** | Count and titles from `bd ready` / `bd list --status=in_progress` |
-| **Memories** | Any relevant recovered insights |
-| **Test baseline** | Green or pre-existing failures |
-| **Ready** | Confirm primed and awaiting task |
+| Item              | What to report                                                    |
+| ----------------- | ----------------------------------------------------------------- |
+| **Branch**        | Current branch, clean/dirty status                                |
+| **Recent work**   | Last 3–5 commits (one-line)                                       |
+| **Open issues**   | Count and titles from `bd ready` / `bd list --status=in_progress` |
+| **Memories**      | Any relevant recovered insights                                   |
+| **Test baseline** | Green or pre-existing failures                                    |
+| **Ready**         | Confirm primed and awaiting task                                  |
 
 ## Efficiency Rules
 
@@ -88,13 +88,13 @@ Summarize to the user:
 
 ## Red Flags — STOP
 
-| Thought | Reality |
-|---------|---------|
-| "I already know the project" | Context resets between sessions. Prime anyway. |
-| "User gave me a task, I should start" | Context before action. Prime first. |
-| "This is just a quick fix" | Quick fixes on stale context create bugs. Prime first. |
-| "I'll check git later" | You won't. Uncommitted changes get lost. Prime now. |
+| Thought                               | Reality                                                |
+| ------------------------------------- | ------------------------------------------------------ |
+| "I already know the project"          | Context resets between sessions. Prime anyway.         |
+| "User gave me a task, I should start" | Context before action. Prime first.                    |
+| "This is just a quick fix"            | Quick fixes on stale context create bugs. Prime first. |
+| "I'll check git later"                | You won't. Uncommitted changes get lost. Prime now.    |
 
 ## After Priming
 
-You are now ready to receive a task. When the user provides one, invoke the appropriate skill (brainstorming, TDD, debugging, etc.) per the `using-superpowers` decision flow.
+You are now ready to receive a task
