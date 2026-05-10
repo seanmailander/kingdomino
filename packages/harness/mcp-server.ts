@@ -22,8 +22,15 @@ import {
   down,
   left,
   right,
+  generateDeck,
+  getNextFourCards,
+  chooseOrderFromSeed,
+  getEligiblePositions,
+  getValidDirections,
+  staysWithin5x5,
+  ROUND_COMPLETE,
 } from 'kingdomino-engine'
-import type { GameVariant, GameBonuses, Direction } from 'kingdomino-engine'
+import type { GameVariant, GameBonuses, Direction, CardId } from 'kingdomino-engine'
 
 // ── Module-scope state ──────────────────────────────────────────────────────
 
@@ -38,6 +45,11 @@ let gameSession: GameSession | null = null
 let rng: (() => number) | null = null
 
 /**
+ * Remaining deck of card IDs not yet dealt.
+ */
+let remainingDeck: number[] = []
+
+/**
  * Registry of player behaviors, keyed by player ID.
  */
 const behaviorRegistry = new Map<string, ClientBehavior>()
@@ -48,6 +60,32 @@ const behaviorRegistry = new Map<string, ClientBehavior>()
  */
 const stateSnapshots = new Map<string, Record<string, unknown>>()
 let nextSnapshotIndex = 0
+
+/**
+ * Generate a hex seed string from the module-level seeded RNG.
+ */
+function nextHexSeed(): string {
+  const r = rng ?? Math.random
+  return Array.from({ length: 8 }, () =>
+    Math.floor(r() * 256).toString(16).padStart(2, '0')
+  ).join('')
+}
+
+/**
+ * Deal the next four cards and begin a new round.
+ * If the deck is exhausted, ends the game instead.
+ */
+function advanceRound(): void {
+  if (!gameSession) return
+  if (remainingDeck.length === 0) {
+    gameSession.endGame()
+    return
+  }
+  const seed = nextHexSeed()
+  const { next: cardIds, remaining } = getNextFourCards(seed, remainingDeck)
+  remainingDeck = remaining
+  gameSession.beginRound(cardIds as [CardId, CardId, CardId, CardId])
+}
 
 // ── MCP Server setup ────────────────────────────────────────────────────────
 
@@ -74,13 +112,14 @@ function serializeGameState(session: GameSession): Record<string, unknown> {
     players,
     currentRound: session.currentRound
       ? {
-          phase: (session.currentRound as any).phase,
-          deal: (session.currentRound as any).deal
-            ? {
-                cards: (session.currentRound as any).deal.cards,
-              }
-            : null,
-          pickOrder: (session.currentRound as any).pickOrder?.map((p: Player) => p.id) ?? [],
+          phase: session.currentRound.phase,
+          deal: {
+            slots: session.currentRound.deal.snapshot().map((s) => ({
+              cardId: s.cardId,
+              pickedBy: (s.pickedBy as any)?.id ?? null,
+            })),
+          },
+          currentActor: session.currentRound.currentActor?.id ?? null,
         }
       : null,
     variant: session.variant,
@@ -88,6 +127,9 @@ function serializeGameState(session: GameSession): Record<string, unknown> {
 }
 
 // ── Helper: Get legal actions ───────────────────────────────────────────────
+
+const DIRECTION_MAP: Record<string, Direction> = { up, down, left, right }
+const DIRECTION_ENTRIES: Array<[string, Direction]> = Object.entries(DIRECTION_MAP) as Array<[string, Direction]>
 
 /**
  * Determine what actions a player can legally take.
@@ -98,49 +140,45 @@ function getLegalActionsForPlayer(
   playerId: string,
 ): Record<string, unknown>[] {
   const player = session.players.find((p) => p.id === playerId)
-  if (!player) {
-    return []
-  }
+  if (!player) return []
 
-  const actions: Record<string, unknown>[] = []
+  const round = session.currentRound
+  if (!round) return []
 
-  const round = session.currentRound as any
-  if (!round) {
-    return []
-  }
+  const actor = round.currentActor
+  if (!actor || actor.id !== playerId) return []
 
-  // In picking phase, player can pick a card if it's their turn
+  // In picking phase: return all unpicked card slots
   if (round.phase === 'picking') {
-    const deal = round.deal
-    if (deal && deal.cards) {
-      const pickOrder = round.pickOrder
-      const currentPlayer = pickOrder?.[0] // First in pick order is current
-      if (currentPlayer && currentPlayer.id === playerId) {
-        // All cards in the deal are legal picks
-        for (const card of deal.cards) {
-          actions.push({
-            action: 'pick',
-            params: { cardId: card },
-          })
+    return round.deal.snapshot()
+      .filter((slot) => slot.pickedBy === null)
+      .map((slot) => ({ action: 'pick', params: { cardId: slot.cardId } }))
+  }
+
+  // In placing phase: enumerate valid placements, or discard if none
+  if (round.phase === 'placing') {
+    const cardId = round.deal.pickedCardFor(player)
+    if (cardId === null) return []
+
+    const board = player.board.snapshot()
+    const eligible = getEligiblePositions(board, cardId)
+    const placements: Record<string, unknown>[] = []
+
+    for (const { x, y } of eligible) {
+      const validDirs = getValidDirections(board, cardId, x, y) as Direction[]
+      for (const dir of validDirs) {
+        const dirName = DIRECTION_ENTRIES.find(([, d]) => d === dir)?.[0]
+        if (dirName && staysWithin5x5(board, x, y, dir)) {
+          placements.push({ action: 'place', params: { x, y, direction: dirName } })
         }
       }
     }
+
+    // If no valid placements exist, player must discard
+    return placements.length > 0 ? placements : [{ action: 'discard', params: {} }]
   }
 
-  // In placing phase, player can place their drafted card
-  if (round.phase === 'placing') {
-    const placingPlayer = (round as any).placingPlayer
-    if (placingPlayer && placingPlayer.id === playerId) {
-      // For now, return a generic "place" action
-      // In a real implementation, this would validate board positions
-      actions.push({
-        action: 'place',
-        params: { x: 0, y: 0, direction: 'N' },
-      })
-    }
-  }
-
-  return actions
+  return []
 }
 
 // ── Tool: new_game ─────────────────────────────────────────────────────────
@@ -201,7 +239,10 @@ server.tool(
     // Create seeded RNG
     rng = createRng(seed)
 
-    // Create session
+    // Initialize deck
+    remainingDeck = [...generateDeck()]
+
+    // Create session (no seedProvider — we drive rounds manually)
     gameSession = new GameSession({
       variant: STANDARD as GameVariant,
       bonuses: {} as GameBonuses,
@@ -222,8 +263,19 @@ server.tool(
       behaviorRegistry.set(playerConfig.id, behavior)
     }
 
-    // Start the game
+    // Start the game (sets phase = playing; no seed provider so loop exits immediately)
     gameSession.startGame()
+
+    // Determine initial pick order using seeded RNG
+    const orderSeed = nextHexSeed()
+    const orderedIds = chooseOrderFromSeed(orderSeed, gameSession.players.map((p) => p.id))
+    gameSession.setPickOrder(orderedIds.map((id) => gameSession!.players.find((p) => p.id === id)!))
+
+    // Subscribe to ROUND_COMPLETE to auto-advance rounds
+    gameSession.events.on(ROUND_COMPLETE, () => { advanceRound() })
+
+    // Begin first round
+    advanceRound()
 
     const state = serializeGameState(gameSession)
 
@@ -403,26 +455,21 @@ server.tool(
 
     // Apply action
     try {
-      if (action === 'pick' && params?.cardId) {
+      if (action === 'pick' && params?.cardId !== undefined) {
         gameSession.handlePick(playerId, params.cardId as number)
       } else if (action === 'place' && params?.x !== undefined && params?.y !== undefined && params?.direction) {
-        const directionStr = params.direction as string
-        const directionMap: Record<string, Direction> = {
-          up,
-          down,
-          left,
-          right,
-        }
-        const direction = directionMap[directionStr]
+        const direction = DIRECTION_MAP[params.direction as string]
         if (!direction) {
           return {
             ok: false,
-            error: `Invalid direction: ${directionStr}`,
+            error: `Invalid direction: ${params.direction}`,
             reason: 'invalid_params',
             legal_actions: legalActions,
           }
         }
         gameSession.handlePlacement(playerId, params.x as number, params.y as number, direction)
+      } else if (action === 'discard') {
+        gameSession.handleDiscard(playerId)
       } else {
         return {
           ok: false,
@@ -599,8 +646,11 @@ server.tool(
     }
 
     try {
-      // Get current state for behavior
-      const state = serializeGameState(gameSession)
+      // Get current state for behavior, enriched with getLegalActions method
+      const state = {
+        ...serializeGameState(gameSession),
+        getLegalActions: (pId: string) => getLegalActionsForPlayer(gameSession!, pId),
+      }
 
       // Ask behavior to choose an action
       const action = behavior.chooseAction(state, playerId, rng)
@@ -621,11 +671,9 @@ server.tool(
         }
       }
 
-      if (actionName === 'pick' && params.cardId) {
-        gameSession.handlePick(playerId, params.cardId)
+      if (actionName === 'pick' && params.cardId !== undefined) {
       } else if (actionName === 'place' && params.x !== undefined && params.y !== undefined && params.direction) {
-        const directionMap: Record<string, Direction> = { up, down, left, right }
-        const direction = directionMap[params.direction]
+        const direction = DIRECTION_MAP[params.direction]
         if (!direction) {
           return {
             ok: false,
@@ -633,6 +681,8 @@ server.tool(
           }
         }
         gameSession.handlePlacement(playerId, params.x, params.y, direction)
+      } else if (actionName === 'discard') {
+        gameSession.handleDiscard(playerId)
       }
 
       const newState = serializeGameState(gameSession)
@@ -712,7 +762,10 @@ server.tool(
         }
 
         try {
-          const currentState = serializeGameState(gameSession)
+          const currentState = {
+            ...serializeGameState(gameSession),
+            getLegalActions: (pId: string) => getLegalActionsForPlayer(gameSession!, pId),
+          }
           const action = behavior.chooseAction(currentState, player.id, rng || (() => Math.random()))
           const actionObj = action as any
           const actionName = actionObj.action || String(action)
@@ -727,14 +780,15 @@ server.tool(
             continue
           }
 
-          if (actionName === 'pick' && params.cardId) {
+          if (actionName === 'pick' && params.cardId !== undefined) {
             gameSession.handlePick(player.id, params.cardId)
           } else if (actionName === 'place' && params.x !== undefined && params.y !== undefined && params.direction) {
-            const directionMap: Record<string, Direction> = { up, down, left, right }
-            const direction = directionMap[params.direction]
+            const direction = DIRECTION_MAP[params.direction]
             if (direction) {
               gameSession.handlePlacement(player.id, params.x, params.y, direction)
             }
+          } else if (actionName === 'discard') {
+            gameSession.handleDiscard(player.id)
           }
         } catch (error) {
           if (errors.length < MAX_ERRORS) errors.push(`[turn ${turnsPlayed}] ${player.id}: ${error instanceof Error ? error.message : String(error)}`)
