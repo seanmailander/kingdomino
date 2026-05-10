@@ -56,10 +56,15 @@ const behaviorRegistry = new Map<string, ClientBehavior>()
 
 /**
  * Store snapshots of serialized game state (not the session object).
- * This ensures snapshots are plain data that survive serialization.
+ * Reserved for future snapshot/restore implementation.
+ * Currently unused — snapshot and restore return not_implemented.
  */
 const stateSnapshots = new Map<string, Record<string, unknown>>()
 let nextSnapshotIndex = 0
+
+// Suppress unused-variable warnings until snapshot/restore is implemented
+void stateSnapshots
+void nextSnapshotIndex
 
 /**
  * Generate a hex seed string from the module-level seeded RNG.
@@ -638,9 +643,17 @@ server.tool(
       const actionName = actionObj.action || String(action)
       const params = actionObj.params || {}
 
-      // Apply the action
+      // Check legality — validate both action name and params (same as take_action)
       const legalActions = getLegalActionsForPlayer(gameSession, playerId)
-      const isLegal = legalActions.some((a) => a.action === actionName)
+      const isLegal = legalActions.some((a) => {
+        if (a.action !== actionName) return false
+        if (actionName === 'pick') return (a.params as any)?.cardId === params.cardId
+        if (actionName === 'place') {
+          const p = a.params as any
+          return p?.x === params.x && p?.y === params.y && p?.direction === params.direction
+        }
+        return true
+      })
 
       if (!isLegal) {
         return {
@@ -754,7 +767,15 @@ server.tool(
           const actionName = actionObj.action || String(action)
           const params = actionObj.params || {}
 
-          const isLegal = legalActions.some((a) => a.action === actionName)
+          const isLegal = legalActions.some((a) => {
+            if (a.action !== actionName) return false
+            if (actionName === 'pick') return (a.params as any)?.cardId === params.cardId
+            if (actionName === 'place') {
+              const p = a.params as any
+              return p?.x === params.x && p?.y === params.y && p?.direction === params.direction
+            }
+            return true
+          })
           if (!isLegal) {
             if (errors.length < MAX_ERRORS) errors.push(`[turn ${turnsPlayed}] ${player.id}: behavior chose illegal action "${actionName}" (legal: ${legalActions.map((a) => (a as any).action).join(', ')})`)
             else errorsSuppressed++
@@ -763,11 +784,14 @@ server.tool(
 
           if (actionName === 'pick' && params.cardId !== undefined) {
             gameSession.handlePick(player.id, params.cardId)
-          } else if (actionName === 'place' && params.x !== undefined && params.y !== undefined && params.direction) {
-            const direction = DIRECTION_MAP[params.direction]
-            if (direction) {
-              gameSession.handlePlacement(player.id, params.x, params.y, direction)
+          } else if (actionName === 'place') {
+            const direction = DIRECTION_MAP[params.direction as string]
+            if (!direction) {
+              if (errors.length < MAX_ERRORS) errors.push(`[turn ${turnsPlayed}] ${player.id}: invalid direction "${params.direction}"`)
+              else errorsSuppressed++
+              continue
             }
+            gameSession.handlePlacement(player.id, params.x as number, params.y as number, direction)
           } else if (actionName === 'discard') {
             gameSession.handleDiscard(player.id)
           }

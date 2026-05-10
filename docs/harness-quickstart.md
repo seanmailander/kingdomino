@@ -35,7 +35,8 @@ auto_play_until(condition="phase == finished", max_turns=500)
 # → state.phase == "finished", state.players has final scores
 ```
 
-A 4-player game completes in roughly 75 turns. Always set `max_turns` to at least 200
+A 2-player game completes in roughly 50 turns; a 4-player game takes at least 96
+(12 rounds × 4 players × 2 actions). Always set `max_turns` to at least 200
 for safety; 500 is comfortable.
 
 ---
@@ -50,8 +51,6 @@ for safety; 500 is comfortable.
 | `take_action(player_id, action, params)` | Apply one action; returns new state or structured error |
 | `auto_turn(player_id)` | Behavior-driven single action for one player |
 | `auto_play_until(condition, max_turns)` | Run until condition is true or turn limit hit |
-| `snapshot()` | Save current state; returns `snapshot_id` |
-| `restore(snapshot_id)` | Rewind to a saved state |
 | `harness_reload` | Recompile and hot-reload after source changes |
 
 ---
@@ -152,17 +151,6 @@ winner = max(scores, key=lambda x: x[1])
 ```python
 new_game(seed=1); auto_play_until(...)   # scores A
 new_game(seed=2); auto_play_until(...)   # scores B
-```
-
-### Snapshot and replay from mid-game
-
-```python
-new_game(seed=42, players=[...])
-auto_play_until(condition="phase == playing", max_turns=30)
-snap = snapshot()
-auto_play_until(condition="phase == finished", max_turns=500)   # run A
-restore(snapshot_id=snap.snapshot_id)
-auto_play_until(condition="phase == finished", max_turns=500)   # run B (identical)
 ```
 
 ### Test illegal move rejection

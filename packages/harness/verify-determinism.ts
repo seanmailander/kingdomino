@@ -40,7 +40,7 @@ rl.on('line', (line: string) => {
 })
 
 async function runGame(seed: number): Promise<GameState> {
-  const newGameResp = await sendRequest('tools/call', {
+  await sendRequest('tools/call', {
     name: 'new_game',
     arguments: {
       seed,
@@ -51,7 +51,13 @@ async function runGame(seed: number): Promise<GameState> {
     },
   })
 
-  const state = newGameResp.state as any
+  // Play to completion so final scores are meaningful
+  const finalResp = await sendRequest('tools/call', {
+    name: 'auto_play_until',
+    arguments: { condition: 'phase == finished', max_turns: 500 },
+  })
+
+  const state = finalResp.state as any
   return {
     phase: state.phase,
     players: state.players.map((p: any) => ({ id: p.id, score: p.score })),

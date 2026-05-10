@@ -1,34 +1,27 @@
 import { GameSession, Player } from 'kingdomino-engine'
-import { createRng } from './seed.ts'
 
-// Test 1: Create a game directly
-console.log('Creating game with seed 42...')
-const rng = createRng(42)
+// Direct engine usage — creates two games and inspects their state.
+// Note: seeded determinism requires driving rounds via the MCP harness
+// (new_game → auto_play_until). Direct GameSession construction uses an
+// internal unseeded deck shuffle, so scores are not guaranteed to match.
+
+console.log('Creating game A...')
 const game = new GameSession()
-const p1 = new Player('p1')
-const p2 = new Player('p2')
-game.addPlayer(p1)
-game.addPlayer(p2)
+game.addPlayer(new Player('p1'))
+game.addPlayer(new Player('p2'))
 game.startGame()
 
-console.log('Game phase:', game.phase)
+console.log('Game A phase:', game.phase)
 console.log('Number of players:', game.players.length)
-console.log('P1 score:', p1.score())
-console.log('P2 score:', p2.score())
+console.log('P1 score:', game.players[0].score())
+console.log('P2 score:', game.players[1].score())
 
-// Test 2: Create another game with same seed
-console.log('\nCreating second game with seed 42...')
-const rng2 = createRng(42)
+console.log('\nCreating game B...')
 const game2 = new GameSession()
-const p1b = new Player('p1')
-const p2b = new Player('p2')
-game2.addPlayer(p1b)
-game2.addPlayer(p2b)
+game2.addPlayer(new Player('p1'))
+game2.addPlayer(new Player('p2'))
 game2.startGame()
 
-console.log('Game2 phase:', game2.phase)
-console.log('P1 score:', p1b.score())
-console.log('P2 score:', p2b.score())
-
-console.log('\nDeterminism check:')
-console.log('Scores match:', p1.score() === p1b.score() && p2.score() === p2b.score())
+console.log('Game B phase:', game2.phase)
+console.log('P1 score:', game2.players[0].score())
+console.log('P2 score:', game2.players[1].score())

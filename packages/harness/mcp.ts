@@ -34,7 +34,7 @@ interface JsonRpcRequest {
  */
 interface JsonRpcSuccess {
   jsonrpc: '2.0'
-  id?: string | number
+  id?: string | number | null
   result: unknown
 }
 
@@ -43,7 +43,7 @@ interface JsonRpcSuccess {
  */
 interface JsonRpcError {
   jsonrpc: '2.0'
-  id?: string | number
+  id?: string | number | null
   error: {
     code: number
     message: string
@@ -90,11 +90,15 @@ export class MCPServer {
       try {
         const request = JSON.parse(line) as JsonRpcRequest
         const response = await this.handleRequest(request)
-        this.respond(response)
+        // Per JSON-RPC 2.0: notifications (requests without id) must not receive a response
+        if (request.id !== undefined) {
+          this.respond(response)
+        }
       } catch (error) {
-        // Parsing error
+        // Parse error: id is unknown, so use null per JSON-RPC 2.0 spec
         this.respond({
           jsonrpc: '2.0',
+          id: null,
           error: {
             code: -32700,
             message: 'Parse error',
