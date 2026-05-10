@@ -115,8 +115,10 @@ function isRebuildRequest(message: unknown): boolean {
     return false
   }
   const msg = message as Record<string, unknown>
-  const params = msg.params as Record<string, unknown> | undefined
-  return params?.name === 'rebuild'
+  if (msg.method !== 'tools/call') return false
+  const params = msg.params
+  if (typeof params !== 'object' || params === null) return false
+  return (params as Record<string, unknown>).name === 'rebuild'
 }
 
 /**

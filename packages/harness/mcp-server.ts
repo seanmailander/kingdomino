@@ -65,9 +65,9 @@ let nextSnapshotIndex = 0
  * Generate a hex seed string from the module-level seeded RNG.
  */
 function nextHexSeed(): string {
-  const r = rng ?? Math.random
+  if (!rng) throw new Error('RNG not initialized — call new_game first')
   return Array.from({ length: 8 }, () =>
-    Math.floor(r() * 256).toString(16).padStart(2, '0')
+    Math.floor(rng!() * 256).toString(16).padStart(2, '0')
   ).join('')
 }
 
@@ -440,9 +440,17 @@ server.tool(
       }
     }
 
-    // Check legality first
+    // Check legality first — validate both action name and params
     const legalActions = getLegalActionsForPlayer(gameSession, playerId)
-    const isLegal = legalActions.some((a) => a.action === action)
+    const isLegal = legalActions.some((a) => {
+      if (a.action !== action) return false
+      if (action === 'pick') return (a.params as any)?.cardId === params?.cardId
+      if (action === 'place') {
+        const p = a.params as any
+        return p?.x === params?.x && p?.y === params?.y && p?.direction === params?.direction
+      }
+      return true // discard has no distinguishing params
+    })
 
     if (!isLegal) {
       return {
@@ -508,25 +516,10 @@ server.tool(
     },
   },
   async () => {
-    try {
-      if (!gameSession) {
-        return {
-          ok: false,
-          error: 'No game session',
-        }
-      }
-      const state = serializeGameState(gameSession)
-      const id = String(nextSnapshotIndex++)
-      stateSnapshots.set(id, structuredClone(state))
-
-      return {
-        snapshot_id: id,
-      }
-    } catch (error) {
-      return {
-        ok: false,
-        error: error instanceof Error ? error.message : String(error),
-      }
+    return {
+      ok: false,
+      error: 'snapshot/restore not yet supported — full game-session reconstruction from serialized state is not implemented',
+      reason: 'not_implemented',
     }
   },
 )
@@ -549,26 +542,11 @@ server.tool(
       required: ['snapshot_id'],
     },
   },
-  async (input) => {
-    const { snapshot_id: snapshotId } = input as { snapshot_id: string }
-
-    try {
-      const state = stateSnapshots.get(snapshotId)
-      if (!state) {
-        return {
-          ok: false,
-          error: `Snapshot not found: ${snapshotId}`,
-        }
-      }
-      return {
-        ok: true,
-        state: structuredClone(state),
-      }
-    } catch (error) {
-      return {
-        ok: false,
-        error: error instanceof Error ? error.message : String(error),
-      }
+  async (_input) => {
+    return {
+      ok: false,
+      error: 'snapshot/restore not yet supported — full game-session reconstruction from serialized state is not implemented',
+      reason: 'not_implemented',
     }
   },
 )
@@ -672,6 +650,7 @@ server.tool(
       }
 
       if (actionName === 'pick' && params.cardId !== undefined) {
+        gameSession.handlePick(playerId, params.cardId)
       } else if (actionName === 'place' && params.x !== undefined && params.y !== undefined && params.direction) {
         const direction = DIRECTION_MAP[params.direction]
         if (!direction) {
@@ -733,10 +712,10 @@ server.tool(
 
     const MAX_ERRORS = 20
 
-    if (!gameSession) {
+    if (!gameSession || !rng) {
       return {
         ok: false,
-        error: 'No game session',
+        error: !gameSession ? 'No game session' : 'RNG not initialized — call new_game first',
       }
     }
 
@@ -770,7 +749,7 @@ server.tool(
             ...serializeGameState(gameSession),
             getLegalActions: (pId: string) => getLegalActionsForPlayer(gameSession!, pId),
           }
-          const action = behavior.chooseAction(currentState, player.id, rng || (() => Math.random()))
+          const action = behavior.chooseAction(currentState, player.id, rng)
           const actionObj = action as any
           const actionName = actionObj.action || String(action)
           const params = actionObj.params || {}
@@ -836,10 +815,7 @@ server.tool(
           type: 'string',
           description: 'Expected current player ID',
         },
-        timeout_turns: {
-          type: 'number',
-          description: 'Timeout in turns (for validation)',
-        },
+
       },
     },
   },
@@ -847,7 +823,6 @@ server.tool(
     const { phase, player_id: expectedPlayerId } = input as {
       phase?: string
       player_id?: string
-      timeout_turns?: number
     }
 
     if (!gameSession) {
@@ -863,8 +838,20 @@ server.tool(
     if (phase && state.phase !== phase) {
       return {
         ok: false,
-        error: `timeout`,
+        error: 'timeout',
         state,
+      }
+    }
+
+    // Check current actor
+    if (expectedPlayerId) {
+      const currentActor = (state.currentRound as any)?.currentActor ?? null
+      if (currentActor !== expectedPlayerId) {
+        return {
+          ok: false,
+          error: 'timeout',
+          state,
+        }
       }
     }
 

@@ -241,6 +241,9 @@ export default function kingdominoHarnessExtension(pi: ExtensionAPI) {
             ],
             { description: "AI behavior" },
           ),
+          script: Type.Optional(
+            Type.Array(Type.String(), { description: "Scripted action list (required when behavior is 'scripted')" }),
+          ),
         }),
         { description: "Array of player configs" },
       ),
