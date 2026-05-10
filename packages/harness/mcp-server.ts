@@ -761,6 +761,10 @@ server.tool(
           continue
         }
 
+        // Skip silently if this player has no legal actions right now
+        const legalActions = getLegalActionsForPlayer(gameSession, player.id)
+        if (legalActions.length === 0) continue
+
         try {
           const currentState = {
             ...serializeGameState(gameSession),
@@ -771,11 +775,9 @@ server.tool(
           const actionName = actionObj.action || String(action)
           const params = actionObj.params || {}
 
-          const legalActions = getLegalActionsForPlayer(gameSession, player.id)
           const isLegal = legalActions.some((a) => a.action === actionName)
-
           if (!isLegal) {
-            if (errors.length < MAX_ERRORS) errors.push(`[turn ${turnsPlayed}] ${player.id}: behavior chose illegal action "${actionName}" (legal: ${legalActions.map((a) => (a as any).action).join(', ') || 'none'})`)
+            if (errors.length < MAX_ERRORS) errors.push(`[turn ${turnsPlayed}] ${player.id}: behavior chose illegal action "${actionName}" (legal: ${legalActions.map((a) => (a as any).action).join(', ')})`)
             else errorsSuppressed++
             continue
           }
