@@ -39,16 +39,19 @@ export class ScriptedBehavior implements ClientBehavior {
       return { action: actionName }
     }
 
-    // If params provided, treat them as key-value pairs
-    // For now, just return as params object
-    return {
-      action: actionName,
-      params: Object.fromEntries(
-        params.map((p, i) => [
-          `param${i}`,
-          isNaN(Number(p)) ? p : Number(p),
-        ]),
-      ),
+    // Parse game-specific params by action type:
+    //   pick:<cardId>           → { cardId: number }
+    //   place:<x>:<y>:<dir>     → { x: number, y: number, direction: string }
+    //   discard                 → {} (no params)
+    if (actionName === 'pick' && params.length >= 1) {
+      return { action: 'pick', params: { cardId: Number(params[0]) } }
     }
+    if (actionName === 'place' && params.length >= 3) {
+      return {
+        action: 'place',
+        params: { x: Number(params[0]), y: Number(params[1]), direction: params[2] },
+      }
+    }
+    return { action: actionName, params: {} }
   }
 }
