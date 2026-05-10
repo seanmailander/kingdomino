@@ -1,4 +1,4 @@
-import { validTiles, getCard, up, down, left, right } from "./cards";
+import { validTiles, getCard, up, down, left, right } from "./cards.ts";
 
 export type BoardCell = { tile?: number; value?: number };
 export type BoardGrid = ReadonlyArray<ReadonlyArray<BoardCell>>;

@@ -39,3 +39,5 @@ storybook-static
 .dolt/
 *.db
 .beads-credential-key
+
+.env

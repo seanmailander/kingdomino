@@ -1,4 +1,4 @@
-import type { GameEvent } from "./GameEvent";
+import type { GameEvent } from "./GameEvent.ts";
 
 type Listener<T extends GameEvent> = (event: T) => void;
 

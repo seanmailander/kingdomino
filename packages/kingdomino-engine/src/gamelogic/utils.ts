@@ -1,6 +1,6 @@
 import { ChaChaRng } from "chacha-rng";
 
-import { generateDeck } from "./cards";
+import { generateDeck } from "./cards.ts";
 
 // Derive a 32-byte ChaCha seed from an arbitrary string deterministically.
 function seedStringToBytes(seed: string): Uint8Array {

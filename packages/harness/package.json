@@ -1,0 +1,23 @@
+{
+  "name": "kingdomino-harness",
+  "version": "0.0.1",
+  "type": "module",
+
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsc",
+    "harness": "node --experimental-strip-types harness.ts",
+    "harness:server": "node --experimental-strip-types mcp-server.ts"
+  },
+  "dependencies": {
+    "kingdomino-engine": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.0",
+    "jest-extended": "^4.0.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

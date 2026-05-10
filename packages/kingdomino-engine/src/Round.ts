@@ -1,6 +1,6 @@
-import type { CardId, Direction } from "./types";
-import type { Player } from "./Player";
-import { Deal } from "./Deal";
+import type { CardId, Direction } from "./types.ts";
+import type { Player } from "./Player.ts";
+import { Deal } from "./Deal.ts";
 
 export const ROUND_PHASE_PICKING  = "picking"  as const;
 export const ROUND_PHASE_PLACING  = "placing"  as const;

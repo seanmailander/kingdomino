@@ -135,6 +135,11 @@ Use this map to navigate all project documentation without filesystem exploratio
 - [`client/src/game/readme.md`](client/src/game/readme.md) — Game module architecture: logic / state / visuals layers and their dependencies
 - [`client/src/game/testing.md`](client/src/game/testing.md) — Test plan: 50+ domain-driven scenarios across deck, placement, scoring, rounds
 
+## Game Harness (MCP Extension)
+
+- [`docs/harness-quickstart.md`](docs/harness-quickstart.md) — **How to run game scenarios**: tools, behaviors, state shape, conditions, gotchas — read this first
+- [`docs/mcp-harness.md`](docs/mcp-harness.md) — Original implementation plan (design reference)
+
 ## Client & Server Setup
 
 - [`client/README.md`](client/README.md) — Dev scripts: start, build, test, preview
