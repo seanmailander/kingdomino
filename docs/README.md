@@ -41,6 +41,15 @@ The authoritative agent context is **[`AGENTS.md`](../AGENTS.md)** at the repo r
 
 ---
 
+## Harness (`packages/harness/`)
+
+| File | Purpose |
+|------|--------|
+| [`docs/harness-quickstart.md`](harness-quickstart.md) | **Start here** — how to run games, read state, use behaviors, and interpret results |
+| [`docs/mcp-harness.md`](mcp-harness.md) | Original implementation plan (design reference, not a how-to) |
+
+---
+
 ## Agent Skills (`.agents/skills/`)
 
 | File | Purpose |
