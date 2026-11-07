@@ -84,6 +84,13 @@ class FakePeer {
     return this.on(event, wrapper);
   }
 
+  off(event: string, handler: (...args: unknown[]) => void) {
+    const list = (this.listeners as Record<string, unknown[]>)[event];
+    const idx = list?.indexOf(handler) ?? -1;
+    if (idx !== -1) list.splice(idx, 1);
+    return this;
+  }
+
   connect(remotePeerId: string, _opts?: unknown): FakeDataConnection {
     const conn = new FakeDataConnection(remotePeerId);
     this._outboundConnections.push(conn);
@@ -232,6 +239,19 @@ describe("PeerSession — outbound connection", () => {
     await expect(connectPromise).rejects.toThrow("connection refused");
   });
 
+  it("rejects and closes the DataConnection when it never opens (e.g. peer-unavailable)", async () => {
+    vi.useFakeTimers();
+    const session = new PeerSession({ host: "localhost", port: 3001 });
+    lastPeer._emitOpen("player-1");
+
+    const connectPromise = session.connect("ghost");
+    const assertion = expect(connectPromise).rejects.toThrow(/timed out/);
+    await vi.advanceTimersByTimeAsync(10_000);
+    await assertion;
+    expect(lastPeer._outboundConnections[0].closed).toBe(true);
+    vi.useRealTimers();
+  });
+
   it("destroys the MultiplayerConnection when the DataChannel closes", async () => {
     const session = new PeerSession({ host: "localhost", port: 3001 });
     lastPeer._emitOpen("player-1");
@@ -378,5 +398,22 @@ describe("PeerSession — joinMatchmaking", () => {
     expect(mc).toBeInstanceOf(MultiplayerConnection);
     expect(mc.peerIdentifiers.me).toBe("player-1");
     expect(mc.peerIdentifiers.them).toBe("player-2");
+  });
+
+  it("rejects when no inbound connection arrives (receiver role)", async () => {
+    vi.useFakeTimers();
+    const session = new PeerSession({ host: "localhost", port: 3001 });
+    lastPeer._emitOpen("player-1");
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      json: async () => ({ waitForConnection: true }),
+    } as Response);
+
+    const connectPromise = session.joinMatchmaking();
+    const assertion = expect(connectPromise).rejects.toThrow(/timed out/);
+    await vi.advanceTimersByTimeAsync(10_000);
+    await assertion;
+    expect(lastPeer.listeners.connection).toHaveLength(0);
+    vi.useRealTimers();
   });
 });
