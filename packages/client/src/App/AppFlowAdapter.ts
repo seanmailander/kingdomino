@@ -4,7 +4,6 @@ import { FLOW_SPLASH, FLOW_LOBBY, FLOW_GAME, FLOW_PAUSED, FLOW_ENDED } from "../
 import type { GameSession } from "kingdomino-engine";
 import type { RosterConfig } from "../Lobby/lobby.types";
 import { Lobby, Game, Splash, GamePaused, GameEnded } from "./AppExtras";
-import type { Room } from "./AppExtras";
 
 const phaseToRoom = {
   [FLOW_SPLASH]: Splash,
@@ -13,14 +12,6 @@ const phaseToRoom = {
   [FLOW_PAUSED]: GamePaused,
   [FLOW_ENDED]:  GameEnded,
 } as const;
-
-const roomToPhase = (room: Room): FlowPhase => {
-  if (room === GamePaused) return FLOW_PAUSED;
-  if (room === GameEnded) return FLOW_ENDED;
-  if (room === Game) return FLOW_GAME;
-  if (room === Lobby) return FLOW_LOBBY;
-  return FLOW_SPLASH;
-};
 
 export class AppFlowAdapter implements FlowAdapter {
   constructor(private readonly store: GameStore) {}
@@ -31,14 +22,6 @@ export class AppFlowAdapter implements FlowAdapter {
 
   setPhase(phase: FlowPhase): void {
     this.store.setRoom(phaseToRoom[phase]);
-  }
-
-  getPhase(): FlowPhase {
-    return roomToPhase(this.store.getRoom());
-  }
-
-  oncePhaseIsNot(phase: FlowPhase): Promise<void> {
-    return this.store.onceRoomIsNot(phaseToRoom[phase]);
   }
 
   awaitStart(): Promise<RosterConfig> {
@@ -57,8 +40,7 @@ export class AppFlowAdapter implements FlowAdapter {
     return this.store.awaitResumeIntent();
   }
 
-  reset(): void {
-    // No-op — isolation by unreachability. The store is scoped to the
-    // provider; when the provider unmounts, the store becomes unreachable.
+  awaitExitConfirm(): Promise<boolean | undefined> {
+    return this.store.awaitExitConfirm();
   }
 }

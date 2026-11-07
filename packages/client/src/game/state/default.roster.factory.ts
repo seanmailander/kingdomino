@@ -39,10 +39,6 @@ export class DefaultRosterFactory implements RosterFactory {
     // Assign stable player IDs: p1, p2, p3, p4
     const playerIds: PlayerId[] = config.map((_, i) => `p${i + 1}` as PlayerId);
 
-    // First non-AI player ID (used as AIPlayerActor's humanPlayerId)
-    const firstHumanIndex = config.findIndex((slot) => slot.type !== SLOT_AI);
-    const firstHumanId = firstHumanIndex >= 0 ? playerIds[firstHumanIndex] : playerIds[0];
-
     const players = config.map((slot: PlayerSlotConfig, i: number) => {
       const id = playerIds[i];
       const label = `Player ${i + 1}`;
@@ -53,7 +49,7 @@ export class DefaultRosterFactory implements RosterFactory {
         case SLOT_COUCH:
           return { id, actor: new CouchPlayerActor(id, label) };
         case SLOT_AI:
-          return { id, actor: new AIPlayerActor(id, firstHumanId, this.variant) };
+          return { id, actor: new AIPlayerActor(id, this.variant) };
         case SLOT_REMOTE: {
           const conn = slot.connection!;
           const cm = new ConnectionManager(conn.send, conn.waitForOneOf.bind(conn));

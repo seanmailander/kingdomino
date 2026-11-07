@@ -1,5 +1,4 @@
 import express from "express";
-import bodyParser from "body-parser";
 import { ExpressPeerServer } from "peer";
 
 import mdnsLib from "multicast-dns";
@@ -9,7 +8,7 @@ import { letMeIn, type Lobby } from "./lobby.js";
 const mdns = mdnsLib({ loopback: true });
 const app = express();
 
-app.use(bodyParser.json());
+app.use(express.json());
 app.set("port", process.env.PORT || 3001);
 
 // Express only serves static assets in production

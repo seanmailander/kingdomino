@@ -169,6 +169,20 @@ describe("PeerSession — peer discovery", () => {
     );
   });
 
+  it("uses https when the peer connection is secure", async () => {
+    const session = new PeerSession({ host: "localhost", port: 3001 });
+    lastPeer.options.secure = true;
+    lastPeer._emitOpen("me-123");
+
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      json: async () => [],
+    } as Response);
+
+    await session.discoverPeers();
+
+    expect(fetchMock).toHaveBeenCalledWith("https://localhost:3001/api/peers/default/peers");
+  });
+
   it("returns an empty array when no other peers are registered", async () => {
     const session = new PeerSession({ host: "localhost", port: 3001 });
     lastPeer._emitOpen("solo-peer");
@@ -324,6 +338,23 @@ describe("PeerSession — joinMatchmaking", () => {
         body: JSON.stringify({ playerId: "my-id" }),
       }),
     );
+  });
+
+  it("polls over https when the peer connection is secure", async () => {
+    const session = new PeerSession({ host: "localhost", port: 3001 });
+    lastPeer.options.secure = true;
+    lastPeer._emitOpen("my-id");
+
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      json: async () => ({ otherPlayerId: "their-id" }),
+    } as Response);
+    lastPeer._onConnect = (conn) => {
+      Promise.resolve().then(() => conn.listeners.open.forEach((h) => h()));
+    };
+
+    await session.joinMatchmaking();
+
+    expect(fetchMock).toHaveBeenCalledWith("https://localhost:3001/api/letMeIn", expect.anything());
   });
 
   it("waits checkBackInMs then re-polls until matched as initiator", async () => {
