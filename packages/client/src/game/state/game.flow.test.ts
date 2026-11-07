@@ -80,6 +80,51 @@ describe("LobbyFlow control transitions", () => {
   });
 });
 
+describe("LobbyFlow exit and repeat pause", () => {
+  async function startPausedGame() {
+    const store = new GameStore();
+    new LobbyFlow({ adapter: new AppFlowAdapter(store), rosterFactory: new DefaultRosterFactory() }).start();
+    await vi.waitFor(() => expect(store.getRoom()).toBe("Lobby"));
+    store.triggerLobbyStart(minimalConfig);
+    await vi.waitFor(() => expect(store.getRoom()).toBe("Game"));
+    store.triggerPauseIntent();
+    await vi.waitFor(() => expect(store.getRoom()).toBe("GamePaused"));
+    return store;
+  }
+
+  it("returns to Splash and clears the session when exit is confirmed", async () => {
+    const store = await startPausedGame();
+
+    store.triggerExitConfirm(true);
+
+    await vi.waitFor(() => {
+      expect(store.getRoom()).toBe("Splash");
+      expect(store.getSession()).toBeNull();
+    });
+  });
+
+  it("stays paused when exit is cancelled, and can still exit afterwards", async () => {
+    const store = await startPausedGame();
+
+    store.triggerExitConfirm(false);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(store.getRoom()).toBe("GamePaused");
+
+    store.triggerExitConfirm(true);
+    await vi.waitFor(() => expect(store.getRoom()).toBe("Splash"));
+  });
+
+  it("can pause again after resuming", async () => {
+    const store = await startPausedGame();
+    store.triggerResumeIntent();
+    await vi.waitFor(() => expect(store.getRoom()).toBe("Game"));
+
+    store.triggerPauseIntent();
+
+    await vi.waitFor(() => expect(store.getRoom()).toBe("GamePaused"));
+  });
+});
+
 describe("LobbyFlow game completion", () => {
   it("transitions room to GameEnded when the game completes normally", async () => {
     const store = new GameStore();

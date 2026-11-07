@@ -145,8 +145,6 @@ describe('MCP Server Core Tools (Step 5)', () => {
     // Snapshot the serialized state
     const snapshotId = 'snapshot-0' // deterministic, never Math.random()
     const stored = structuredClone(serialized)
-    // In the real mcp-server, we store in stateSnapshots map
-    // For this test, we just verify the structure
     expect(snapshotId).toBeDefined()
     expect(stored.phase).toBe(phase1)
     expect(stored.players).toHaveLength(2)

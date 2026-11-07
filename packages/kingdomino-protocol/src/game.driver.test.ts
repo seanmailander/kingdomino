@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { GameSession, Player, findPlacementWithin5x5 } from "kingdomino-engine";
+import { GameSession, Player, findPlacementWithin5x5, PICK_MADE } from "kingdomino-engine";
 import type { CardId, BoardGrid, SeedProvider } from "kingdomino-engine";
 import type { PlayerActor, PlacementResult } from "./player.actor";
 import { GameDriver } from "./game.driver";
@@ -71,5 +71,38 @@ describe("GameDriver", () => {
     session.startGame();
 
     await expect(finished).rejects.toThrow("actor failed");
+  });
+
+  it("does not ask actors for moves while the game is paused", async () => {
+    const session = new GameSession({ variant: "standard", seedProvider: makeTestSeedProvider() });
+    session.addPlayer(new Player("alice"));
+    session.addPlayer(new Player("bob"));
+
+    let pausedOnce = false;
+    const pauseOnFirstPick = (id: string): PlayerActor => ({
+      ...makeScriptedActor(id),
+      awaitPick: async (available: CardId[]) => {
+        if (!pausedOnce) {
+          pausedOnce = true;
+          session.pause();
+        }
+        return available[0];
+      },
+    });
+    const actors = new Map([
+      ["alice", pauseOnFirstPick("alice")],
+      ["bob", pauseOnFirstPick("bob")],
+    ]);
+
+    let picks = 0;
+    session.events.on(PICK_MADE, () => picks++);
+    const finished = new GameDriver(session, actors).driveUntilEnd();
+    session.startGame();
+
+    await new Promise((r) => setTimeout(r, 20));
+    expect(picks).toBe(1);
+
+    session.resume();
+    await expect(finished).resolves.toBeUndefined();
   });
 });

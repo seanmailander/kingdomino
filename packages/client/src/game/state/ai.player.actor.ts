@@ -1,4 +1,4 @@
-import type { CardId, Direction } from "kingdomino-engine";
+import type { CardId } from "kingdomino-engine";
 import type { PlayerActor, PlacementResult } from "kingdomino-protocol";
 import type { PlayerId, BoardGrid, GameVariant } from "kingdomino-engine";
 import { findPlacementWithin5x5, findPlacementWithin7x7, STANDARD, MIGHTY_DUEL } from "kingdomino-engine";
@@ -14,7 +14,7 @@ export class AIPlayerActor implements PlayerActor {
   private readonly variant: GameVariant;
   private pendingPlacement: PlacementResult | null = null;
 
-  constructor(playerId: PlayerId, _humanPlayerId: PlayerId, variant: GameVariant = STANDARD) {
+  constructor(playerId: PlayerId, variant: GameVariant = STANDARD) {
     this.playerId = playerId;
     this.variant = variant;
   }

@@ -44,13 +44,11 @@ export type FlowPhase =
 export interface FlowAdapter {
   setSession(session: GameSession | null): void;
   setPhase(phase: FlowPhase): void;
-  getPhase(): FlowPhase;
-  oncePhaseIsNot(phase: FlowPhase): Promise<void>;
   awaitStart(): Promise<RosterConfig>;
   awaitLeave(): Promise<void>;
   awaitPause(): Promise<void>;
   awaitResume(): Promise<void>;
-  reset(): void;
+  awaitExitConfirm(): Promise<boolean | undefined>;
 }
 
 type LobbyFlowOptions = {
@@ -126,21 +124,41 @@ export class LobbyFlow {
       session.events.on(GAME_PAUSED, () => this.adapter.setPhase(FLOW_PAUSED));
       session.events.on(GAME_RESUMED, () => this.adapter.setPhase(FLOW_GAME));
 
-      // Wire local pause/resume/leave intents
+      // Wire local pause/resume/exit intents; re-arm each after it fires until this game is over.
       // TODO(remote-control): Add peer handshake for remote slots
-      void this.adapter.awaitPause().then(() => {
+      const onEachIntent = <T>(wait: () => Promise<T>, act: (value: T) => void) => {
+        void wait().then((value) => {
+          if (this.session !== session) return;
+          act(value);
+          onEachIntent(wait, act);
+        });
+      };
+      onEachIntent(() => this.adapter.awaitPause(), () => {
         if (session.phase === GAME_PHASE_PLAYING) session.pause();
       });
-      void this.adapter.awaitResume().then(() => {
+      onEachIntent(() => this.adapter.awaitResume(), () => {
         if (session.phase === GAME_PHASE_PAUSED) session.resume();
       });
-      void this.adapter.awaitLeave().then(() => this.adapter.reset());
+      const exitConfirmed = new Promise<"exit">((resolve) =>
+        onEachIntent(() => this.adapter.awaitExitConfirm(), (confirmed) => {
+          if (confirmed) resolve("exit");
+        }),
+      );
 
       const actorMap = new Map(players.map(({ id, actor }) => [id, actor]));
       const driver = new GameDriver(session, actorMap);
-      const gameFinished = driver.driveUntilEnd();
+      const gameFinished = driver.driveUntilEnd().then(() => "ended" as const);
       session.startGame();
-      await gameFinished;
+      const outcome = await Promise.race([gameFinished, exitConfirmed]);
+
+      if (outcome === "exit") {
+        // Abandoned mid-game: the paused driver never resumes; release actors and go home.
+        this.session = null;
+        for (const { actor } of players) actor.destroy();
+        this.adapter.setSession(null);
+        this.adapter.setPhase(FLOW_SPLASH);
+        return;
+      }
 
       this.adapter.setPhase(FLOW_ENDED);
     } catch (e) {
