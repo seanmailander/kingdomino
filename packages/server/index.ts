@@ -117,7 +117,7 @@ const defaultInterface = () => {
 
   return {
     ipv4: v4Addresses[0].address,
-    ipv6: v6Addresses[0].address,
+    ipv6: v6Addresses[0]?.address, // IPv4-only interfaces (Docker, some Wi-Fi) have none
   };
 };
 
@@ -142,13 +142,17 @@ mdns.on("query", function (query) {
           class: "IN",
           data: interfaceToListenOn.ipv4,
         },
-        {
-          name: "kingdomino.local",
-          type: "AAAA",
-          ttl: 300,
-          class: "IN",
-          data: interfaceToListenOn.ipv6,
-        },
+        ...(interfaceToListenOn.ipv6
+          ? [
+              {
+                name: "kingdomino.local",
+                type: "AAAA" as const,
+                ttl: 300,
+                class: "IN" as const,
+                data: interfaceToListenOn.ipv6,
+              },
+            ]
+          : []),
       ],
     });
   }
