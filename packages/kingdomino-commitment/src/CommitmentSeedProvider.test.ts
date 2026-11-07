@@ -58,4 +58,14 @@ describe("CommitmentSeedProvider", () => {
     expect(seedA).toBe(seedB);
     expect(typeof seedA).toBe("string");
   });
+
+  it("rejects a peer that mirrors our commitment and reveal", async () => {
+    const inbox = new Map<string, unknown>();
+    const mirror: CommitmentTransport = {
+      send(msg) { inbox.set(msg.type, msg.content); },
+      waitFor: async <T,>(type: string) => inbox.get(type) as T,
+    };
+    await expect(new CommitmentSeedProvider(mirror).nextSeed()).rejects.toThrow();
+    expect(inbox.has("REVEAL")).toBe(false);
+  });
 });
