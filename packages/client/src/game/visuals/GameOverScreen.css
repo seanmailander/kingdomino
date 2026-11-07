@@ -50,9 +50,4 @@
   text-align: right;
 }
 
-.game-over-screen__return-btn {
-  margin-top: 1rem;
-  padding: 0.6rem 1.4rem;
-  font-size: 1rem;
-  cursor: pointer;
-}
+.game-over-screen__return-btn { margin-top: 1rem; }

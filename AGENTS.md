@@ -24,6 +24,18 @@ A browser-based multiplayer **Kingdomino** board game by Bruno Cathala — recre
 
 - Node.js + Express + PeerJS server + multicast-dns; no real test suite
 
+## UI Styleguide
+
+Functional over pretty. Base styles live in `client/src/index.css` — reuse them, don't restyle per component.
+
+- Buttons: plain `<button>`; `.primary` (green) for the one main action, `.danger` (red) for destructive; everything else default.
+- Toggles/choices: button groups with `aria-pressed`; selected = solid blue.
+- Every click gives visible feedback: hover/press state, disable while pending, change label ("Starting…").
+- Show state in words: a `role="status"` line for what's happening/next.
+- Errors: inline, red, `role="alert"` — never fail silently.
+- Modals: `.overlay` > `.panel`.
+- Colors via `--c-*` vars only. No new UI libraries.
+
 ## Key Directories
 
 | Path                         | Purpose                                                                                             |

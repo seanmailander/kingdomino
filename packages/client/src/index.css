@@ -10,3 +10,47 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
+
+/* ── Base UI (see "UI Styleguide" in AGENTS.md) ── */
+:root {
+  --c-primary: #2563eb;
+  --c-go: #16a34a;
+  --c-danger: #dc2626;
+  --c-muted: #555;
+  --c-border: #888;
+  --c-surface: #f4f4f4;
+}
+button:not(.card) {
+  padding: 6px 12px;
+  margin: 2px;
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  background: var(--c-surface);
+  font: inherit;
+  cursor: pointer;
+}
+button:not(.card):hover:not(:disabled) { filter: brightness(0.92); }
+button:not(.card):active:not(:disabled) { transform: translateY(1px); }
+button:not(.card):focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
+button:not(.card):disabled { opacity: 0.5; cursor: not-allowed; }
+button[aria-pressed="true"] { background: var(--c-primary); border-color: var(--c-primary); color: #fff; font-weight: bold; }
+button.primary { background: var(--c-go); border-color: var(--c-go); color: #fff; font-weight: bold; }
+button.danger { background: var(--c-danger); border-color: var(--c-danger); color: #fff; }
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.4);
+}
+.panel {
+  padding: 1.5rem;
+  min-width: 260px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.3);
+  text-align: center;
+}

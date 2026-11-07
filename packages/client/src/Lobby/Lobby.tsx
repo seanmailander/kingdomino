@@ -182,7 +182,7 @@ export function Lobby({ onStart, onLeave, joinMatchmaking }: LobbyProps) {
 
       <div className="lobby-row">
         <button
-          className="lobby-primary"
+          className="primary"
           disabled={startDisabled || !!pending}
           onClick={() => {
             setPending("start");

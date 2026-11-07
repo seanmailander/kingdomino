@@ -32,34 +32,8 @@
 .lobby-slot-hint { grid-column: 2; color: #555; }
 .lobby-error { color: #c22; }
 .lobby-seg { display: inline-flex; }
-.lobby button {
-  padding: 6px 12px;
-  border: 1px solid #888;
-  background: #f4f4f4;
-  cursor: pointer;
-  font: inherit;
-}
+.lobby-seg button { margin: 0; border-radius: 0; }
 .lobby-seg button + button { border-left: none; }
 .lobby-seg button:first-child { border-radius: 4px 0 0 4px; }
 .lobby-seg button:last-child { border-radius: 0 4px 4px 0; }
-.lobby button:hover:not(:disabled) { background: #e2e8f0; }
-.lobby button:active:not(:disabled) { transform: translateY(1px); }
-.lobby button[aria-pressed="true"] {
-  background: #2563eb;
-  border-color: #1d4ed8;
-  color: #fff;
-  font-weight: bold;
-}
-.lobby button:disabled { opacity: 0.5; cursor: not-allowed; }
-.lobby-primary {
-  background: #16a34a !important;
-  color: #fff;
-  border-color: #15803d !important;
-  border-radius: 4px;
-  font-weight: bold;
-}
-.lobby-status {
-  padding: 8px;
-  background: #f0f7ff;
-  border-radius: 4px;
-}
+.lobby-status { padding: 8px; background: #f0f7ff; border-radius: 4px; }

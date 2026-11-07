@@ -60,7 +60,7 @@ export function GameOverScreen({ scores, onReturnToLobby }: GameOverScreenProps)
           );
         })}
       </ol>
-      <button className="game-over-screen__return-btn" onClick={onReturnToLobby}>
+      <button className="game-over-screen__return-btn primary" onClick={onReturnToLobby}>
         Return to Lobby
       </button>
     </div>
