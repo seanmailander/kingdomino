@@ -142,7 +142,7 @@ The same seed must produce the same sequence every run. Use a simple algorithm (
 
 ### STEP 3: Snapshot Store
 
-**File:** `harness/snapshots.ts` *(never wired up; deleted — `snapshot`/`restore` tools return `not_implemented`)*
+**File:** `harness/snapshots.ts` *(superseded: this file was never wired into `mcp-server.ts` and has been deleted. The `snapshot`/`restore` MCP tools currently return a `not_implemented` error.)*
 
 Implement in-memory snapshot storage:
 ```typescript

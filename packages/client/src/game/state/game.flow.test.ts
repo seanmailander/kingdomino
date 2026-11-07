@@ -107,7 +107,7 @@ describe("LobbyFlow exit and repeat pause", () => {
     const store = await startPausedGame();
 
     store.triggerExitConfirm(false);
-    await new Promise((r) => setTimeout(r, 10));
+    await new Promise((r) => setImmediate(r));
     expect(store.getRoom()).toBe("GamePaused");
 
     store.triggerExitConfirm(true);
