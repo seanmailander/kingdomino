@@ -15,7 +15,7 @@
   margin: 10px 0;
 }
 
-.game-controls { text-align: right; padding: 0 8px; }
+.game-controls { text-align: right; padding: 0 var(--space-2); }
 
 .boards {
   width: 100%;

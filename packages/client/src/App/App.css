@@ -1,38 +1,21 @@
-.App {
-  text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
 .App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+  padding: var(--space-2) var(--space-3);
+  background: #1f2937;
+  color: #fff;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  align-items: baseline;
+  gap: var(--space-3);
 }
-
-.App-link {
-  color: #61dafb;
+.App-header h1 { margin: 0; font-size: var(--fs-lg); }
+.App-hint { margin: 0; font-size: var(--fs-sm); opacity: 0.8; }
+.App-main {
+  position: relative;
+  max-width: 720px;
+  margin: var(--space-4) auto;
+  padding: var(--space-4);
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
+/* game board needs full width */
+.App-main--wide { max-width: none; margin: var(--space-3); }

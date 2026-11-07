@@ -28,23 +28,33 @@ export function App({ seed }: { seed?: string }) {
 
   return (
     <div className="App">
-      <h1>Kingdomino</h1>
-      {room !== "Lobby" && <p>{hint}</p>}
-      {room === "Splash" && <SplashComponent lobby={lobby} />}
-      {room === "Lobby" && (
-        <LobbyComponent
-          onStart={(config) => store.triggerLobbyStart(config)}
-          onLeave={() => store.triggerLobbyLeave()}
-          joinMatchmaking={() => getPeerSession().joinMatchmaking()}
-        />
-      )}
-      {(room === "Game" || room === "GamePaused") && session && <GameComponent session={session} />}
-      {room === "GameEnded" && (
-        <GameOverScreen
-          scores={determineWinners(store.getGameOverScores())}
-          onReturnToLobby={() => store.setRoom(Splash)}
-        />
-      )}
+      <header className="App-header">
+        <h1>Kingdomino</h1>
+        {room !== "Lobby" && <p className="App-hint">{hint}</p>}
+      </header>
+      <main
+        className={
+          room === "Game" || room === "GamePaused" ? "App-main App-main--wide" : "App-main"
+        }
+      >
+        {room === "Splash" && <SplashComponent lobby={lobby} />}
+        {room === "Lobby" && (
+          <LobbyComponent
+            onStart={(config) => store.triggerLobbyStart(config)}
+            onLeave={() => store.triggerLobbyLeave()}
+            joinMatchmaking={() => getPeerSession().joinMatchmaking()}
+          />
+        )}
+        {(room === "Game" || room === "GamePaused") && session && (
+          <GameComponent session={session} />
+        )}
+        {room === "GameEnded" && (
+          <GameOverScreen
+            scores={determineWinners(store.getGameOverScores())}
+            onReturnToLobby={() => store.setRoom(Splash)}
+          />
+        )}
+      </main>
     </div>
   );
 }

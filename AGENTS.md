@@ -34,7 +34,9 @@ Functional over pretty. Base styles live in `client/src/index.css` — reuse the
 - Show state in words: a `role="status"` line for what's happening/next.
 - Errors: inline, red, `role="alert"` — never fail silently.
 - Modals: `.overlay` > `.panel`.
-- Colors via `--c-*` vars only. No new UI libraries.
+- Spacing `--space-1..4`, text `--fs-sm/md/lg`, `--radius`, `--shadow`; colors `--c-*` — no raw px/hex in component CSS.
+- Screens render inside the `.App-main` card; don't add page-level margins.
+- No new UI libraries.
 
 ## Key Directories
 
