@@ -9,6 +9,9 @@ export type PeerSessionOptions = {
   path?: string;
 };
 
+// PeerJS reports peer-unavailable on the Peer, not the DataConnection, so a timeout is the only reliable failure signal.
+const CONNECT_TIMEOUT_MS = 10_000;
+
 type MatchmakingResponse =
   | { checkBackInMs: number }
   | { otherPlayerId: string }
@@ -69,11 +72,19 @@ export class PeerSession {
     });
 
     return new Promise<MultiplayerConnection>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        dataConn.close();
+        reject(new Error(`Connection to peer ${remotePeerId} timed out`));
+      }, CONNECT_TIMEOUT_MS);
       dataConn.on("open", () => {
+        clearTimeout(timer);
         console.debug("Successful output connection to peer", dataConn.peer);
         resolve(this._wireConnection(myId, remotePeerId, dataConn));
       });
-      dataConn.on("error", (err: Error) => reject(err));
+      dataConn.on("error", (err: Error) => {
+        clearTimeout(timer);
+        reject(err);
+      });
     });
   }
 
@@ -128,13 +139,20 @@ export class PeerSession {
       }
 
       if ("waitForConnection" in data) {
-        return new Promise<MultiplayerConnection>((resolve) => {
-          this.peer.once("connection", (dataConn: DataConnection) => {
+        return new Promise<MultiplayerConnection>((resolve, reject) => {
+          const onConnection = (dataConn: DataConnection) => {
+            this.peer.off("connection", onConnection);
             dataConn.on("open", () => {
+              clearTimeout(timer);
               console.debug("Received inbound connection from peer", dataConn.peer);
               resolve(this._wireConnection(myId, dataConn.peer, dataConn));
             });
-          });
+          };
+          const timer = setTimeout(() => {
+            this.peer.off("connection", onConnection);
+            reject(new Error("Inbound connection timed out"));
+          }, CONNECT_TIMEOUT_MS);
+          this.peer.on("connection", onConnection);
         });
       }
 
