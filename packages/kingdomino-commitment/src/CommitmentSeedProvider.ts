@@ -17,11 +17,14 @@ export class CommitmentSeedProvider implements SeedProvider {
     this.transport.send({ type: "COMMITTMENT", content: { committment: myCommittment } });
 
     const { committment: theirCommittment } = await this.transport.waitFor<{ committment: string }>("COMMITTMENT");
+    // A reflected commitment would make combine(a, a) a known all-zero seed; refuse before revealing.
+    if (theirCommittment === myCommittment) throw new Error("Remote commitment mirrors ours");
     this.transport.send({ type: "REVEAL", content: { secret: mySecret } });
 
     const { secret: theirSecret } = await this.transport.waitFor<{ secret: string }>("REVEAL");
     const isValid = await verify(theirSecret, theirCommittment);
     if (!isValid) throw new Error("Remote commitment verification failed");
+    if (theirSecret === mySecret) throw new Error("Remote secret mirrors ours");
 
     return combine(mySecret, theirSecret);
   }
