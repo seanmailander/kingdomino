@@ -29,7 +29,7 @@ export function App({ seed }: { seed?: string }) {
   return (
     <div className="App">
       <h1>Kingdomino</h1>
-      <p>{hint}</p>
+      {room !== "Lobby" && <p>{hint}</p>}
       {room === "Splash" && <SplashComponent lobby={lobby} />}
       {room === "Lobby" && (
         <LobbyComponent
