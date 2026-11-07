@@ -118,6 +118,7 @@ class KingdominoHarness {
     });
 
     proc.stderr?.on("data", (chunk: Buffer) => {
+      if (this.proc !== proc) return;
       const text = chunk.toString();
       stderrTail.push(text);
       if (stderrTail.length > STDERR_TAIL_LINES) stderrTail.shift();
