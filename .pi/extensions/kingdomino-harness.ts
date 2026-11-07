@@ -12,11 +12,19 @@
  * Usage:
  *   /harness-status   — show connection state + registered tool count
  *   /harness-restart  — kill and reconnect the harness process
+ *
+ * Worktrees: each git worktree needs its own `npm ci` (node_modules is not
+ * shared). In Orca, set the repo setup hook to `npm ci` with agent startup
+ * "wait for setup" so this extension never races the install.
  */
+
+const STDERR_TAIL_LINES = 20;
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { spawn, type ChildProcess } from "child_process";
+import { existsSync } from "fs";
+import { join, resolve } from "path";
 
 // ── JSON-RPC types ──────────────────────────────────────────────────────────
 
@@ -68,44 +76,76 @@ class KingdominoHarness {
       this._ready = false;
     }
 
+    // Preflight: fail fast with an actionable message when deps are missing
+    // (the usual cause in a fresh git worktree).
+    const repoRoot = resolve(harnessPath, "..", "..");
+    if (!existsSync(join(repoRoot, "node_modules"))) {
+      throw new Error(
+        `Dependencies not installed: ${join(repoRoot, "node_modules")} is missing. ` +
+          `Run \`npm ci\` in ${repoRoot} (git worktrees don't share node_modules; ` +
+          `in Orca, set the setup hook to \`npm ci\` with "wait for setup").`,
+      );
+    }
+
     const proc = spawn("node", ["--experimental-strip-types", "harness.ts"], {
       cwd: harnessPath,
       stdio: ["pipe", "pipe", "pipe"],
     });
 
+    // Rejects the in-flight startup handshake, if any.
+    let failStartup: ((err: Error) => void) | null = null;
+    const stderrTail: string[] = [];
+
     proc.on("error", (err) => {
       console.error("[Kingdomino] harness process error:", err.message);
-      this._ready = false;
-      this.proc = null;
+      failStartup?.(new Error(`Failed to spawn harness: ${err.message}`));
+      this._onProcGone(proc, err.message);
     });
 
-    proc.on("exit", (code) => {
-      console.error(`[Kingdomino] harness process exited (code ${code})`);
-      this._ready = false;
-      this.proc = null;
+    proc.on("exit", (code, signal) => {
+      console.error(`[Kingdomino] harness process exited (code ${code}, signal ${signal})`);
+      const tail = stderrTail.join("").trim();
+      failStartup?.(
+        new Error(`Harness exited during startup (code ${code})` + (tail ? `:\n${tail}` : "")),
+      );
+      this._onProcGone(proc, `harness process exited (code ${code})`);
     });
 
     proc.stdout?.on("data", (chunk: Buffer) => {
+      if (this.proc !== proc) return;
       this.buf += chunk.toString();
       this._drain();
     });
 
     proc.stderr?.on("data", (chunk: Buffer) => {
-      process.stderr.write("[Kingdomino harness] " + chunk.toString());
+      const text = chunk.toString();
+      stderrTail.push(text);
+      if (stderrTail.length > STDERR_TAIL_LINES) stderrTail.shift();
+      process.stderr.write("[Kingdomino harness] " + text);
     });
 
     this.proc = proc;
+    this.buf = "";
 
     // Verify the server is up by calling tools/list
     await new Promise<void>((resolve, reject) => {
       const id = ++this.reqId;
       const timer = setTimeout(() => {
         this.pending.delete(id);
+        failStartup = null;
         reject(new Error("Harness startup timeout (10s) — tools/list never responded"));
       }, 10_000);
 
+      failStartup = (err) => {
+        clearTimeout(timer);
+        this.pending.delete(id);
+        failStartup = null;
+        reject(err);
+      };
+
       this.pending.set(id, (resp) => {
         clearTimeout(timer);
+        failStartup = null;
         if (resp.error) {
           reject(new Error(`tools/list error: ${resp.error.message}`));
         } else {
@@ -118,6 +158,18 @@ class KingdominoHarness {
         JSON.stringify({ jsonrpc: "2.0", method: "tools/list", params: {}, id } as JsonRpcRequest) + "\n",
       );
     });
+  }
+
+  /** Clean up after a process dies; ignores stale (already replaced) processes. */
+  private _onProcGone(proc: ChildProcess, reason: string): void {
+    if (this.proc !== proc) return;
+    this._ready = false;
+    this.proc = null;
+    // Fail outstanding calls now instead of letting them hit their 30s timeout.
+    for (const [id, cb] of this.pending) {
+      this.pending.delete(id);
+      cb({ jsonrpc: "2.0", id, error: { code: -32000, message: `Harness unavailable: ${reason}` } });
+    }
   }
 
   private _drain(): void {
@@ -192,7 +244,7 @@ class KingdominoHarness {
 
 export default function kingdominoHarnessExtension(pi: ExtensionAPI) {
   const harness = new KingdominoHarness();
-  const harnessDir = process.cwd() + "/packages/harness";
+  const harnessDir = join(process.cwd(), "packages", "harness");
 
   // ── Helper: wrap a harness tool call ───────────────────────────────────
 
