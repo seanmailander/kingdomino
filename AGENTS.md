@@ -26,7 +26,7 @@ A browser-based multiplayer **Kingdomino** board game by Bruno Cathala — recre
 
 ## UI Styleguide
 
-Functional over pretty. Base styles live in `client/src/index.css` — reuse them, don't restyle per component.
+Functional over pretty. Base styles live in `packages/client/src/index.css` — reuse them, don't restyle per component.
 
 - Buttons: plain `<button>`; `.primary` (green) for the one main action, `.danger` (red) for destructive; everything else default.
 - Toggles/choices: button groups with `aria-pressed`; selected = solid blue.

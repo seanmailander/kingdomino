@@ -135,6 +135,7 @@ export const PausedState: Story = {
 
     // The "Game Paused" heading in PauseOverlay should be visible
     await expect(canvas.getByRole("heading", { name: /game paused/i })).toBeVisible();
+    await expect(canvas.getByRole("dialog", { name: /game paused/i })).toHaveAttribute("aria-modal", "true");
   },
 };
 
@@ -162,5 +163,6 @@ export const ExitConfirmState: Story = {
     // Exit confirmation dialog should appear
     await expect(await canvas.findByRole("button", { name: /exit game/i })).toBeVisible();
     await expect(canvas.getByRole("button", { name: /cancel/i })).toBeVisible();
+    await expect(canvas.getByRole("dialog", { name: /are you sure/i })).toBeVisible();
   },
 };

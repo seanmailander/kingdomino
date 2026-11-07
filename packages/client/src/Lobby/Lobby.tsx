@@ -49,6 +49,7 @@ export function Lobby({ onStart, onLeave, joinMatchmaking }: LobbyProps) {
       });
       return prev.slice(0, count);
     });
+    setFailedSlots((prev) => new Set([...prev].filter((i) => i < count)));
     setConnectingSlots((prev) => {
       const next = new Set(prev);
       for (const idx of prev) {
@@ -166,7 +167,7 @@ export function Lobby({ onStart, onLeave, joinMatchmaking }: LobbyProps) {
                 (connectingSlots.has(i) ? (
                   <span aria-busy="true"> — Connecting…</span>
                 ) : (
-                  <span> — {slot.peerId}</span>
+                  <> — <span>{slot.peerId}</span></>
                 ))}
               {failedSlots.has(i) && slot.type !== SLOT_REMOTE ? (
                 <span role="alert" className="lobby-error"> — Matchmaking failed, reverted to AI</span>

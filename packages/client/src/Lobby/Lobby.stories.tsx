@@ -95,3 +95,23 @@ export const AllAI: Story = {
     await expect(canvas.getByRole("button", { name: "Start game" })).not.toBeDisabled();
   },
 };
+
+export const MatchmakingFailedClearedOnResize: Story = {
+  args: {
+    joinMatchmaking: fn(async (): Promise<MultiplayerConnection> => {
+      throw new Error("no peers");
+    }),
+  },
+  play: async ({ canvas }) => {
+    const user = userEvent.setup();
+    await user.click(canvas.getByRole("button", { name: "4" }));
+    const slot4 = canvas.getAllByRole("listitem")[3];
+    const remoteBtn = Array.from(slot4.querySelectorAll("button")).find((b) => b.textContent === "Remote")!;
+    await user.click(remoteBtn);
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(/matchmaking failed/i);
+    // Shrink then grow: the new slot 4 must not inherit the old failure
+    await user.click(canvas.getByRole("button", { name: "2" }));
+    await user.click(canvas.getByRole("button", { name: "4" }));
+    await expect(canvas.queryByRole("alert")).toBeNull();
+  },
+};
