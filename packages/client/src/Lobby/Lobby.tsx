@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { MultiplayerConnection } from "kingdomino-protocol";
 
+import "./Lobby.css";
 import type { PlayerSlotConfig, PlayerSlotType, RosterConfig } from "./lobby.types";
 import { SLOT_LOCAL, SLOT_COUCH, SLOT_AI, SLOT_REMOTE } from "./lobby.types";
 
@@ -17,11 +18,19 @@ const SLOT_TYPE_LABELS: Record<PlayerSlotType, string> = {
   [SLOT_AI]: "AI",
   [SLOT_REMOTE]: "Remote",
 };
+const SLOT_TYPE_HINTS: Record<PlayerSlotType, string> = {
+  [SLOT_LOCAL]: "You, on this device",
+  [SLOT_COUCH]: "Another person, sharing this device",
+  [SLOT_AI]: "Computer opponent",
+  [SLOT_REMOTE]: "Another person, over the network",
+};
 
 export function Lobby({ onStart, onLeave, joinMatchmaking }: LobbyProps) {
   const [playerCount, setPlayerCount] = useState<2 | 3 | 4>(2);
   const [slots, setSlots] = useState<PlayerSlotConfig[]>([{ type: SLOT_LOCAL }, { type: SLOT_AI }]);
   const [connectingSlots, setConnectingSlots] = useState<Set<number>>(new Set());
+  const [failedSlots, setFailedSlots] = useState<Set<number>>(new Set());
+  const [pending, setPending] = useState<"start" | "leave" | null>(null);
 
   const changePlayerCount = (count: 2 | 3 | 4) => {
     setPlayerCount(count);
@@ -40,6 +49,7 @@ export function Lobby({ onStart, onLeave, joinMatchmaking }: LobbyProps) {
       });
       return prev.slice(0, count);
     });
+    setFailedSlots((prev) => new Set([...prev].filter((i) => i < count)));
     setConnectingSlots((prev) => {
       const next = new Set(prev);
       for (const idx of prev) {
@@ -62,6 +72,7 @@ export function Lobby({ onStart, onLeave, joinMatchmaking }: LobbyProps) {
     }
 
     setSlots((prev) => prev.map((slot, i) => (i === index ? { type } : slot)));
+    setFailedSlots((prev) => new Set([...prev].filter((i) => i !== index)));
 
     if (type === SLOT_REMOTE) {
       setConnectingSlots((prev) => new Set([...prev, index]));
@@ -84,6 +95,7 @@ export function Lobby({ onStart, onLeave, joinMatchmaking }: LobbyProps) {
         })
         .catch(() => {
           // Matchmaking failed — revert slot to AI and clear connecting state
+          setFailedSlots((prev) => new Set([...prev, index]));
           setSlots((prev) =>
             prev.map((slot, i) => (i === index && slot.type === SLOT_REMOTE ? { type: SLOT_AI } : slot)),
           );
@@ -102,57 +114,94 @@ export function Lobby({ onStart, onLeave, joinMatchmaking }: LobbyProps) {
 
   const atLeastOneRemote = slots.some((slot) => slot.type === SLOT_REMOTE);
 
+  const remoteWaiting = slots.filter((slot, i) => slot.type === SLOT_REMOTE && connectingSlots.has(i)).length;
+  const status =
+    pending === "start"
+      ? "Starting game…"
+      : pending === "leave"
+        ? "Leaving lobby…"
+        : remoteWaiting
+          ? `Waiting for ${remoteWaiting} remote player(s) to connect…`
+          : `Ready: ${slots.map((s, i) => `P${i + 1} ${SLOT_TYPE_LABELS[s.type]}`).join(", ")}`;
+
   return (
-    <>
+    <div className="lobby">
       <h2>Lobby</h2>
 
-      <div>
+      <div className="lobby-row">
         <span>Players: </span>
-        {([2, 3, 4] as const).map((count) => (
-          <button
-            key={count}
-            aria-pressed={playerCount === count}
-            onClick={() => changePlayerCount(count)}
-          >
-            {count}
-          </button>
-        ))}
+        <div className="lobby-seg">
+          {([2, 3, 4] as const).map((count) => (
+            <button
+              key={count}
+              aria-pressed={playerCount === count}
+              disabled={!!pending}
+              onClick={() => changePlayerCount(count)}
+            >
+              {count}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <ul>
+      <ul className="lobby-slots">
         {slots.map((slot, i) => (
-          <li key={i}>
-            <span>Player {i + 1}</span>
-            <div>
+          <li key={i} className={`lobby-slot lobby-slot--${slot.type}`}>
+            <strong>Player {i + 1}</strong>
+            <div className="lobby-seg">
               {SLOT_TYPES.map((type) => (
                 <button
                   key={type}
                   aria-pressed={slot.type === type}
+                  disabled={!!pending}
                   onClick={() => changeSlotType(i, type)}
                 >
                   {SLOT_TYPE_LABELS[type]}
                 </button>
               ))}
             </div>
-            {slot.type === SLOT_LOCAL && atLeastOneRemote ? (
-              <span aria-hidden="true">{slot.peerId} (You)</span>
-            ) : null}
-            {slot.type === SLOT_REMOTE &&
-              (connectingSlots.has(i) ? (
-                <span aria-busy="true">Connecting…</span>
-              ) : (
-                <span>{slot.peerId}</span>
-              ))}
+            <small className="lobby-slot-hint">
+              {SLOT_TYPE_HINTS[slot.type]}
+              {slot.type === SLOT_LOCAL && atLeastOneRemote && slot.peerId ? ` — ${slot.peerId} (You)` : null}
+              {slot.type === SLOT_REMOTE &&
+                (connectingSlots.has(i) ? (
+                  <span aria-busy="true"> — Connecting…</span>
+                ) : (
+                  <> — <span>{slot.peerId}</span></>
+                ))}
+              {failedSlots.has(i) && slot.type !== SLOT_REMOTE ? (
+                <span role="alert" className="lobby-error"> — Matchmaking failed, reverted to AI</span>
+              ) : null}
+            </small>
           </li>
         ))}
       </ul>
 
-      <div>
-        <button disabled={startDisabled} onClick={() => onStart(slots as RosterConfig)}>
-          Start game
+      <p className="lobby-status" role="status">
+        {status}
+      </p>
+
+      <div className="lobby-row">
+        <button
+          className="primary"
+          disabled={startDisabled || !!pending}
+          onClick={() => {
+            setPending("start");
+            onStart(slots as RosterConfig);
+          }}
+        >
+          {pending === "start" ? "Starting…" : "Start game"}
         </button>
-        <button onClick={onLeave}>Leave</button>
+        <button
+          disabled={!!pending}
+          onClick={() => {
+            setPending("leave");
+            onLeave();
+          }}
+        >
+          Leave
+        </button>
       </div>
-    </>
+    </div>
   );
 }
