@@ -15,9 +15,8 @@ import { resolveBehavior, type BehaviorSpec, type ClientBehavior } from './behav
 import {
   GameSession,
   Player,
-  GAME_PHASE_PLAYING,
-  GAME_PHASE_FINISHED,
   STANDARD,
+  MIGHTY_DUEL,
   up,
   down,
   left,
@@ -27,7 +26,7 @@ import {
   chooseOrderFromSeed,
   getEligiblePositions,
   getValidDirections,
-  staysWithin5x5,
+  staysWithinBounds,
   ROUND_COMPLETE,
 } from 'kingdomino-engine'
 import type { GameVariant, GameBonuses, Direction, CardId } from 'kingdomino-engine'
@@ -53,18 +52,6 @@ let remainingDeck: number[] = []
  * Registry of player behaviors, keyed by player ID.
  */
 const behaviorRegistry = new Map<string, ClientBehavior>()
-
-/**
- * Store snapshots of serialized game state (not the session object).
- * Reserved for future snapshot/restore implementation.
- * Currently unused — snapshot and restore return not_implemented.
- */
-const stateSnapshots = new Map<string, Record<string, unknown>>()
-let nextSnapshotIndex = 0
-
-// Suppress unused-variable warnings until snapshot/restore is implemented
-void stateSnapshots
-void nextSnapshotIndex
 
 /**
  * Generate a hex seed string from the module-level seeded RNG.
@@ -168,12 +155,13 @@ function getLegalActionsForPlayer(
     const board = player.board.snapshot()
     const eligible = getEligiblePositions(board, cardId)
     const placements: Record<string, unknown>[] = []
+    const maxSize = session.variant === MIGHTY_DUEL ? 7 : 5
 
     for (const { x, y } of eligible) {
       const validDirs = getValidDirections(board, cardId, x, y) as Direction[]
       for (const dir of validDirs) {
         const dirName = DIRECTION_ENTRIES.find(([, d]) => d === dir)?.[0]
-        if (dirName && staysWithin5x5(board, x, y, dir)) {
+        if (dirName && staysWithinBounds(board, x, y, dir, maxSize)) {
           placements.push({ action: 'place', params: { x, y, direction: dirName } })
         }
       }
@@ -238,8 +226,6 @@ server.tool(
 
     // Clear old state
     behaviorRegistry.clear()
-    stateSnapshots.clear()
-    nextSnapshotIndex = 0
 
     // Create seeded RNG
     rng = createRng(seed)

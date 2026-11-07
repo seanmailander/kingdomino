@@ -86,8 +86,7 @@ Before writing any code, internalize these:
 │   │   ├── scripted.ts
 │   │   └── cheater.ts
 │   ├── mcp.ts           ← minimal MCP protocol implementation
-│   ├── seed.ts          ← seeded PRNG utility
-│   └── snapshots.ts     ← snapshot/restore store
+│   └── seed.ts          ← seeded PRNG utility
 │
 ├── tsconfig.harness.json
 └── package.json
@@ -143,7 +142,7 @@ The same seed must produce the same sequence every run. Use a simple algorithm (
 
 ### STEP 3: Snapshot Store
 
-**File:** `harness/snapshots.ts`
+**File:** `harness/snapshots.ts` *(superseded: this file was never wired into `mcp-server.ts` and has been deleted. The `snapshot`/`restore` MCP tools currently return a `not_implemented` error.)*
 
 Implement in-memory snapshot storage:
 ```typescript

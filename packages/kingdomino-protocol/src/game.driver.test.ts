@@ -72,4 +72,54 @@ describe("GameDriver", () => {
 
     await expect(finished).rejects.toThrow("actor failed");
   });
+
+  /** Starts a 2-player game whose first pick pauses the session; counts every actor prompt. */
+  function startGamePausedOnFirstPick() {
+    const session = new GameSession({ variant: "standard", seedProvider: makeTestSeedProvider() });
+    session.addPlayer(new Player("alice"));
+    session.addPlayer(new Player("bob"));
+
+    let asks = 0;
+    const pauseOnFirstPick = (id: string): PlayerActor => ({
+      ...makeScriptedActor(id),
+      awaitPick: async (available: CardId[]) => {
+        if (asks++ === 0) session.pause();
+        return available[0];
+      },
+    });
+    const actors = new Map([
+      ["alice", pauseOnFirstPick("alice")],
+      ["bob", pauseOnFirstPick("bob")],
+    ]);
+
+    const finished = new GameDriver(session, actors).driveUntilEnd();
+    session.startGame();
+    return { session, finished, asks: () => asks };
+  }
+
+  // Seeds and actors resolve as microtasks, so one macrotask drains all pending driver work.
+  const drainMicrotasks = () => new Promise((r) => setImmediate(r));
+
+  it("does not ask actors for moves while the game is paused", async () => {
+    const { session, finished, asks } = startGamePausedOnFirstPick();
+
+    await drainMicrotasks();
+    expect(session.phase).toBe("paused");
+    expect(asks()).toBe(1);
+
+    session.resume();
+    await expect(finished).resolves.toBeUndefined();
+    expect(asks()).toBeGreaterThan(1);
+  });
+
+  it("stops driving when the game ends while paused", async () => {
+    const { session, finished, asks } = startGamePausedOnFirstPick();
+    await drainMicrotasks();
+
+    session.endGame();
+    await expect(finished).resolves.toBeUndefined();
+    await drainMicrotasks();
+
+    expect(asks()).toBe(1);
+  });
 });

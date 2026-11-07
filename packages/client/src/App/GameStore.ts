@@ -1,4 +1,4 @@
-import { effect, signal } from "alien-signals";
+import { signal } from "alien-signals";
 
 import type { GameSession, GameEvent } from "kingdomino-engine";
 import { GAME_STARTED, ROUND_STARTED, PICK_MADE, PLACE_MADE, DISCARD_MADE, ROUND_COMPLETE, GAME_PAUSED, GAME_RESUMED, GAME_ENDED } from "kingdomino-engine";
@@ -74,19 +74,6 @@ export class GameStore {
   setRoom(room: Room): void {
     this._room(room);
     this.bumpVersion();
-  }
-
-  onceRoomIsNot(room: Room): Promise<void> {
-    return new Promise((resolve) => {
-      let resolved = false;
-      const dispose = effect(() => {
-        if (this._room() !== room && !resolved) {
-          resolved = true;
-          queueMicrotask(() => dispose());
-          resolve();
-        }
-      });
-    });
   }
 
   // ── Lobby coordination ───────────────────────────────────────────────────

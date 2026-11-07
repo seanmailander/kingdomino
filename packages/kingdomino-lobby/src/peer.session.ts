@@ -42,14 +42,18 @@ export class PeerSession {
     });
   }
 
+  private baseUrl() {
+    const { host, port, secure } = this.peer.options;
+    return `${secure ? "https" : "http"}://${host}:${port}`;
+  }
+
   /**
    * Discover other registered peers on the signaling server.
    * Returns peer IDs of all connected peers, excluding self.
    */
   async discoverPeers(): Promise<string[]> {
     const myId = await this.ready;
-    const { host, port, path } = this.peer.options;
-    const url = `http://${host}:${port}${path}/default/peers`;
+    const url = `${this.baseUrl()}${this.peer.options.path}/default/peers`;
     const resp = await fetch(url);
     const all: string[] = await resp.json();
     return all.filter((id) => id !== myId);
@@ -117,8 +121,7 @@ export class PeerSession {
    */
   async joinMatchmaking(): Promise<MultiplayerConnection> {
     const myId = await this.ready;
-    const { host, port } = this.peer.options;
-    const url = `http://${host}:${port}/api/letMeIn`;
+    const url = `${this.baseUrl()}/api/letMeIn`;
 
     while (true) {
       const resp = await fetch(url, {

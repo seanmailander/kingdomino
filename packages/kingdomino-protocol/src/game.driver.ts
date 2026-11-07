@@ -1,6 +1,6 @@
 import type { GameSession, Round } from "kingdomino-engine";
 import type { PlayerId, CardId } from "kingdomino-engine";
-import { ROUND_STARTED, GAME_ENDED } from "kingdomino-engine";
+import { ROUND_STARTED, GAME_ENDED, GAME_RESUMED, GAME_PHASE_PAUSED, GAME_PHASE_FINISHED } from "kingdomino-engine";
 import type { PlayerActor } from "./player.actor";
 
 /**
@@ -54,6 +54,15 @@ export class GameDriver {
     });
   }
 
+  private async _waitWhilePaused(): Promise<void> {
+    if (this.session.phase !== GAME_PHASE_PAUSED) return;
+    await new Promise<void>((resolve) => {
+      const offs = [GAME_RESUMED, GAME_ENDED].map((type) =>
+        this.session.events.on(type, () => { offs.forEach((off) => off()); resolve(); }),
+      );
+    });
+  }
+
   private async _driveRound(round: Round): Promise<void> {
     const pickedCards = new Map<PlayerId, CardId>();
 
@@ -63,6 +72,9 @@ export class GameDriver {
 
       const actor = this.actors.get(player.id);
       if (!actor) throw new Error(`GameDriver: no actor registered for player "${player.id}"`);
+
+      await this._waitWhilePaused();
+      if (this.session.phase === GAME_PHASE_FINISHED) return;
 
       if (round.phase === "picking") {
         const availableCards = round.deal
