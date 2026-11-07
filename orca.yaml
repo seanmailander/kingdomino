@@ -1,0 +1,7 @@
+# Orca repo config — https://github.com/stablyai/orca
+# Each git worktree needs its own node_modules. Install before the agent starts
+# so the pi Kingdomino harness extension (.pi/extensions/kingdomino-harness.ts)
+# finds its dependencies on first launch.
+scripts:
+  setup: npm ci
+setupAgentStartupPolicy: wait-for-setup

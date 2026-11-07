@@ -37,13 +37,19 @@ let isRebuildInProgress = false
 function verify(): void {
   console.error('[harness] Verifying TypeScript...')
   try {
-    execSync('npx tsc --noEmit', {
+    // --no-install: never fetch the unrelated "tsc" package from the registry
+    // when TypeScript isn't installed (e.g. fresh git worktree without npm ci).
+    execSync('npx --no-install tsc --noEmit', {
       stdio: ['pipe', 'pipe', 'inherit'],
       cwd: HARNESS_DIR,
     })
     console.error('[harness] Verification succeeded')
   } catch (error) {
-    console.error('[harness] Verification failed:', error)
+    const stdout = (error as { stdout?: Buffer }).stdout?.toString().trim()
+    console.error(
+      '[harness] Verification failed (is `npm ci` done in the repo root?):\n' +
+        (stdout || String(error)),
+    )
     throw error
   }
 }
