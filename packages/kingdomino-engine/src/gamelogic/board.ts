@@ -1,4 +1,4 @@
-import { validTiles, getCard, up, down, left, right } from "./cards.ts";
+import { validTiles, getCard, castle, up, down, left, right } from "./cards.ts";
 
 export type BoardCell = { tile?: number; value?: number };
 export type BoardGrid = ReadonlyArray<ReadonlyArray<BoardCell>>;
@@ -99,13 +99,18 @@ export const getEligiblePositions = (board: Board, cardId?: CardId | null): Neig
 
 export const getValidDirections = (
   board: Board,
-  _card: CardId,
+  card: CardId,
   tileX: number,
   tileY: number,
-): Direction[] =>
-  getNeighbors(tileX, tileY)
+): Direction[] => {
+  const [{ tile: tileA }, { tile: tileB }] = getCard(card).tiles;
+  const touches = (x: number, y: number, tile: number) =>
+    getNeighbors(x, y).some(({ x, y }) => board[y][x]?.tile === castle || board[y][x]?.tile === tile);
+  return getNeighbors(tileX, tileY)
     .filter(({ x, y }) => !tileIsValid(board, x, y))
-    .map(({ x: _x, y: _y, direction }) => direction);
+    .filter(({ x, y }) => touches(tileX, tileY, tileA) || touches(x, y, tileB))
+    .map(({ direction }) => direction);
+};
 
 const directionDelta: Record<Direction, { dx: number; dy: number }> = {
   [up]: { dx: 0, dy: -1 },

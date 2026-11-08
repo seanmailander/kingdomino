@@ -45,6 +45,24 @@ describe("Checks moves", () => {
     expect(validDirections).toIncludeSameMembers([left, right, down]);
   });
 
+  it("rejects directions where neither half touches castle or matching terrain", () => {
+    // Arrange: card 2 (wood/wood) right of castle; card 12 is grain/wood
+    const board = buildSnapshot([{ card: 2, x: 7, y: 6, direction: right }]);
+
+    // Act
+    const validDirections = getValidDirections(board, 12, 9, 6);
+
+    // Assert: grain at (9,6) next to wood; wood half at (10,6) touches nothing
+    expect(validDirections).not.toContain(right);
+  });
+
+  it("accepts a direction where the second half matches a neighbour", () => {
+    const board = buildSnapshot([{ card: 2, x: 7, y: 6, direction: right }]);
+
+    // grain at (10,6), wood half at (9,6) next to wood at (8,6)
+    expect(getValidDirections(board, 12, 10, 6)).toContain(left);
+  });
+
   describe("findPlacementWithin5x5", () => {
     it("picks a deterministic first valid anchor and direction on an empty board", () => {
       // Arrange
